@@ -1,0 +1,591 @@
+from typing import Dict, List, Optional
+from datetime import datetime, timedelta
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
+import logging
+
+from app.models import (
+    Lead, Message, Company, ConversationThread, CalendarEvent,
+    LeadStatus, MessageDirection, User
+)
+from app.integrations import TwilioService, OpenAIService, GoogleCalendarService, VAPIService
+from app.core.config import settings
+from app.tasks import process_new_lead
+
+logger = logging.getLogger(__name__)
+
+
+class WorkflowService:
+    """Main workflow orchestration service"""
+    
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.twilio = TwilioService()
+        self.openai = OpenAIService()
+        self.calendar = GoogleCalendarService()
+        self.vapi = VAPIService()
+    
+    async def process_inbound_message(self, webhook_data: Dict) -> Dict:
+        """Process incoming SMS message - complete workflow"""
+        try:
+            # 1. Parse webhook data
+            phone = webhook_data.get("from", "").replace("+1", "")
+            message_body = webhook_data.get("body", "")
+            message_sid = webhook_data.get("message_sid", "")
+            
+            # 2. Find lead by phone
+            result = await self.db.execute(
+                select(Lead).where(Lead.phone.contains(phone))
+            )
+            lead = result.scalar_one_or_none()
+            
+            if not lead:
+                logger.warning(f"No lead found for phone: {phone}")
+                return {"success": False, "error": "Lead not found"}
+            
+            # 3. Get company configuration
+            company = await self.db.get(Company, lead.company_id)
+            
+            # 4. Create/get conversation thread
+            thread = await self._get_or_create_thread(lead.id, "sms")
+            
+            # 5. Store inbound message
+            inbound_msg = Message(
+                lead_id=lead.id,
+                thread_id=thread.id,
+                direction=MessageDirection.INBOUND,
+                channel="sms",
+                content=message_body,
+                twilio_message_sid=message_sid,
+                created_at=datetime.utcnow()
+            )
+            self.db.add(inbound_msg)
+            
+            # 6. Get conversation history
+            messages = await self._get_conversation_history(lead.id, limit=10)
+            
+            # 7. Analyze sentiment and intent
+            analysis = await self.openai.analyze_sentiment_and_intent(
+                message_body,
+                {"lead_name": lead.name, "company": lead.lead_company}
+            )
+            
+            # 8. Generate smart reply
+            reply_data = await self.openai.generate_smart_reply(
+                lead, messages, company.dict(), message_body
+            )
+            
+            if not reply_data["success"]:
+                reply_text = "Thanks for your message! Our team will get back to you soon."
+            else:
+                reply_text = reply_data["reply"]
+            
+            # 9. Check for calendar booking intent
+            if analysis.get("intent") == "schedule_meeting" and analysis.get("extracted_datetime"):
+                booking_result = await self._handle_calendar_booking(
+                    lead, company, analysis["extracted_datetime"]
+                )
+                if booking_result["success"]:
+                    reply_text = booking_result["confirmation_message"]
+            
+            # 10. Send reply
+            send_result = await self.twilio.send_sms(
+                to=f"+1{phone}",
+                body=reply_text
+            )
+            
+            # 11. Store outbound message
+            if send_result["success"]:
+                outbound_msg = Message(
+                    lead_id=lead.id,
+                    thread_id=thread.id,
+                    direction=MessageDirection.OUTBOUND,
+                    channel="sms",
+                    content=reply_text,
+                    twilio_message_sid=send_result.get("message_sid"),
+                    ai_metadata={
+                        "sentiment": analysis.get("sentiment"),
+                        "intent": analysis.get("intent"),
+                        "urgency": analysis.get("urgency")
+                    },
+                    created_at=datetime.utcnow()
+                )
+                self.db.add(outbound_msg)
+            
+            # 12. Update lead status and metadata
+            lead.last_contacted = datetime.utcnow()
+            lead.last_contact_method = "sms"
+            lead.sentiment_score = {
+                "latest": analysis.get("sentiment", "neutral"),
+                "intent": analysis.get("intent", "other"),
+                "urgency": analysis.get("urgency", "medium"),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            # Update status based on intent
+            if analysis.get("intent") == "schedule_meeting":
+                lead.status = LeadStatus.QUALIFIED
+            elif analysis.get("intent") == "not_interested":
+                lead.status = LeadStatus.LOST
+            elif lead.status == LeadStatus.NEW:
+                lead.status = LeadStatus.CONTACTED
+            
+            # 13. Update thread context
+            thread.last_message_at = datetime.utcnow()
+            thread.context = {
+                **thread.context,
+                "latest_sentiment": analysis.get("sentiment"),
+                "latest_intent": analysis.get("intent"),
+                "message_count": len(messages) + 2  # +2 for new in/out messages
+            }
+            
+            # 14. Commit all changes
+            await self.db.commit()
+            
+            return {
+                "success": True,
+                "lead_id": str(lead.id),
+                "reply_sent": reply_text,
+                "analysis": analysis
+            }
+            
+        except Exception as e:
+            logger.error(f"Inbound message processing error: {e}")
+            await self.db.rollback()
+            return {"success": False, "error": str(e)}
+    
+    async def process_outbound_campaign(self) -> Dict:
+        """Process scheduled outbound messages"""
+        try:
+            processed = 0
+            errors = 0
+            
+            # Get leads to contact
+            leads = await self._get_leads_for_outbound()
+            
+            for lead in leads:
+                try:
+                    # Decide channel based on attempts and response
+                    should_call = await self._should_use_voice(lead)
+                    
+                    if should_call:
+                        # Initiate voice call
+                        result = await self._initiate_voice_call(lead)
+                    else:
+                        # Send SMS
+                        result = await self._send_outbound_sms(lead)
+                    
+                    if result["success"]:
+                        processed += 1
+                    else:
+                        errors += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error processing lead {lead.id}: {e}")
+                    errors += 1
+            
+            await self.db.commit()
+            
+            return {
+                "success": True,
+                "processed": processed,
+                "errors": errors,
+                "total": len(leads)
+            }
+            
+        except Exception as e:
+            logger.error(f"Outbound campaign error: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def _get_or_create_thread(self, lead_id: str, channel: str) -> ConversationThread:
+        """Get or create conversation thread"""
+        result = await self.db.execute(
+            select(ConversationThread).where(
+                and_(
+                    ConversationThread.lead_id == lead_id,
+                    ConversationThread.channel == channel,
+                    ConversationThread.is_active == True
+                )
+            )
+        )
+        thread = result.scalar_one_or_none()
+        
+        if not thread:
+            thread = ConversationThread(
+                lead_id=lead_id,
+                channel=channel,
+                is_active=True,
+                context={},
+                created_at=datetime.utcnow()
+            )
+            self.db.add(thread)
+            await self.db.flush()
+        
+        return thread
+    
+    async def _get_conversation_history(
+        self, 
+        lead_id: str,
+        limit: int = 10
+    ) -> List[Message]:
+        """Get recent conversation history"""
+        result = await self.db.execute(
+            select(Message)
+            .where(Message.lead_id == lead_id)
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+        )
+        messages = result.scalars().all()
+        return list(reversed(messages))  # Return in chronological order
+    
+    async def _handle_calendar_booking(
+        self,
+        lead: Lead,
+        company: Company,
+        requested_time: str
+    ) -> Dict:
+        """Handle calendar booking request"""
+        try:
+            # Parse requested time
+            booking_time = datetime.fromisoformat(requested_time.replace('Z', '+00:00'))
+            
+            # Get sales agent (simplified - in production, use round-robin or availability)
+            result = await self.db.execute(
+                select(User).where(
+                    and_(
+                        User.company_id == company.id,
+                        User.role == "sales_agent",
+                        User.is_active == True
+                    )
+                ).limit(1)
+            )
+            sales_agent = result.scalar_one_or_none()
+            
+            if not sales_agent or not sales_agent.oauth_tokens.get("google"):
+                return {
+                    "success": False,
+                    "error": "No available sales agent"
+                }
+            
+            # Check availability
+            access_token = sales_agent.oauth_tokens["google"]["access_token"]
+            busy_times = await self.calendar.get_free_busy(
+                access_token,
+                time_min=booking_time,
+                time_max=booking_time + timedelta(minutes=30)
+            )
+            
+            if busy_times:
+                # Find alternative slots
+                available_slots = await self.calendar.find_available_slots(
+                    access_token,
+                    duration_minutes=30,
+                    days_ahead=7
+                )
+                
+                if available_slots:
+                    slot_text = ", ".join([
+                        slot.strftime("%b %d at %I:%M %p")
+                        for slot in available_slots[:3]
+                    ])
+                    return {
+                        "success": False,
+                        "confirmation_message": f"That time isn't available. How about {slot_text}?"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "confirmation_message": "I'll have someone reach out with available times."
+                    }
+            
+            # Create calendar event
+            event_result = await self.calendar.create_event(
+                access_token,
+                summary=f"Demo call with {lead.name}",
+                description=f"Lead from {lead.lead_company}\nInterested in: {lead.interest}",
+                start_time=booking_time,
+                end_time=booking_time + timedelta(minutes=30),
+                attendees=[lead.email, sales_agent.email],
+                location="Google Meet"
+            )
+            
+            if event_result["success"]:
+                # Store in database
+                calendar_event = CalendarEvent(
+                    lead_id=lead.id,
+                    sales_agent_id=sales_agent.id,
+                    title=f"Demo call with {lead.name}",
+                    description=f"Lead from {lead.lead_company}",
+                    start_time=booking_time,
+                    end_time=booking_time + timedelta(minutes=30),
+                    location="Google Meet",
+                    meeting_link=event_result.get("meet_link"),
+                    google_event_id=event_result.get("event_id"),
+                    status="confirmed"
+                )
+                self.db.add(calendar_event)
+                
+                # Update lead status
+                lead.status = LeadStatus.QUALIFIED
+                
+                return {
+                    "success": True,
+                    "confirmation_message": f"Perfect! You're booked for {booking_time.strftime('%b %d at %I:%M %p')}. Check your email for the meeting link."
+                }
+            
+            return {
+                "success": False,
+                "confirmation_message": "I couldn't book that time. Let me have someone reach out to schedule."
+            }
+            
+        except Exception as e:
+            logger.error(f"Calendar booking error: {e}")
+            return {
+                "success": False,
+                "confirmation_message": "I'll have someone reach out to schedule a time that works for you."
+            }
+    
+    async def _get_leads_for_outbound(self) -> List[Lead]:
+        """Get leads that need outbound contact"""
+        # Get NEW leads or leads not contacted in 48 hours
+        cutoff_time = datetime.utcnow() - timedelta(hours=48)
+        
+        result = await self.db.execute(
+            select(Lead).where(
+                and_(
+                    Lead.status.in_([LeadStatus.NEW, LeadStatus.CONTACTED]),
+                    Lead.call_attempts < 3,
+                    (Lead.last_contacted == None) | (Lead.last_contacted < cutoff_time)
+                )
+            ).limit(50)  # Process in batches
+        )
+        
+        return result.scalars().all()
+    
+    async def _should_use_voice(self, lead: Lead) -> bool:
+        """Determine if should use voice call instead of SMS"""
+        # Use voice if:
+        # 1. Lead is new (never contacted)
+        # 2. No SMS response after 2 attempts
+        # 3. Lead age < 30 days
+        
+        if not lead.last_contacted:
+            return True
+        
+        lead_age = (datetime.utcnow() - lead.created_at).days
+        if lead_age > 30:
+            return False
+        
+        # Check for SMS responses
+        result = await self.db.execute(
+            select(Message).where(
+                and_(
+                    Message.lead_id == lead.id,
+                    Message.direction == MessageDirection.INBOUND
+                )
+            ).limit(1)
+        )
+        has_responded = result.scalar_one_or_none() is not None
+        
+        return not has_responded and lead.call_attempts < 3
+    
+    async def _initiate_voice_call(self, lead: Lead) -> Dict:
+        """Initiate voice call to lead"""
+        try:
+            company = await self.db.get(Company, lead.company_id)
+            
+            # Create assistant prompt
+            prompt = self.vapi.create_lead_assistant_prompt(
+                lead.dict(),
+                company.dict()
+            )
+            
+            # Create or get assistant
+            # In production, cache assistant IDs
+            assistant_result = await self.vapi.create_assistant(
+                name=f"{company.name} Sales Assistant",
+                system_prompt=prompt,
+                first_message=f"Hi {lead.name.split()[0]}, this is from {company.name}. Do you have a moment to chat about how we can help with {lead.interest or 'your needs'}?"
+            )
+            
+            if not assistant_result["success"]:
+                return assistant_result
+            
+            # Initiate call
+            call_result = await self.vapi.create_phone_call(
+                phone_number=f"+1{lead.phone}",
+                assistant_id=assistant_result["assistant"]["id"],
+                variables={
+                    "lead_name": lead.name,
+                    "company": lead.lead_company,
+                    "interest": lead.interest
+                },
+                webhook_url=f"{settings.app_host}/api/webhooks/vapi/inbound"
+            )
+            
+            if call_result["success"]:
+                # Update lead
+                lead.call_attempts += 1
+                lead.last_call_attempt = datetime.utcnow()
+                lead.last_contact_method = "voice"
+                
+                # Log the call attempt
+                msg = Message(
+                    lead_id=lead.id,
+                    direction=MessageDirection.OUTBOUND,
+                    channel="voice",
+                    content=f"Outbound call initiated to {lead.name}",
+                    vapi_call_id=call_result["call"]["id"],
+                    status="initiated"
+                )
+                self.db.add(msg)
+            
+            return call_result
+            
+        except Exception as e:
+            logger.error(f"Voice call initiation error: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def _send_outbound_sms(self, lead: Lead) -> Dict:
+        """Send outbound SMS to lead"""
+        try:
+            company = await self.db.get(Company, lead.company_id)
+            
+            # Get message history
+            messages = await self._get_conversation_history(lead.id, limit=5)
+            
+            if messages:
+                # Generate smart follow-up
+                reply_data = await self.openai.generate_smart_reply(
+                    lead, messages, company.dict(), 
+                    "Generate a follow-up message"
+                )
+                message_body = reply_data.get("reply", "Hi! Just following up on my previous message. Are you still interested?")
+            else:
+                # Generate cold outreach
+                message_body = await self.openai.generate_cold_outreach(
+                    lead, company.dict()
+                )
+            
+            # Send SMS
+            send_result = await self.twilio.send_sms(
+                to=f"+1{lead.phone}",
+                body=message_body,
+                from_=company.twilio_phone_number or settings.twilio_phone_number
+            )
+            
+            if send_result["success"]:
+                # Create thread if needed
+                thread = await self._get_or_create_thread(lead.id, "sms")
+                
+                # Store message
+                msg = Message(
+                    lead_id=lead.id,
+                    thread_id=thread.id,
+                    direction=MessageDirection.OUTBOUND,
+                    channel="sms",
+                    content=message_body,
+                    twilio_message_sid=send_result.get("message_sid"),
+                    status="sent"
+                )
+                self.db.add(msg)
+                
+                # Update lead
+                lead.last_contacted = datetime.utcnow()
+                lead.last_contact_method = "sms"
+                if lead.status == LeadStatus.NEW:
+                    lead.status = LeadStatus.CONTACTED
+            
+            return send_result
+            
+        except Exception as e:
+            logger.error(f"Outbound SMS error: {e}")
+            return {"success": False, "error": str(e)}
+    
+    async def process_voice_call_ended(
+        self,
+        phone: str,
+        call_id: str,
+        duration: int,
+        transcript: str,
+        recording_url: Optional[str] = None
+    ) -> Dict:
+        """
+        Process ended voice call data from VAPI webhook.
+        
+        Args:
+            phone: Phone number of the lead
+            call_id: VAPI call identifier
+            duration: Call duration in seconds
+            transcript: Call transcript
+            recording_url: Optional recording URL
+            
+        Returns:
+            Dict with processing result
+        """
+        try:
+            # Find lead by phone
+            result = await self.db.execute(
+                select(Lead).where(Lead.phone.contains(phone))
+            )
+            lead = result.scalar_one_or_none()
+            
+            if not lead:
+                logger.warning(f"No lead found for voice call from {phone}")
+                return {"success": False, "error": "Lead not found"}
+            
+            # Store voice message record
+            voice_msg = Message(
+                lead_id=lead.id,
+                direction=MessageDirection.INBOUND,
+                channel="voice",
+                content=f"Voice call transcript: {transcript[:500]}...",  # Store first 500 chars
+                transcript=transcript,  # Full transcript
+                recording_url=recording_url,
+                duration_seconds=str(duration),
+                vapi_call_id=call_id,
+                status="completed"
+            )
+            self.db.add(voice_msg)
+            
+            # Analyze call transcript for sentiment and intent
+            if transcript:
+                analysis = await self.openai.analyze_sentiment_and_intent(
+                    transcript,
+                    {"lead_name": lead.name, "call_duration": duration}
+                )
+                
+                # Update lead based on analysis
+                lead.sentiment_score = {
+                    **lead.sentiment_score,
+                    "latest": analysis.get("sentiment", "neutral"),
+                    "intent": analysis.get("intent", "other"),
+                    "from_call": True,
+                    "call_duration": duration
+                }
+                
+                # Update lead status based on call outcome
+                if analysis.get("intent") == "schedule_meeting":
+                    lead.status = LeadStatus.QUALIFIED
+                elif analysis.get("intent") == "not_interested":
+                    lead.status = LeadStatus.LOST
+            
+            # Update lead contact info
+            lead.last_contacted = datetime.utcnow()
+            lead.last_contact_method = "voice"
+            
+            await self.db.commit()
+            
+            logger.info(f"Processed voice call for lead {lead.id}: Duration {duration}s")
+            
+            return {
+                "success": True,
+                "lead_id": str(lead.id),
+                "duration": duration,
+                "analysis": analysis if transcript else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Voice call processing error: {e}")
+            await self.db.rollback()
+            return {"success": False, "error": str(e)}
