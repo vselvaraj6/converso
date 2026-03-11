@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import health, webhooks, leads, messages
+from app.api import auth, health, webhooks, leads, messages
 
 # Configure logging with appropriate level and format
 logging.basicConfig(
@@ -70,13 +70,19 @@ app = FastAPI(
 # TODO: Update allow_origins for production deployment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure with specific origins in production
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Include API routers with proper prefixes and tags
+app.include_router(
+    auth.router,
+    prefix="/api/auth",
+    tags=["auth"],
+)
+
 app.include_router(
     health.router,
     prefix="/api/health",
