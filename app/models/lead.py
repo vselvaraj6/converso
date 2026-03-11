@@ -88,7 +88,10 @@ class Lead(Base):
     interest = Column(String, nullable=True)  # Product/service of interest
     
     # Sales tracking
-    lead_owner = Column(String, nullable=True)  # Assigned sales agent
+    lead_owner = Column(String, nullable=True)  # Deprecated: use assigned_agent_id
+    assigned_agent_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     last_contacted = Column(DateTime, nullable=True, index=True)
     last_contact_method = Column(String, nullable=True)  # "sms", "voice", "email"
     
@@ -118,6 +121,7 @@ class Lead(Base):
     
     # Relationships
     company = relationship("Company", back_populates="leads")
+    assigned_agent = relationship("User", foreign_keys=[assigned_agent_id])
     messages = relationship(
         "Message",
         back_populates="lead",
