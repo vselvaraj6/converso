@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import auth, health, webhooks, leads, messages
+from app.api import auth, health, webhooks, leads, messages, meetings
 
 # Configure logging with appropriate level and format
 logging.basicConfig(
@@ -105,6 +105,12 @@ app.include_router(
     messages.router,
     prefix="/api/messages",
     tags=["messages"],
+)
+
+app.include_router(
+    meetings.router,
+    prefix="/api/meetings",
+    tags=["meetings"],
 )
 
 

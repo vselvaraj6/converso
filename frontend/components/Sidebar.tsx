@@ -1,15 +1,16 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, MessageSquare, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, MessageSquare, Calendar, Settings, LogOut } from 'lucide-react'
 import { logout } from '@/lib/api'
 import clsx from 'clsx'
 
 const nav = [
-  { href: '/dashboard',          label: 'Dashboard',     icon: LayoutDashboard },
-  { href: '/dashboard/leads',    label: 'Leads',         icon: Users },
+  { href: '/dashboard',               label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/dashboard/leads',         label: 'Leads',         icon: Users },
   { href: '/dashboard/conversations', label: 'Conversations', icon: MessageSquare },
-  { href: '/dashboard/settings', label: 'Settings',      icon: Settings },
+  { href: '/dashboard/meetings',      label: 'Meetings',      icon: Calendar },
+  { href: '/dashboard/settings',      label: 'Settings',      icon: Settings },
 ]
 
 export default function Sidebar() {

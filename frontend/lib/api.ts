@@ -98,6 +98,14 @@ export async function createLead(data: CreateLeadPayload) {
   )
 }
 
+// ── Meetings ──────────────────────────────────────────────────────────────────
+
+export async function getMeetings(upcomingOnly = true) {
+  return request<{ meetings: Meeting[]; total: number }>(
+    `/meetings/?upcoming_only=${upcomingOnly}`,
+  )
+}
+
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 export async function getLeadMessages(leadId: string, skip = 0, limit = 50) {
@@ -164,6 +172,26 @@ export interface MessageListResponse {
   messages: Message[]
   total: number
   has_more: boolean
+}
+
+export interface Meeting {
+  id: string
+  title: string
+  description: string | null
+  start_time: string
+  end_time: string
+  timezone: string
+  location: string | null
+  meeting_link: string | null
+  status: string
+  google_event_id: string | null
+  lead: {
+    id: string
+    name: string
+    email: string
+    phone: string
+    company: string | null
+  }
 }
 
 export interface CreateLeadPayload {
