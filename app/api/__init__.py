@@ -1,3 +1,3 @@
-from . import health, webhooks, leads, messages
+from . import auth, health, webhooks, leads, messages, meetings
 
-__all__ = ["health", "webhooks", "leads", "messages"]
+__all__ = ["auth", "health", "webhooks", "leads", "messages", "meetings"]

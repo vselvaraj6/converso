@@ -72,7 +72,7 @@ class WorkflowService:
             
             # 8. Generate smart reply
             reply_data = await self.openai.generate_smart_reply(
-                lead, messages, company.dict(), message_body
+                lead, messages, {"name": company.name, "ai_config": company.ai_config}, message_body
             )
             
             if not reply_data["success"]:
@@ -396,8 +396,8 @@ class WorkflowService:
             
             # Create assistant prompt
             prompt = self.vapi.create_lead_assistant_prompt(
-                lead.dict(),
-                company.dict()
+                {"name": lead.name, "company": lead.lead_company, "industry": lead.industry, "interest": lead.interest},
+                {"name": company.name, "ai_config": company.ai_config}
             )
             
             # Create or get assistant
@@ -457,14 +457,14 @@ class WorkflowService:
             if messages:
                 # Generate smart follow-up
                 reply_data = await self.openai.generate_smart_reply(
-                    lead, messages, company.dict(), 
+                    lead, messages, {"name": company.name, "ai_config": company.ai_config}, 
                     "Generate a follow-up message"
                 )
                 message_body = reply_data.get("reply", "Hi! Just following up on my previous message. Are you still interested?")
             else:
                 # Generate cold outreach
                 message_body = await self.openai.generate_cold_outreach(
-                    lead, company.dict()
+                    lead, {"name": company.name, "ai_config": company.ai_config}
                 )
             
             # Send SMS

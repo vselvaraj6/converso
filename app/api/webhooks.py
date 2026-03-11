@@ -8,7 +8,7 @@ processing them through the workflow service for automated responses.
 import logging
 from typing import Dict, Any
 
-from fastapi import APIRouter, Request, HTTPException, Depends, Response
+from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db

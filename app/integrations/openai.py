@@ -1,6 +1,5 @@
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from datetime import datetime
-import openai
 from openai import AsyncOpenAI
 from app.core.config import settings
 from app.models import Lead, Message, MessageDirection
