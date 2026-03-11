@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, JSON, Boolean
+from sqlalchemy import Column, String, DateTime, JSON, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -20,7 +20,11 @@ class Company(Base):
     
     # Integration settings
     twilio_phone_number = Column(String, nullable=True)
-    calendar_email = Column(String, nullable=True)
+    # Cal.com round-robin booking URL for this company's team event.
+    # All inbound leads are directed here; Cal.com handles agent assignment.
+    cal_booking_url = Column(String, nullable=True)
+    # Cal.com event type ID — used when the AI books on the lead's behalf via API.
+    cal_event_type_id = Column(Integer, nullable=True)
     
     # Features enabled
     sms_enabled = Column(Boolean, default=True)

@@ -8,13 +8,16 @@ processing them through the workflow service for automated responses.
 import logging
 from typing import Dict, Any
 
-from fastapi import APIRouter, Request, HTTPException, Depends, Response
+from fastapi import APIRouter, Request, HTTPException, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.workflow_service import WorkflowService
 from app.integrations.twilio import TwilioService
 from app.integrations.vapi import VAPIService
+from app.integrations.cal_com import CalComService
+from app.models import Lead, CalendarEvent, LeadStatus
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -168,8 +171,90 @@ async def vapi_inbound_webhook(
         
         # Always return success to VAPI
         return {"status": "received"}
-        
+
     except Exception as e:
         logger.error(f"VAPI webhook processing error: {e}", exc_info=True)
         # Return 200 to prevent retries
+        return {"status": "received", "error": str(e)}
+
+
+@router.post("/calcom", response_model=Dict[str, str])
+async def calcom_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, str]:
+    """
+    Handle booking events from the self-hosted Cal.com instance.
+
+    Listens for BOOKING_CREATED, BOOKING_CANCELLED, and BOOKING_RESCHEDULED
+    events.  On a new booking the matching lead is marked QUALIFIED and a
+    CalendarEvent row is written.
+    """
+    raw_body = await request.body()
+
+    # Verify signature
+    signature = request.headers.get("X-Cal-Signature-256", "")
+    if not CalComService.verify_webhook(raw_body, signature):
+        logger.warning("Cal.com webhook signature mismatch")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        payload = await request.json()
+        event = payload.get("triggerEvent", "")
+        data = payload.get("payload", {})
+
+        logger.info(f"Cal.com webhook: {event}")
+
+        if event == "BOOKING_CREATED":
+            attendees = data.get("attendees", [])
+            # First attendee is the lead; organizer is the Cal.com user (agent)
+            attendee = attendees[0] if attendees else {}
+            attendee_email = attendee.get("email", "")
+
+            if attendee_email:
+                result = await db.execute(
+                    select(Lead).where(Lead.email == attendee_email)
+                )
+                lead = result.scalar_one_or_none()
+
+                if lead:
+                    # Persist the booking
+                    from datetime import datetime
+                    start_str = data.get("startTime", "")
+                    end_str = data.get("endTime", "")
+                    start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00")) if start_str else datetime.utcnow()
+                    end_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00")) if end_str else start_dt
+
+                    cal_event = CalendarEvent(
+                        lead_id=lead.id,
+                        title=data.get("title", "Sales call"),
+                        description=data.get("description", ""),
+                        start_time=start_dt,
+                        end_time=end_dt,
+                        location=data.get("location", ""),
+                        meeting_link=data.get("metadata", {}).get("videoCallUrl", ""),
+                        google_event_id=data.get("uid", ""),
+                        status="confirmed",
+                    )
+                    db.add(cal_event)
+                    lead.status = LeadStatus.QUALIFIED
+                    await db.commit()
+                    logger.info(f"Lead {lead.id} marked QUALIFIED via Cal.com booking {data.get('uid')}")
+
+        elif event in ("BOOKING_CANCELLED", "BOOKING_RESCHEDULED"):
+            booking_uid = data.get("uid", "")
+            if booking_uid:
+                result = await db.execute(
+                    select(CalendarEvent).where(CalendarEvent.google_event_id == booking_uid)
+                )
+                cal_event = result.scalar_one_or_none()
+                if cal_event:
+                    cal_event.status = "cancelled" if event == "BOOKING_CANCELLED" else "rescheduled"
+                    await db.commit()
+                    logger.info(f"CalendarEvent {cal_event.id} set to {cal_event.status}")
+
+        return {"status": "received"}
+
+    except Exception as e:
+        logger.error(f"Cal.com webhook error: {e}", exc_info=True)
         return {"status": "received", "error": str(e)}

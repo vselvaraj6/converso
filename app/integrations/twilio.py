@@ -4,7 +4,6 @@ import asyncio
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 from app.core.config import settings
-from app.models import Message, MessageDirection
 import logging
 
 logger = logging.getLogger(__name__)

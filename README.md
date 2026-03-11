@@ -1,270 +1,290 @@
-# Converso - AI-Powered Lead Nurturing Platform
+# Converso
 
-Converso is an intelligent lead nurturing and conversion platform that uses AI to automate customer interactions through SMS, voice calls, and calendar scheduling.
+AI-powered lead nurturing platform — SMS, voice, and calendar automation for solo founders and small sales teams.
 
-## Features
+---
 
-- 🤖 AI-powered smart replies using OpenAI
-- 📱 SMS communication via Twilio
-- 🎙️ Voice call automation with VAPI
-- 📅 Calendar integration with Google Calendar
-- 🔄 CRM integration with Zoho
-- 📊 Lead sentiment analysis and scoring
-- ⏰ Automated outbound campaigns
+## Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | Next.js 14 (App Router) + Tailwind CSS |
+| **Backend** | FastAPI (Python) |
+| **Database** | PostgreSQL 15 |
+| **Task queue** | Celery + Redis |
+| **SMS** | Twilio |
+| **AI replies** | OpenAI GPT-4 |
+| **Voice calls** | VAPI |
+| **Calendar** | Google Calendar API |
+| **Reverse proxy** | nginx |
+| **Tunnel** | Cloudflare Tunnel |
+
+Everything runs via Docker Compose — one command to start the whole stack.
+
+---
 
 ## Quick Start
 
-### Using Docker (Recommended)
+### 1. Clone and configure
 
-1. Clone the repository
-2. Copy environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-3. Update `.env` with your API keys
-4. Start the application:
-   ```bash
-   make dev
-   ```
-
-The application will be available at http://localhost:8000
-
-### Local Development
-
-1. Install dependencies:
-   ```bash
-   make install
-   ```
-2. Set up database:
-   ```bash
-   make db-setup
-   ```
-3. Run the application:
-   ```bash
-   make run
-   ```
-
-## Deployment on Railway (Recommended)
-
-Railway provides the easiest deployment with automatic SSL, databases, and scaling.
-
-### Prerequisites
-1. Create a [Railway account](https://railway.app)
-2. Install Railway CLI:
-   ```bash
-   # macOS/Linux
-   curl -fsSL https://railway.app/install.sh | sh
-   
-   # Windows
-   scoop install railway
-   ```
-
-### Deploy Steps
-
-1. **Login to Railway:**
-   ```bash
-   railway login
-   ```
-
-2. **Create a new project:**
-   ```bash
-   railway init
-   ```
-
-3. **Add PostgreSQL and Redis:**
-   ```bash
-   # In Railway dashboard or CLI
-   railway add
-   # Select PostgreSQL and Redis
-   ```
-
-4. **Set environment variables:**
-   ```bash
-   # Copy from .env.example
-   railway variables set TWILIO_ACCOUNT_SID=your_sid
-   railway variables set TWILIO_AUTH_TOKEN=your_token
-   railway variables set OPENAI_API_KEY=your_key
-   # ... set all required variables
-   ```
-
-5. **Deploy:**
-   ```bash
-   railway up
-   ```
-
-6. **Run migrations:**
-   ```bash
-   railway run alembic upgrade head
-   ```
-
-7. **Get your app URL:**
-   ```bash
-   railway open
-   ```
-
-### Railway Environment Variables
-
-Railway automatically provides:
-- `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
-- `PORT` - Port to bind to
-
-You need to add:
-- `SECRET_KEY` - Generate a secure key
-- `TWILIO_ACCOUNT_SID` - From Twilio dashboard
-- `TWILIO_AUTH_TOKEN` - From Twilio dashboard  
-- `TWILIO_PHONE_NUMBER` - Your Twilio phone number
-- `OPENAI_API_KEY` - From OpenAI platform
-- `GOOGLE_CLIENT_ID` - From Google Cloud Console
-- `GOOGLE_CLIENT_SECRET` - From Google Cloud Console
-- `VAPI_API_KEY` - From VAPI dashboard
-- `ZOHO_CLIENT_ID` - From Zoho API Console
-- `ZOHO_CLIENT_SECRET` - From Zoho API Console
-
-### Monitoring
-
-Railway provides:
-- Logs: `railway logs`
-- Metrics: Available in dashboard
-- Deployments: Automatic on git push
-
-## Alternative Deployment Options
-
-### Render
-Push to GitHub and Render will auto-deploy based on `render.yaml`
-
-### Fly.io
 ```bash
-flyctl launch
-flyctl deploy
+git clone <repo>
+cd converso
+cp .env.example .env   # fill in your API keys (see below)
 ```
 
-### Docker (Any VPS)
+### 2. Start the stack
+
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker compose up -d --build
 ```
 
-## API Documentation
+This starts:
+- **nginx** on port 80 (the only port you need to expose)
+- **Next.js** frontend on port 3000 (internal)
+- **FastAPI** backend on port 8000 (internal)
+- **PostgreSQL** on port 5432 (internal)
+- **Redis** on port 6379 (internal)
+- **Celery worker + beat** (background task runners)
 
-Once running, access the interactive API docs at:
-- Swagger UI: https://your-app.railway.app/docs
-- ReDoc: https://your-app.railway.app/redoc
+### 3. Create your account
 
-## Webhooks Configuration
+Open `http://localhost` → click **Create one** → fill in your name, company, email and password.
 
-After deployment, configure webhooks:
+### 4. Configure Cloudflare Tunnel
 
-1. **Twilio SMS Webhook:**
-   - URL: `https://your-app.railway.app/api/webhooks/twilio/inbound`
-   - Method: POST
+Point your Cloudflare tunnel to `http://localhost:80` (nginx handles routing internally).
 
-2. **VAPI Voice Webhook:**
-   - URL: `https://your-app.railway.app/api/webhooks/vapi/inbound`
-   - Method: POST
+```yaml
+# cloudflared config.yml
+tunnel: <your-tunnel-id>
+ingress:
+  - hostname: converso.yourdomain.com
+    service: http://localhost:80
+  - service: http_status:404
+```
 
-## Architecture
+---
 
-- **FastAPI** - Modern Python web framework with automatic API documentation
-- **PostgreSQL** - Primary database for storing leads, messages, and conversations
-- **Redis** - Caching and message queue for background tasks
-- **Celery** - Distributed task processing for outbound campaigns
-- **SQLAlchemy** - Async ORM for database operations
-- **Docker** - Containerization for easy deployment
+## Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# ── Application ───────────────────────────────────────────────────────────────
+APP_NAME=Converso
+APP_ENV=production
+SECRET_KEY=your-very-long-random-secret-key-here   # openssl rand -hex 32
+
+# ── Twilio (SMS) ──────────────────────────────────────────────────────────────
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_PHONE_NUMBER=+1234567890
+
+# ── OpenAI (AI replies) ───────────────────────────────────────────────────────
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4-turbo
+
+# ── VAPI (voice calls) ────────────────────────────────────────────────────────
+VAPI_API_KEY=your_vapi_key
+
+# ── Google Calendar ───────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_client_secret
+GOOGLE_REDIRECT_URI=https://converso.yourdomain.com/auth/google/callback
+```
+
+Generate a secret key:
+```bash
+openssl rand -hex 32
+```
+
+---
+
+## Twilio Webhook Setup
+
+In your [Twilio console](https://console.twilio.com) → Phone Numbers → your number → Messaging:
+
+- **Webhook URL:** `https://converso.yourdomain.com/api/webhooks/twilio/inbound`
+- **Method:** `POST`
+
+All inbound SMS messages will be automatically processed by the AI.
+
+---
 
 ## How It Works
 
-1. **Inbound Messages**: Webhooks from Twilio/VAPI → FastAPI endpoints → AI processing → Smart replies
-2. **Outbound Campaigns**: Scheduled Celery tasks → Lead qualification → SMS/Voice outreach
-3. **Calendar Booking**: Intent detection → Google Calendar API → Automated scheduling
-4. **Lead Nurturing**: Sentiment analysis → Dynamic responses → Status tracking
+### Inbound SMS flow
+```
+Lead texts your Twilio number
+  → Twilio webhook → /api/webhooks/twilio/inbound
+  → Identify lead by phone number
+  → OpenAI analyses sentiment + intent
+  → OpenAI generates smart reply
+  → If booking intent → create Google Calendar event
+  → Reply sent via Twilio
+  → Lead status + sentiment updated in DB
+```
+
+### Outbound campaign (scheduled)
+```
+Every 15 minutes: Celery beat fires send_scheduled_messages
+  → Find leads not contacted in 48h (status: new/contacted, <3 call attempts)
+  → For new leads with no response: initiate VAPI voice call
+  → For others: send AI-generated follow-up SMS
+  → Update lead contact timestamps
+```
+
+### New lead cold outreach
+```
+Every 5 minutes: process_new_leads task runs
+  → Find NEW leads with 0 call attempts
+  → Send AI cold outreach SMS (batch of 30)
+```
+
+---
+
+## API Reference
+
+Interactive docs available at `https://converso.yourdomain.com/docs`
+
+### Auth endpoints
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Create account + company |
+| POST | `/api/auth/login` | Get JWT token |
+| GET  | `/api/auth/me` | Current user info |
+
+### Lead endpoints (require Bearer token)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET  | `/api/leads/` | List leads (paginated, filterable by status) |
+| POST | `/api/leads/` | Create lead |
+| GET  | `/api/leads/{id}` | Lead detail |
+
+### Message endpoints (require Bearer token)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/messages/lead/{lead_id}` | Conversation history for a lead |
+| GET | `/api/messages/thread/{thread_id}` | All messages in a thread |
+
+### Webhook endpoints (public — called by Twilio/VAPI)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/webhooks/twilio/inbound` | Inbound SMS from Twilio |
+| POST | `/api/webhooks/vapi/inbound` | Voice call events from VAPI |
+
+---
 
 ## Development
 
-### Setup Development Environment
-```bash
-./scripts/setup-dev.sh
-```
-
-### Code Quality Tools
-
-**Linters configured:**
-- **Black** - Code formatter (PEP 8 compliant)
-- **isort** - Import statement organizer
-- **flake8** - Style guide enforcement
-- **pylint** - Code analysis
-- **mypy** - Static type checker
-- **bandit** - Security vulnerability scanner
-- **pydocstyle** - Docstring conventions
-- **detect-secrets** - Prevent secrets in code
-
-### Development Commands
+### Run locally (without Docker)
 
 ```bash
-# Code formatting
-make format              # Auto-format all code
+# Backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 
-# Run all linters
-make lint               # Run all code quality checks
-
-# Run specific linters
-make lint-flake8        # Style guide checks
-make lint-black         # Format checking
-make lint-isort         # Import order checking
-make lint-pylint        # Code analysis
-make lint-mypy          # Type checking
-make lint-bandit        # Security scanning
-make lint-secrets       # Secret detection
-
-# Testing
-make test               # Run all tests
-make test-cov           # Run tests with coverage
-make test-file file=test_workflow.py  # Run specific test
-
-# Database
-make migrate            # Run migrations
-make migrate-create msg="your message"  # Create migration
-
-# Pre-commit hooks
-make pre-commit-install # Install git hooks
-make pre-commit-run     # Run hooks manually
+# Frontend
+cd frontend
+npm install
+npm run dev          # http://localhost:3000
 ```
 
-### Pre-commit Hooks
+### Useful commands
 
-Pre-commit hooks automatically run before each commit to ensure code quality:
+```bash
+# View logs
+docker compose logs -f app
+docker compose logs -f celery-worker
 
-1. **Install hooks:**
-   ```bash
-   make pre-commit-install
-   ```
+# Restart a single service
+docker compose restart app
 
-2. **Skip hooks (if needed):**
-   ```bash
-   git commit -m "message" --no-verify
-   ```
+# Run database migrations
+docker compose exec app alembic upgrade head
 
-3. **Run manually:**
-   ```bash
-   make pre-commit-run
-   ```
+# Tail all logs
+docker compose logs -f
+
+# Stop everything
+docker compose down
+
+# Stop and wipe data (careful!)
+docker compose down -v
+```
+
+---
+
+## Project Structure
+
+```
+converso/
+├── app/                    # FastAPI backend
+│   ├── api/
+│   │   ├── auth.py         # Login, register, JWT
+│   │   ├── leads.py        # Lead CRUD
+│   │   ├── messages.py     # Message history
+│   │   └── webhooks.py     # Twilio + VAPI webhooks
+│   ├── core/
+│   │   ├── config.py       # Settings from .env
+│   │   ├── database.py     # Async SQLAlchemy engine
+│   │   └── security.py     # JWT + password hashing
+│   ├── integrations/
+│   │   ├── twilio.py       # SMS sending
+│   │   ├── openai.py       # AI replies + sentiment
+│   │   ├── vapi.py         # Voice call automation
+│   │   └── google_calendar.py
+│   ├── models/             # SQLAlchemy ORM models
+│   ├── services/
+│   │   └── workflow_service.py  # Core business logic
+│   └── tasks/
+│       ├── celery_app.py   # Celery config + beat schedule
+│       └── lead_tasks.py   # Background task implementations
+├── frontend/               # Next.js dashboard
+│   ├── app/
+│   │   ├── login/
+│   │   ├── register/
+│   │   └── dashboard/
+│   │       ├── page.tsx         # Overview / stats
+│   │       ├── leads/           # Lead list + detail
+│   │       ├── conversations/   # Active conversations
+│   │       └── settings/        # Config + API keys guide
+│   ├── components/
+│   │   └── Sidebar.tsx
+│   └── lib/
+│       └── api.ts          # API client
+├── nginx.conf              # Reverse proxy config
+├── docker-compose.yml      # Full stack orchestration
+└── .env                    # Your secrets (never commit this)
+```
+
+---
+
+## Security Notes
+
+- JWT tokens expire after **7 days**. Rotate your `SECRET_KEY` to invalidate all sessions.
+- Webhook endpoints are intentionally public (required by Twilio/VAPI).
+- All other API endpoints require a valid Bearer token.
+- Never commit `.env` to git — it is already in `.gitignore`.
+
+---
 
 ## Troubleshooting
 
-### Railway Deployment Issues
+**Frontend can't reach the API**
+- Check `docker compose logs nginx` — nginx must be running
+- Verify the frontend container started: `docker compose ps`
 
-1. **Database connection errors:**
-   - Ensure PostgreSQL addon is provisioned
-   - Check DATABASE_URL is set correctly
+**Twilio webhook returning errors**
+- Confirm your Cloudflare tunnel is active: `cloudflared tunnel info`
+- Test with `curl -X POST https://converso.yourdomain.com/api/webhooks/twilio/inbound`
 
-2. **Redis connection errors:**
-   - Ensure Redis addon is provisioned
-   - Check REDIS_URL is set correctly
+**Celery tasks not running**
+- Check `docker compose logs celery-beat` — should log every 5/15 minutes
+- Check `docker compose logs celery-worker` for task errors
 
-3. **Build failures:**
-   - Check logs: `railway logs`
-   - Ensure all dependencies are in requirements.txt
-
-4. **Webhook not receiving data:**
-   - Verify webhook URL is correct
-   - Check Twilio/VAPI webhook configuration
-   - Review logs for errors
+**Database connection errors**
+- Wait ~10s after `docker compose up` for PostgreSQL to finish initialising
+- Run `docker compose ps` — postgres healthcheck must show `healthy`

@@ -8,7 +8,8 @@ from app.models import (
     Lead, Message, Company, ConversationThread, CalendarEvent,
     LeadStatus, MessageDirection, User
 )
-from app.integrations import TwilioService, OpenAIService, GoogleCalendarService, VAPIService
+from app.integrations import TwilioService, OpenAIService, VAPIService
+from app.integrations.cal_com import CalComService
 from app.core.config import settings
 from app.tasks import process_new_lead
 
@@ -22,7 +23,7 @@ class WorkflowService:
         self.db = db
         self.twilio = TwilioService()
         self.openai = OpenAIService()
-        self.calendar = GoogleCalendarService()
+        self.calendar = CalComService()
         self.vapi = VAPIService()
     
     async def process_inbound_message(self, webhook_data: Dict) -> Dict:
@@ -72,7 +73,7 @@ class WorkflowService:
             
             # 8. Generate smart reply
             reply_data = await self.openai.generate_smart_reply(
-                lead, messages, company.dict(), message_body
+                lead, messages, {"name": company.name, "ai_config": company.ai_config}, message_body
             )
             
             if not reply_data["success"]:
@@ -80,12 +81,10 @@ class WorkflowService:
             else:
                 reply_text = reply_data["reply"]
             
-            # 9. Check for calendar booking intent
-            if analysis.get("intent") == "schedule_meeting" and analysis.get("extracted_datetime"):
-                booking_result = await self._handle_calendar_booking(
-                    lead, company, analysis["extracted_datetime"]
-                )
-                if booking_result["success"]:
+            # 9. Check for calendar booking intent — send Cal.com booking link
+            if analysis.get("intent") == "schedule_meeting":
+                booking_result = await self._handle_calendar_booking(lead, company)
+                if booking_result.get("booking_url"):
                     reply_text = booking_result["confirmation_message"]
             
             # 10. Send reply
@@ -238,112 +237,29 @@ class WorkflowService:
         messages = result.scalars().all()
         return list(reversed(messages))  # Return in chronological order
     
-    async def _handle_calendar_booking(
-        self,
-        lead: Lead,
-        company: Company,
-        requested_time: str
-    ) -> Dict:
-        """Handle calendar booking request"""
-        try:
-            # Parse requested time
-            booking_time = datetime.fromisoformat(requested_time.replace('Z', '+00:00'))
-            
-            # Get sales agent (simplified - in production, use round-robin or availability)
-            result = await self.db.execute(
-                select(User).where(
-                    and_(
-                        User.company_id == company.id,
-                        User.role == "sales_agent",
-                        User.is_active == True
-                    )
-                ).limit(1)
-            )
-            sales_agent = result.scalar_one_or_none()
-            
-            if not sales_agent or not sales_agent.oauth_tokens.get("google"):
-                return {
-                    "success": False,
-                    "error": "No available sales agent"
-                }
-            
-            # Check availability
-            access_token = sales_agent.oauth_tokens["google"]["access_token"]
-            busy_times = await self.calendar.get_free_busy(
-                access_token,
-                time_min=booking_time,
-                time_max=booking_time + timedelta(minutes=30)
-            )
-            
-            if busy_times:
-                # Find alternative slots
-                available_slots = await self.calendar.find_available_slots(
-                    access_token,
-                    duration_minutes=30,
-                    days_ahead=7
-                )
-                
-                if available_slots:
-                    slot_text = ", ".join([
-                        slot.strftime("%b %d at %I:%M %p")
-                        for slot in available_slots[:3]
-                    ])
-                    return {
-                        "success": False,
-                        "confirmation_message": f"That time isn't available. How about {slot_text}?"
-                    }
-                else:
-                    return {
-                        "success": False,
-                        "confirmation_message": "I'll have someone reach out with available times."
-                    }
-            
-            # Create calendar event
-            event_result = await self.calendar.create_event(
-                access_token,
-                summary=f"Demo call with {lead.name}",
-                description=f"Lead from {lead.lead_company}\nInterested in: {lead.interest}",
-                start_time=booking_time,
-                end_time=booking_time + timedelta(minutes=30),
-                attendees=[lead.email, sales_agent.email],
-                location="Google Meet"
-            )
-            
-            if event_result["success"]:
-                # Store in database
-                calendar_event = CalendarEvent(
-                    lead_id=lead.id,
-                    sales_agent_id=sales_agent.id,
-                    title=f"Demo call with {lead.name}",
-                    description=f"Lead from {lead.lead_company}",
-                    start_time=booking_time,
-                    end_time=booking_time + timedelta(minutes=30),
-                    location="Google Meet",
-                    meeting_link=event_result.get("meet_link"),
-                    google_event_id=event_result.get("event_id"),
-                    status="confirmed"
-                )
-                self.db.add(calendar_event)
-                
-                # Update lead status
-                lead.status = LeadStatus.QUALIFIED
-                
-                return {
-                    "success": True,
-                    "confirmation_message": f"Perfect! You're booked for {booking_time.strftime('%b %d at %I:%M %p')}. Check your email for the meeting link."
-                }
-            
+    async def _handle_calendar_booking(self, lead: Lead, company: Company) -> Dict:
+        """
+        Return the company's Cal.com round-robin booking URL.
+
+        Agent selection, availability checking, and calendar writes are all
+        handled by Cal.com.  When the lead books via the link, Cal.com fires
+        a BOOKING_CREATED webhook that marks the lead QUALIFIED.
+        """
+        booking_url = getattr(company, "cal_booking_url", None)
+        if not booking_url:
             return {
-                "success": False,
-                "confirmation_message": "I couldn't book that time. Let me have someone reach out to schedule."
+                "booking_url": None,
+                "confirmation_message": "I'll have someone reach out to find a time that works for you.",
             }
-            
-        except Exception as e:
-            logger.error(f"Calendar booking error: {e}")
-            return {
-                "success": False,
-                "confirmation_message": "I'll have someone reach out to schedule a time that works for you."
-            }
+
+        first_name = lead.name.split()[0] if lead.name else "there"
+        return {
+            "booking_url": booking_url,
+            "confirmation_message": (
+                f"Great, {first_name}! You can pick a time that works for you here: {booking_url} — "
+                "the next available team member will be assigned automatically."
+            ),
+        }
     
     async def _get_leads_for_outbound(self) -> List[Lead]:
         """Get leads that need outbound contact"""
@@ -396,8 +312,8 @@ class WorkflowService:
             
             # Create assistant prompt
             prompt = self.vapi.create_lead_assistant_prompt(
-                lead.dict(),
-                company.dict()
+                {"name": lead.name, "company": lead.lead_company, "industry": lead.industry, "interest": lead.interest},
+                {"name": company.name, "ai_config": company.ai_config}
             )
             
             # Create or get assistant
@@ -457,14 +373,14 @@ class WorkflowService:
             if messages:
                 # Generate smart follow-up
                 reply_data = await self.openai.generate_smart_reply(
-                    lead, messages, company.dict(), 
+                    lead, messages, {"name": company.name, "ai_config": company.ai_config}, 
                     "Generate a follow-up message"
                 )
                 message_body = reply_data.get("reply", "Hi! Just following up on my previous message. Are you still interested?")
             else:
                 # Generate cold outreach
                 message_body = await self.openai.generate_cold_outreach(
-                    lead, company.dict()
+                    lead, {"name": company.name, "ai_config": company.ai_config}
                 )
             
             # Send SMS

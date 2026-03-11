@@ -31,25 +31,14 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4-turbo", env="OPENAI_MODEL")
     
-    # Google Calendar
-    google_client_id: str = Field(default="", env="GOOGLE_CLIENT_ID")
-    google_client_secret: str = Field(default="", env="GOOGLE_CLIENT_SECRET")
-    google_redirect_uri: str = Field(
-        default="http://localhost:8000/auth/google/callback",
-        env="GOOGLE_REDIRECT_URI"
-    )
-    
+    # Cal.com (self-hosted)
+    calcom_base_url: str = Field(default="", env="CALCOM_BASE_URL")
+    calcom_api_key: str = Field(default="", env="CALCOM_API_KEY")
+    calcom_webhook_secret: str = Field(default="", env="CALCOM_WEBHOOK_SECRET")
+
     # VAPI
     vapi_api_key: str = Field(default="", env="VAPI_API_KEY")
     vapi_base_url: str = Field(default="https://api.vapi.ai", env="VAPI_BASE_URL")
-    
-    # Zoho CRM
-    zoho_client_id: str = Field(default="", env="ZOHO_CLIENT_ID")
-    zoho_client_secret: str = Field(default="", env="ZOHO_CLIENT_SECRET")
-    zoho_redirect_uri: str = Field(
-        default="http://localhost:8000/auth/zoho/callback",
-        env="ZOHO_REDIRECT_URI"
-    )
     
     # Celery
     celery_broker_url: str = Field(default="redis://localhost:6379/1", env="CELERY_BROKER_URL")

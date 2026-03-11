@@ -1,0 +1,47 @@
+name: Deploy to homelab
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: self-hosted   # runs on your homelab runner
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout latest code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Pull latest & rebuild
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "→ Pulling latest code..."
+          git pull origin main
+
+          echo "→ Rebuilding containers..."
+          docker compose up -d --build --remove-orphans
+
+          echo "→ Running database migrations..."
+          docker compose exec -T app alembic upgrade head || echo "No pending migrations"
+
+          echo "→ Removing dangling images..."
+          docker image prune -f
+
+      - name: Health check
+        run: |
+          echo "→ Waiting for app to be ready..."
+          sleep 8
+          curl -sf http://localhost/api/health || (echo "Health check failed!" && exit 1)
+
+      - name: Notify success
+        if: success()
+        run: echo "Converso deployed successfully at $(date)"
+
+      - name: Notify failure
+        if: failure()
+        run: echo "Deployment FAILED at $(date)" >&2

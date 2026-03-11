@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel, EmailStr
 
+from app.api.auth import get_current_user
 from app.core.database import get_db
-from app.models import Lead, LeadStatus, Company
+from app.models import Lead, LeadStatus, Company, User
 
 router = APIRouter()
 
@@ -55,7 +56,8 @@ async def list_leads(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=100, description="Maximum records to return"),
     status: Optional[LeadStatus] = Query(None, description="Filter by lead status"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> LeadListResponse:
     """
     List leads with pagination and optional filtering.
@@ -113,7 +115,8 @@ async def list_leads(
 @router.get("/{lead_id}")
 async def get_lead(
     lead_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Get detailed information for a specific lead.
@@ -168,7 +171,8 @@ async def get_lead(
 @router.post("/", response_model=LeadResponse)
 async def create_lead(
     lead_data: CreateLeadRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> LeadResponse:
     """
     Create a new lead.
