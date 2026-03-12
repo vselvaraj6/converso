@@ -10,6 +10,7 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     healthcheck:
@@ -29,6 +30,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # ── Cal.com (Self-Hosted) ───────────────────────────────────────────────────
+
+  calcom:
+    image: calcom/cal.com:latest
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://converso:password@postgres:5432/calcom
+      - NEXT_PUBLIC_WEBAPP_URL=http://localhost:3001
+      - NEXTAUTH_SECRET=secret
+      - CALENDSO_ENCRYPTION_KEY=secret
+      - NEXT_PUBLIC_IS_E2E=1
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # ── Backend ─────────────────────────────────────────────────────────────────
 
@@ -103,7 +121,7 @@ services:
     depends_on:
       - app
 
-  # ── Reverse proxy (single entry point for Cloudflare tunnel) ───────────────
+  # ── Reverse proxy (single entry point) ──────────────────────────────────────
 
   nginx:
     image: nginx:alpine
