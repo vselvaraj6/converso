@@ -41,9 +41,9 @@ class WorkflowService:
             # 2. Find lead by phone - use a more robust matching
             search_phone = phone[-10:]
             result = await self.db.execute(
-                select(Lead).where(Lead.phone.like(f"%{search_phone}%"))
+                select(Lead).where(Lead.phone.like(f"%{search_phone}%")).order_by(Lead.created_at.desc())
             )
-            lead = result.scalar_one_or_none()
+            lead = result.scalars().first()
             
             if not lead:
                 logger.warning(f"No lead found for phone: {phone}")
