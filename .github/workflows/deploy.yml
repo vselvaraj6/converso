@@ -61,9 +61,10 @@ jobs:
           echo "→ Starting temporary containers for testing..."
           docker compose build
           
-          # Create test DB if not exists
-          docker compose run --rm postgres psql -U converso -tc "SELECT 1 FROM pg_database WHERE datname = 'test_converso'" | grep -q 1 || \
-          docker compose run --rm postgres createdb -U converso test_converso
+          # Use the 'postgres' hostname which docker-compose provides within the network
+          echo "→ Initializing test database..."
+          docker compose run --rm -e PGPASSWORD=password postgres psql -h postgres -U converso -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'test_converso'" | grep -q 1 || \
+          docker compose run --rm -e PGPASSWORD=password postgres createdb -h postgres -U converso test_converso
           
           echo "→ Waiting for test database to be ready..."
           sleep 5
