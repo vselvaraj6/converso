@@ -22,6 +22,22 @@ const SENTIMENT_COLORS: Record<string, string> = {
   negative: 'text-red-500',
 }
 
+const formatDateTime = (dateStr: string | null) => {
+  if (!dateStr) return 'Never'
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleString([], { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  } catch (e) {
+    return '—'
+  }
+}
+
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | number | null }) {
   if (value === undefined || value === null || value === '') return null
   return (
@@ -84,9 +100,7 @@ function Activity({ lead }: { lead: LeadDetail }) {
         <div className="flex justify-between">
           <span className="text-gray-500 font-medium">Last contact</span>
           <span className="font-bold">
-            {lead.last_contacted
-              ? new Date(lead.last_contacted).toLocaleDateString()
-              : 'Never'}
+            {formatDateTime(lead.last_contacted)}
           </span>
         </div>
         <div className="flex justify-between">
@@ -95,7 +109,7 @@ function Activity({ lead }: { lead: LeadDetail }) {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500 font-medium">Created</span>
-          <span className="font-bold">{new Date(lead.created_at).toLocaleDateString()}</span>
+          <span className="font-bold">{formatDateTime(lead.created_at)}</span>
         </div>
       </div>
     </div>
@@ -149,8 +163,8 @@ export default function LeadDetailPage() {
     }
   }
 
-  if (loading) return <div className="text-gray-400 text-sm">Loading…</div>
-  if (!lead) return <div className="text-red-500 text-sm">Lead not found.</div>
+  if (loading) return <div className="text-gray-400 text-sm p-8">Loading…</div>
+  if (!lead) return <div className="text-red-500 text-sm p-8">Lead not found.</div>
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
@@ -212,7 +226,7 @@ export default function LeadDetailPage() {
               <InfoRow icon={Tag}       label="Industry" value={lead.industry} />
               <InfoRow icon={MessageSquare} label="Interest" value={lead.interest} />
               <InfoRow icon={Calendar}  label="Source"   value={lead.source} />
-              <InfoRow icon={Clock}     label="Nudge Interval" value={`${lead.nudge_interval_days} days`} />
+              <InfoRow icon={Clock}     label="Nudge Interval" value={lead.nudge_interval_days ? `${lead.nudge_interval_days} days` : 'Not set'} />
             </div>
           </div>
 
@@ -337,7 +351,7 @@ function EditLeadModal({ lead, onClose, onUpdated }: {
       <div className="card w-full max-w-lg p-6 my-auto shadow-2xl border-none">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Edit Lead</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={20} />
           </button>
         </div>
