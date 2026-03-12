@@ -236,7 +236,8 @@ class WorkflowService:
         
         # If agent has a shadow cal, construct the URL based on their username and event ID
         if has_agent_cal:
-            booking_url = f"https://cal.com/{agent.calcom_username}/{agent.calcom_event_id}"
+            base_url = (company.calcom_base_url or "https://cal.com").rstrip("/")
+            booking_url = f"{base_url}/{agent.calcom_username}/{agent.calcom_event_id}"
             event_type_id = agent.calcom_event_id
         else:
             booking_url = company.cal_booking_url

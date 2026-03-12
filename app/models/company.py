@@ -20,6 +20,8 @@ class Company(Base):
     
     # Integration settings
     twilio_phone_number = Column(String, nullable=True)
+    # Self-hosted Cal.com base URL (e.g., https://booking.mycompany.com)
+    calcom_base_url = Column(String, default="https://cal.com")
     # Cal.com round-robin booking URL for this company's team event.
     # All inbound leads are directed here; Cal.com handles agent assignment.
     cal_booking_url = Column(String, nullable=True)
