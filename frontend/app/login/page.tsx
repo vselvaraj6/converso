@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { login } from '@/lib/api'
-import { MessageSquare, AlertCircle } from 'lucide-react'
+import { MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -28,55 +28,100 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-600 text-white mb-4 shadow-lg shadow-brand-200">
-            <MessageSquare size={28} />
+    <div className="min-h-screen flex flex-col md:flex-row bg-white">
+      {/* Left Column: Branding & Value Prop */}
+      <div className="hidden lg:flex flex-col justify-between w-[40%] bg-[#f8faff] p-12 xl:p-20 border-r border-gray-100">
+        <div>
+          <Link href="/" className="flex items-center gap-2 mb-16">
+            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-200 text-white font-bold text-xl">
+              C
+            </div>
+            <span className="text-2xl font-black text-gray-900 tracking-tight">Converso</span>
+          </Link>
+
+          <div className="space-y-10">
+            <h1 className="text-4xl xl:text-5xl font-extrabold text-gray-900 leading-[1.1]">
+              Manage your leads <span className="text-brand-600">with ease.</span>
+            </h1>
+            
+            <div className="space-y-6">
+              <FeatureItem title="Smart Dashboards" desc="Track every interaction and sentiment shift in real-time." />
+              <FeatureItem title="Instant Notifications" desc="Never miss a lead response with automated alerts." />
+              <FeatureItem title="Team Collaboration" desc="Assign leads and manage schedules across your entire team." />
+            </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Converso</h1>
-          <p className="text-gray-500 mt-2 font-medium">Welcome back! Sign in to your account.</p>
         </div>
 
-        <div className="card p-6 md:p-10 shadow-xl border-gray-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="text-sm text-gray-400 font-medium">
+          © 2026 Converso Inc. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right Column: Login Form */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-6 sm:px-12 lg:px-20 xl:px-32">
+        <div className="max-w-md w-full mx-auto">
+          <div className="flex justify-end mb-12">
+            <p className="text-sm text-gray-500 font-medium">
+              Don't have an account?{' '}
+              <Link href="/register" className="text-brand-600 font-bold hover:underline">
+                Sign Up
+              </Link>
+            </p>
+          </div>
+
+          <div className="mb-10 lg:hidden">
+             <div className="flex items-center gap-2 mb-6">
+              <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold">C</div>
+              <span className="text-xl font-bold">Converso</span>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900">Sign in to Converso</h2>
+          </div>
+
+          <div className="mb-8 hidden lg:block">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
+            <p className="text-gray-500 font-medium">Please enter your details to sign in.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2">
+              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2">
                 <AlertCircle size={16} /> {error}
               </div>
             )}
-            
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 text-left">Email Address</label>
-              <input
-                type="email"
-                className="input py-3 font-bold"
-                placeholder="you@company.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-              />
-            </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider text-left">Password</label>
-                <button 
-                  type="button"
-                  onClick={() => setShowForgotMsg(true)}
-                  className="text-[10px] font-bold text-brand-600 hover:text-brand-700 uppercase"
-                >
-                  Forgot password?
-                </button>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 ml-1">Email Address</label>
+                <input
+                  type="email"
+                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-medium"
+                  placeholder="name@company.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                />
               </div>
-              <input
-                type="password"
-                className="input py-3 font-bold"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5 px-1">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Password</label>
+                  <button 
+                    type="button"
+                    onClick={() => setShowForgotMsg(true)}
+                    className="text-[10px] font-bold text-brand-600 hover:text-brand-700 uppercase tracking-tight"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-medium"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             {showForgotMsg && (
@@ -87,22 +132,33 @@ export default function LoginPage() {
 
             <button 
               type="submit" 
-              className="btn-primary w-full py-3.5 text-base shadow-lg shadow-brand-100 font-bold" 
+              className="btn-primary w-full py-4 text-base shadow-xl shadow-brand-100 font-bold tracking-tight transition-all active:scale-[0.99] mt-2" 
               disabled={loading}
             >
-              {loading ? 'Signing in…' : 'Sign in'}
+              {loading ? 'Authenticating…' : 'Sign In'}
             </button>
           </form>
-        </div>
 
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500 font-medium">
-            Don't have an account?{' '}
-            <Link href="/register" className="text-brand-600 font-bold hover:underline">
-              Create one for free
-            </Link>
-          </p>
+          <div className="mt-10 pt-10 border-t border-gray-100">
+            <p className="text-xs text-gray-400 text-center font-medium italic">
+              "Finally, a CRM that doesn't feel like a chore to use every day."
+            </p>
+          </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function FeatureItem({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="flex gap-4">
+      <div className="mt-1">
+        <CheckCircle2 size={20} className="text-brand-500" />
+      </div>
+      <div>
+        <h3 className="font-bold text-gray-900 text-sm mb-1">{title}</h3>
+        <p className="text-sm text-gray-500 font-medium leading-relaxed">{desc}</p>
       </div>
     </div>
   )
