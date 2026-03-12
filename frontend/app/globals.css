@@ -34,7 +34,7 @@
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap;
   }
   .table-container {
-    @apply w-full overflow-x-auto scrolling-touch;
-    /* scrolling-touch for smoother momentum scroll on iOS */
+    @apply w-full overflow-x-auto;
+    /* -webkit-overflow-scrolling: touch is implicitly handled by modern mobile browsers */
   }
 }
