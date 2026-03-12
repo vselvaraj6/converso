@@ -15,6 +15,8 @@ jobs:
       # Pin the Compose project name so Docker always refers to the same
       # stack regardless of which directory the runner checks out into.
       COMPOSE_PROJECT_NAME: converso
+      # Suppress Node.js 20 deprecation warning by opting into Node 24
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout latest code
@@ -30,7 +32,7 @@ jobs:
           TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL=gpt-4-turbo
+          OPENAI_MODEL=gpt-3.5-turbo
           VAPI_API_KEY=${{ secrets.VAPI_API_KEY }}
           VAPI_BASE_URL=https://api.vapi.ai
           CALCOM_BASE_URL=${{ secrets.CALCOM_BASE_URL }}
