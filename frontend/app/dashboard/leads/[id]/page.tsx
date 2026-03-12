@@ -33,6 +33,73 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
   )
 }
 
+function AIInsights({ lead }: { lead: LeadDetail }) {
+  if (!lead.sentiment_score || Object.keys(lead.sentiment_score).length === 0) return null
+  return (
+    <div className="card p-5 md:p-6">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider text-xs font-bold">AI Insights</h3>
+      <div className="space-y-2">
+        {lead.sentiment_score.latest && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Sentiment</span>
+            <span className={clsx('font-medium capitalize', SENTIMENT_COLORS[lead.sentiment_score.latest] ?? 'text-gray-700')}>
+              {lead.sentiment_score.latest}
+            </span>
+          </div>
+        )}
+        {lead.sentiment_score.intent && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Intent</span>
+            <span className="font-medium text-gray-700 capitalize text-right">
+              {lead.sentiment_score.intent.replace(/_/g, ' ')}
+            </span>
+          </div>
+        )}
+        {lead.sentiment_score.urgency && (
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Urgency</span>
+            <span className="font-medium text-gray-700 capitalize">{lead.sentiment_score.urgency}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Activity({ lead }: { lead: LeadDetail }) {
+  return (
+    <div className="card p-5 md:p-6">
+      <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider text-xs font-bold">Activity</h3>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-gray-500">Lead score</span>
+          <span className="font-medium">{lead.lead_score}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Call attempts</span>
+          <span className="font-medium">{lead.call_attempts}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Last contact</span>
+          <span className="font-medium">
+            {lead.last_contacted
+              ? new Date(lead.last_contacted).toLocaleDateString()
+              : 'Never'}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Via</span>
+          <span className="font-medium capitalize">{lead.last_contact_method || '—'}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Created</span>
+          <span className="font-medium">{new Date(lead.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [lead, setLead] = useState<LeadDetail | null>(null)
@@ -61,8 +128,8 @@ export default function LeadDetailPage() {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Lead info */}
-        <div className="lg:col-span-1 space-y-4">
+        {/* Lead info - Order 1 */}
+        <div className="lg:col-span-1 space-y-4 order-1">
           <div className="card p-5 md:p-6">
             <div className="flex items-start justify-between mb-4">
               <div className="min-w-0">
@@ -83,77 +150,21 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
-          {/* AI insights */}
-          {lead.sentiment_score && Object.keys(lead.sentiment_score).length > 0 && (
-            <div className="card p-5 md:p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider text-xs">AI Insights</h3>
-              <div className="space-y-2">
-                {lead.sentiment_score.latest && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Sentiment</span>
-                    <span className={clsx('font-medium capitalize', SENTIMENT_COLORS[lead.sentiment_score.latest] ?? 'text-gray-700')}>
-                      {lead.sentiment_score.latest}
-                    </span>
-                  </div>
-                )}
-                {lead.sentiment_score.intent && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Intent</span>
-                    <span className="font-medium text-gray-700 capitalize">
-                      {lead.sentiment_score.intent.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                )}
-                {lead.sentiment_score.urgency && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Urgency</span>
-                    <span className="font-medium text-gray-700 capitalize">{lead.sentiment_score.urgency}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Activity */}
-          <div className="card p-5 md:p-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider text-xs">Activity</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Lead score</span>
-                <span className="font-medium">{lead.lead_score}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Call attempts</span>
-                <span className="font-medium">{lead.call_attempts}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Last contact</span>
-                <span className="font-medium">
-                  {lead.last_contacted
-                    ? new Date(lead.last_contacted).toLocaleDateString()
-                    : 'Never'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Via</span>
-                <span className="font-medium capitalize">{lead.last_contact_method || '—'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Created</span>
-                <span className="font-medium">{new Date(lead.created_at).toLocaleDateString()}</span>
-              </div>
-            </div>
+          {/* These will be pushed down on mobile but stay on the left on desktop */}
+          <div className="hidden lg:block space-y-4">
+            <AIInsights lead={lead} />
+            <Activity lead={lead} />
           </div>
         </div>
 
-        {/* Conversation */}
-        <div className="lg:col-span-2 card flex flex-col h-[500px] lg:h-auto lg:max-h-[80vh]">
+        {/* Conversation - Order 2 on mobile */}
+        <div className="lg:col-span-2 card flex flex-col h-[500px] lg:h-full lg:min-h-[600px] order-2">
           <div className="px-5 md:px-6 py-4 border-b border-gray-100 flex items-center gap-2">
             <MessageSquare size={16} className="text-gray-500" />
             <h2 className="font-semibold text-gray-900">Conversation</h2>
             <span className="text-xs text-gray-400">({messages.length} messages)</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-gray-50/50">
             {messages.length === 0 ? (
               <p className="text-center text-gray-400 text-sm py-8">No messages yet. Outreach will start automatically.</p>
             ) : (
@@ -167,16 +178,16 @@ export default function LeadDetailPage() {
                 >
                   <div
                     className={clsx(
-                      'max-w-[85%] lg:max-w-md rounded-2xl px-4 py-2.5 text-sm',
+                      'max-w-[85%] lg:max-w-md rounded-2xl px-4 py-2.5 text-sm shadow-sm',
                       msg.direction === 'outbound'
-                        ? 'bg-brand-600 text-white rounded-br-sm'
-                        : 'bg-gray-100 text-gray-900 rounded-bl-sm',
+                        ? 'bg-brand-600 text-white rounded-br-none'
+                        : 'bg-white border border-gray-200 text-gray-900 rounded-bl-none',
                     )}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                     <p className={clsx(
-                      'text-[10px] mt-1 opacity-70',
-                      msg.direction === 'outbound' ? 'text-white' : 'text-gray-500',
+                      'text-[10px] mt-1.5 font-medium opacity-70',
+                      msg.direction === 'outbound' ? 'text-brand-100' : 'text-gray-400',
                     )}>
                       {new Date(msg.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} · {msg.channel}
                     </p>
@@ -185,6 +196,12 @@ export default function LeadDetailPage() {
               ))
             )}
           </div>
+        </div>
+
+        {/* AI Insights & Activity - Order 3 on mobile */}
+        <div className="lg:hidden space-y-4 order-3 pb-8">
+          <AIInsights lead={lead} />
+          <Activity lead={lead} />
         </div>
       </div>
     </div>

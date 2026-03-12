@@ -203,8 +203,8 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="card w-full max-w-lg p-6">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 sm:p-6 overflow-y-auto">
+      <div className="card w-full max-w-lg p-5 sm:p-6 my-auto">
         <h2 className="text-lg font-semibold text-gray-900 mb-5">Add new lead</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (

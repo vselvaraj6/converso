@@ -40,7 +40,7 @@ export default function RegisterPage() {
           <p className="text-gray-500 mt-1">Get started with Converso</p>
         </div>
 
-        <div className="card p-8">
+        <div className="card p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
