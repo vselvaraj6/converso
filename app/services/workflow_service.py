@@ -30,13 +30,20 @@ class WorkflowService:
         """Process incoming SMS message - complete workflow"""
         try:
             # 1. Parse webhook data
-            phone = webhook_data.get("from", "").replace("+1", "")
+            raw_phone = webhook_data.get("from", "")
+            # Normalize phone: remove +1 and any non-digits
+            phone = ''.join(filter(str.isdigit, raw_phone))
+            if phone.startswith('1') and len(phone) > 10:
+                phone = phone[1:]
+            
             message_body = webhook_data.get("body", "")
             message_sid = webhook_data.get("message_sid", "")
             
-            # 2. Find lead by phone
+            # 2. Find lead by phone - use a more robust matching
+            # Search for the last 10 digits to match most formats
+            search_phone = phone[-10:]
             result = await self.db.execute(
-                select(Lead).where(Lead.phone.contains(phone))
+                select(Lead).where(Lead.phone.like(f"%{search_phone}%"))
             )
             lead = result.scalar_one_or_none()
             
@@ -440,9 +447,15 @@ class WorkflowService:
             Dict with processing result
         """
         try:
+            # Normalize phone for searching
+            clean_phone = ''.join(filter(str.isdigit, phone))
+            if clean_phone.startswith('1') and len(clean_phone) > 10:
+                clean_phone = clean_phone[1:]
+            search_phone = clean_phone[-10:]
+
             # Find lead by phone
             result = await self.db.execute(
-                select(Lead).where(Lead.phone.contains(phone))
+                select(Lead).where(Lead.phone.like(f"%{search_phone}%"))
             )
             lead = result.scalar_one_or_none()
             
