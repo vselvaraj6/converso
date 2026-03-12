@@ -46,6 +46,10 @@ services:
       - NEXTAUTH_SECRET=ae26ea82931508da3127a968a64184c1
       - CALENDSO_ENCRYPTION_KEY=ae26ea82931508da3127a968a64184c1
       - NEXT_PUBLIC_IS_E2E=1
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    # Fix for internal NextAuth fetch failure
+    extra_hosts:
+      - "localhost:127.0.0.1"
     depends_on:
       postgres:
         condition: service_healthy
