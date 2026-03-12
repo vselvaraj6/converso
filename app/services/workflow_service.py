@@ -312,9 +312,12 @@ class WorkflowService:
         try:
             company = await self.db.get(Company, lead.company_id)
             agent_name = "your representative"
+            
+            # Fetch agent name from assigned_agent_id
             if lead.assigned_agent_id:
                 agent = await self.db.get(User, lead.assigned_agent_id)
-                if agent: agent_name = agent.name
+                if agent:
+                    agent_name = agent.name
             
             messages = await self._get_conversation_history(lead.id, limit=5)
             if messages:

@@ -221,8 +221,10 @@ async def import_leads(
                 errors.append(f"Row {i+2}: Email {email} already exists")
                 continue
 
+            # Create lead
             lead = Lead(
                 company_id=current_user.company_id,
+                assigned_agent_id=current_user.id,
                 name=name,
                 email=email,
                 phone=phone,
@@ -231,7 +233,8 @@ async def import_leads(
                 industry=str(row.get('industry', '')).strip() if pd.notna(row.get('industry')) else None,
                 source="import",
                 interest=str(row.get('interest', '')).strip() if pd.notna(row.get('interest')) else None,
-                status=LeadStatus.NEW
+                status=LeadStatus.NEW,
+                nudge_interval_days=int(row.get('nudge_interval_days', 2)) if pd.notna(row.get('nudge_interval_days')) else 2
             )
             db.add(lead)
             success_count += 1
@@ -341,6 +344,7 @@ async def create_lead(
         # Create lead
         lead = Lead(
             company_id=current_user.company_id,
+            assigned_agent_id=current_user.id,
             name=lead_data.name,
             email=lead_data.email,
             phone=phone,
@@ -349,7 +353,8 @@ async def create_lead(
             industry=lead_data.industry,
             source=lead_data.source,
             interest=lead_data.interest,
-            status=LeadStatus.NEW
+            status=LeadStatus.NEW,
+            nudge_interval_days=lead_data.nudge_interval_days or 2
         )
         
         db.add(lead)
