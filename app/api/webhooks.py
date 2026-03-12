@@ -215,36 +215,59 @@ async def calcom_webhook(
             # First attendee is the lead; organizer is the Cal.com user (agent)
             attendee = attendees[0] if attendees else {}
             attendee_email = attendee.get("email", "")
+            attendee_phone = attendee.get("phoneNumber", "")
 
+            lead = None
             if attendee_email:
                 result = await db.execute(
                     select(Lead).where(Lead.email == attendee_email)
                 )
                 lead = result.scalar_one_or_none()
+            
+            if not lead and attendee_phone:
+                # Normalize phone for robust matching
+                clean_phone = ''.join(filter(str.isdigit, attendee_phone))
+                if clean_phone.startswith('1') and len(clean_phone) > 10:
+                    clean_phone = clean_phone[1:]
+                search_phone = clean_phone[-10:]
+                
+                result = await db.execute(
+                    select(Lead).where(Lead.phone.like(f"%{search_phone}%"))
+                )
+                lead = result.scalar_one_or_none()
 
-                if lead:
-                    # Persist the booking
-                    from datetime import datetime
-                    start_str = data.get("startTime", "")
-                    end_str = data.get("endTime", "")
-                    start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00")) if start_str else datetime.utcnow()
-                    end_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00")) if end_str else start_dt
+            if lead:
+                # Persist the booking
+                from datetime import datetime
+                start_str = data.get("startTime", "")
+                end_str = data.get("endTime", "")
+                
+                # SQLAlchemy/Postgres setup expects naive datetimes
+                if start_str:
+                    start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00")).replace(tzinfo=None)
+                else:
+                    start_dt = datetime.utcnow()
+                    
+                if end_str:
+                    end_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00")).replace(tzinfo=None)
+                else:
+                    end_dt = start_dt
 
-                    cal_event = CalendarEvent(
-                        lead_id=lead.id,
-                        title=data.get("title", "Sales call"),
-                        description=data.get("description", ""),
-                        start_time=start_dt,
-                        end_time=end_dt,
-                        location=data.get("location", ""),
-                        meeting_link=data.get("metadata", {}).get("videoCallUrl", ""),
-                        google_event_id=data.get("uid", ""),
-                        status="confirmed",
-                    )
-                    db.add(cal_event)
-                    lead.status = LeadStatus.QUALIFIED
-                    await db.commit()
-                    logger.info(f"Lead {lead.id} marked QUALIFIED via Cal.com booking {data.get('uid')}")
+                cal_event = CalendarEvent(
+                    lead_id=lead.id,
+                    title=data.get("title", "Sales call"),
+                    description=data.get("description", ""),
+                    start_time=start_dt,
+                    end_time=end_dt,
+                    location=data.get("location", ""),
+                    meeting_link=data.get("metadata", {}).get("videoCallUrl", ""),
+                    google_event_id=data.get("uid", ""),
+                    status="confirmed",
+                )
+                db.add(cal_event)
+                lead.status = LeadStatus.QUALIFIED
+                await db.commit()
+                logger.info(f"Lead {lead.id} marked QUALIFIED via Cal.com booking {data.get('uid')}")
 
         elif event in ("BOOKING_CANCELLED", "BOOKING_RESCHEDULED"):
             booking_uid = data.get("uid", "")
