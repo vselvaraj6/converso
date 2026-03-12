@@ -38,6 +38,23 @@ jobs:
           CALCOM_WEBHOOK_SECRET=${{ secrets.CALCOM_WEBHOOK_SECRET }}
           ENVEOF
 
+      - name: Fix Docker networking
+        run: |
+          echo "→ Tearing down existing stack..."
+          docker compose down --remove-orphans 2>/dev/null || true
+
+          echo "→ Flushing stale iptables state..."
+          sudo iptables -F 2>/dev/null || true
+          sudo iptables -X 2>/dev/null || true
+          sudo iptables -t nat -F 2>/dev/null || true
+          sudo iptables -t nat -X 2>/dev/null || true
+          sudo iptables -t mangle -F 2>/dev/null || true
+          sudo iptables -t mangle -X 2>/dev/null || true
+
+          echo "→ Restarting Docker daemon to recreate chains..."
+          sudo systemctl restart docker
+          sleep 3
+
       - name: Rebuild and restart containers
         run: |
           echo "→ Rebuilding containers..."
