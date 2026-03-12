@@ -53,12 +53,17 @@ export default function SettingsPage() {
     if (!company) return
     setSaving(true)
     try {
-      // Save company settings
+      // 1. Save company settings
       await updateCompany(company)
       
-      // Save user manual cal URL
-      const updated = await updateMe({ manual_calendar_url: useManual ? manualCalUrl : null })
+      // 2. Save user manual cal URL
+      // We send manual_calendar_url only if useManual is true, else we clear it
+      const payload = { manual_calendar_url: useManual ? manualCalUrl : null }
+      const updated = await updateMe(payload)
+      
+      // 3. Update local state and storage
       setUser(updated)
+      localStorage.setItem('user', JSON.stringify(updated))
       
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -104,6 +109,7 @@ export default function SettingsPage() {
         calcom_event_id: null 
       })
       setUser(updated)
+      localStorage.setItem('user', JSON.stringify(updated))
       setUseManual(true)
     } catch (err) {
       alert('Failed to disconnect calendar')
@@ -195,7 +201,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <p className="font-bold text-brand-900 text-sm">Managed Cal Active</p>
-                        <p className="text-[10px] text-brand-600 font-bold uppercase tracking-tight">Syncing via {company?.calcom_base_url?.replace('https://', '') || 'Cal.com'}</p>
+                        <p className="text-[10px] text-brand-600 font-bold uppercase tracking-tight">Syncing via Converso Managed Cal</p>
                       </div>
                     </div>
                     <button 
@@ -228,29 +234,6 @@ export default function SettingsPage() {
             )}
           </div>
         </Section>
-
-        {/* Company Calendar Instance (Admin only) */}
-        {user?.role === 'admin' && (
-          <Section title="Instance Configuration" icon={Globe} description="Configure your self-hosted Cal.com URL">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Platform Cal URL</label>
-                <div className="relative">
-                  <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input 
-                    className="input pl-10 font-mono text-xs font-bold bg-white" 
-                    value={(company as any)?.calcom_base_url || 'https://cal.com'} 
-                    onChange={e => setCompany(c => c ? {...c, calcom_base_url: e.target.value} : null)}
-                    placeholder="https://booking.yourcompany.com"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
-                  Required for "Managed Integration" mode to function correctly.
-                </p>
-              </div>
-            </div>
-          </Section>
-        )}
 
         {/* Industry Selector */}
         <Section title="Industry Context" icon={Building2} description="Select your industry to autopopulate AI knowledge">
