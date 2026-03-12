@@ -41,13 +41,23 @@ class OpenAIService:
                 {"role": "user", "content": f"Lead just said: {latest_message}\n\nGenerate a smart reply."}
             ]
             
-            # Generate response
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=150
-            )
+            # Try primary model
+            try:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=150
+                )
+            except Exception as primary_error:
+                logger.warning(f"Primary model {self.model} failed: {primary_error}. Falling back to gpt-3.5-turbo.")
+                # Fallback to gpt-3.5-turbo which is usually more accessible
+                response = await self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=150
+                )
             
             reply_content = response.choices[0].message.content.strip()
             
@@ -75,11 +85,16 @@ class OpenAIService:
     ) -> Dict:
         """Analyze sentiment, intent, and extract key information from a message"""
         try:
-            prompt = f"""Analyze the following message and provide:
+            current_date = datetime.utcnow().strftime("%Y-%m-%d")
+            prompt = f"""Analyze the following message and provide sales insights.
+Current Date: {current_date}
+
+Extract:
 1. Sentiment (positive/neutral/negative)
 2. Intent (schedule_meeting/ask_question/not_interested/request_info/other)
 3. Urgency level (high/medium/low)
-4. Any datetime mentioned (ISO format)
+4. Any datetime mentioned. If relative like 'tomorrow' or 'next Monday', convert to ISO date string (YYYY-MM-DD) based on current date {current_date}. 
+   If a specific time is mentioned, include it in ISO format (YYYY-MM-DDTHH:MM:SSZ).
 5. Key topics or interests
 
 Message: "{message}"
@@ -87,15 +102,32 @@ Context: {json.dumps(context or {})}
 
 Respond in JSON format."""
             
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are an AI that analyzes customer messages for sales insights."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                response_format={"type": "json_object"}
-            )
+            # Try primary model
+            try:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": "You are an AI that analyzes customer messages for sales insights."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3,
+                    response_format={"type": "json_object"}
+                )
+            except Exception as primary_error:
+                logger.warning(f"Primary model {self.model} failed for analysis: {primary_error}. Falling back to gpt-3.5-turbo-0125.")
+                try:
+                    response = await self.client.chat.completions.create(
+                        model="gpt-3.5-turbo-0125", 
+                        messages=[
+                            {"role": "system", "content": "You are an AI that analyzes customer messages for sales insights."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.3,
+                        response_format={"type": "json_object"}
+                    )
+                except Exception as fallback_error:
+                    logger.error(f"Fallback model gpt-3.5-turbo-0125 also failed for analysis: {fallback_error}")
+                    raise fallback_error
             
             analysis = json.loads(response.choices[0].message.content)
             
@@ -192,14 +224,22 @@ Requirements:
         base_prompt = config.get("prompt_template", "")
         
         if not base_prompt:
-            base_prompt = f"""You are a helpful and persuasive sales assistant continuing a conversation 
-with a lead in the {lead.industry or 'general'} industry. Your job is to respond like a skilled sales agent. 
-Never share pricing — that's reserved for human agents. Your goal is to guide them toward booking a call. 
-Keep it {tone}, short (under 160 characters for SMS)."""
+            base_prompt = f"""You are a professional mortgage sales representative. Your goal is to build trust and guide the lead towards booking a consultation call.
+Lead Name: {lead.name}
+Industry/Need: {lead.industry or 'Mortgage/Real Estate'}
+Current Interest: {lead.interest or 'Home financing'}
+
+Instructions:
+- Be {tone}, knowledgeable, and helpful.
+- Keep responses short (under 160 characters) suitable for SMS.
+- Focus on the benefits of your service without giving specific rate quotes or pricing.
+- Your primary call to action is to get them to book a call using the link provided in the conversation (if any).
+- Always address them by their name: {lead.name.split()[0]}.
+"""
         
         return base_prompt.format(
             lead_name=lead.name,
-            industry=lead.industry or "general",
-            company=lead.lead_company or "their company",
+            industry=lead.industry or "Mortgage/Real Estate",
+            company=lead.lead_company or "our firm",
             tone=tone
         )

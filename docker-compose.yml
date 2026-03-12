@@ -51,7 +51,7 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./app:/app/app
+      - .:/app
     command: ./start.sh
 
   celery-worker:
@@ -68,6 +68,8 @@ services:
       - app
       - redis
       - postgres
+    volumes:
+      - .:/app
     command: celery -A app.tasks.celery_app worker --loglevel=info
 
   celery-beat:
@@ -84,6 +86,8 @@ services:
       - app
       - redis
       - postgres
+    volumes:
+      - .:/app
     command: celery -A app.tasks.celery_app beat --loglevel=info -s /tmp/celerybeat-schedule
 
   # ── Frontend ─────────────────────────────────────────────────────────────────

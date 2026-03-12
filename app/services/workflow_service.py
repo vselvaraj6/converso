@@ -84,13 +84,16 @@ class WorkflowService:
             )
             
             if not reply_data["success"]:
+                logger.error(f"OpenAI generation failed for lead {lead.id}: {reply_data.get('error')}. Using fallback.")
                 reply_text = "Thanks for your message! Our team will get back to you soon."
             else:
                 reply_text = reply_data["reply"]
             
             # 9. Check for calendar booking intent — send Cal.com booking link
             if analysis.get("intent") == "schedule_meeting":
-                booking_result = await self._handle_calendar_booking(lead, company)
+                booking_result = await self._handle_calendar_booking(
+                    lead, company, requested_time=analysis.get("extracted_datetime")
+                )
                 if booking_result.get("booking_url"):
                     reply_text = booking_result["confirmation_message"]
             
@@ -244,15 +247,13 @@ class WorkflowService:
         messages = result.scalars().all()
         return list(reversed(messages))  # Return in chronological order
     
-    async def _handle_calendar_booking(self, lead: Lead, company: Company) -> Dict:
+    async def _handle_calendar_booking(self, lead: Lead, company: Company, requested_time: Optional[str] = None) -> Dict:
         """
-        Return the company's Cal.com round-robin booking URL.
-
-        Agent selection, availability checking, and calendar writes are all
-        handled by Cal.com.  When the lead books via the link, Cal.com fires
-        a BOOKING_CREATED webhook that marks the lead QUALIFIED.
+        Return the company's Cal.com round-robin booking URL or specific slots.
         """
         booking_url = getattr(company, "cal_booking_url", None)
+        event_type_id = getattr(company, "cal_event_type_id", None)
+        
         if not booking_url:
             return {
                 "booking_url": None,
@@ -260,11 +261,32 @@ class WorkflowService:
             }
 
         first_name = lead.name.split()[0] if lead.name else "there"
+        
+        # If we have an event type ID, try to get actual available slots
+        slots_text = ""
+        if event_type_id:
+            try:
+                # Look for slots in the next 3 days
+                start_search = datetime.utcnow().isoformat() + "Z"
+                end_search = (datetime.utcnow() + timedelta(days=3)).isoformat() + "Z"
+                slots = await self.calendar.get_available_slots(event_type_id, start_search, end_search)
+                
+                if slots:
+                    # Take first 3 slots and format them nicely
+                    formatted_slots = []
+                    for slot in slots[:3]:
+                        dt = datetime.fromisoformat(slot["time"].replace("Z", "+00:00"))
+                        formatted_slots.append(dt.strftime("%A, %b %d at %I:%M %p"))
+                    
+                    slots_text = "\n\nAvailable times:\n- " + "\n- ".join(formatted_slots)
+            except Exception as e:
+                logger.error(f"Error fetching slots for scheduling response: {e}")
+
         return {
             "booking_url": booking_url,
             "confirmation_message": (
-                f"Great, {first_name}! You can pick a time that works for you here: {booking_url} — "
-                "the next available team member will be assigned automatically."
+                f"Great, {first_name}! I can certainly help with that.{slots_text}\n\n"
+                f"You can also pick any other time that works for you here: {booking_url}"
             ),
         }
     

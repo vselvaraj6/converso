@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     
     # OpenAI
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
-    openai_model: str = Field(default="gpt-4-turbo", env="OPENAI_MODEL")
+    openai_model: str = Field(default="gpt-3.5-turbo", env="OPENAI_MODEL")
     
     # Cal.com (self-hosted)
     calcom_base_url: str = Field(default="", env="CALCOM_BASE_URL")
