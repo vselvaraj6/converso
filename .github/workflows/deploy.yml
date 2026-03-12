@@ -40,24 +40,24 @@ jobs:
 
       - name: Fix Docker networking
         run: |
-          echo "→ Tearing down existing stack..."
-          docker compose down --remove-orphans 2>/dev/null || true
-
-          echo "→ Restarting Docker daemon to ensure clean state..."
-          sudo systemctl restart docker
-          sleep 10
-
-          echo "→ Recreating missing Docker isolation chains (if lost during restart)..."
-          sudo iptables -N DOCKER-ISOLATION-STAGE-1 || true
-          sudo iptables -N DOCKER-ISOLATION-STAGE-2 || true
-          sudo iptables -A FORWARD -j DOCKER-ISOLATION-STAGE-1 || true
-          sudo iptables -A DOCKER-ISOLATION-STAGE-1 ! -i docker0 -o docker0 -j DOCKER-ISOLATION-STAGE-2 || true
-          sudo iptables -A DOCKER-ISOLATION-STAGE-1 -j RETURN || true
-          sudo iptables -A DOCKER-ISOLATION-STAGE-2 -j RETURN || true
+          echo "→ Recreating missing Docker isolation chains (if missing)..."
+          # Only create and append if they don't exist to avoid noise/errors
+          sudo iptables -L DOCKER-ISOLATION-STAGE-1 >/dev/null 2>&1 || {
+            sudo iptables -N DOCKER-ISOLATION-STAGE-1
+            sudo iptables -A FORWARD -j DOCKER-ISOLATION-STAGE-1
+            sudo iptables -A DOCKER-ISOLATION-STAGE-1 -j RETURN
+          }
+          
+          sudo iptables -L DOCKER-ISOLATION-STAGE-2 >/dev/null 2>&1 || {
+            sudo iptables -N DOCKER-ISOLATION-STAGE-2
+            sudo iptables -A DOCKER-ISOLATION-STAGE-1 ! -i docker0 -o docker0 -j DOCKER-ISOLATION-STAGE-2
+            sudo iptables -A DOCKER-ISOLATION-STAGE-2 -j RETURN
+          }
 
       - name: Rebuild and restart containers
         run: |
           echo "→ Rebuilding containers..."
+          # Use up -d without down to minimize downtime and avoid network destruction
           docker compose build
           docker compose up -d --remove-orphans
 
