@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
-import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon } from 'lucide-react'
+import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2 } from 'lucide-react'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children, description }: {
@@ -32,11 +32,13 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [showProviderModal, setShowProviderModal] = useState(false)
   const [manualCalUrl, setManualCalUrl] = useState('')
+  const [useManual, setUseManual] = useState(true)
 
   useEffect(() => {
     const stored = getStoredUser()
     setUser(stored)
     setManualCalUrl(stored?.manual_calendar_url || '')
+    setUseManual(!!stored?.manual_calendar_url || !stored?.calendar_connected)
     
     Promise.all([getCompany(), getIndustryTemplates()])
       .then(([c, t]) => {
@@ -54,11 +56,9 @@ export default function SettingsPage() {
       // Save company settings
       await updateCompany(company)
       
-      // Save user manual cal URL if changed
-      if (manualCalUrl !== user?.manual_calendar_url) {
-        const updated = await updateMe({ manual_calendar_url: manualCalUrl })
-        setUser(updated)
-      }
+      // Save user manual cal URL
+      const updated = await updateMe({ manual_calendar_url: useManual ? manualCalUrl : null })
+      setUser(updated)
       
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -104,6 +104,7 @@ export default function SettingsPage() {
         calcom_event_id: null 
       })
       setUser(updated)
+      setUseManual(true)
     } catch (err) {
       alert('Failed to disconnect calendar')
     }
@@ -137,85 +138,114 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        {/* Manual Calendar URL */}
-        <Section title="Direct Calendar Link" icon={LinkIcon} description="Enter your personal booking URL directly">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Manual Booking URL</label>
-              <div className="relative">
-                <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
-                  className="input pl-10 font-mono text-xs font-bold" 
-                  value={manualCalUrl} 
-                  onChange={e => setManualCalUrl(e.target.value)}
-                  placeholder="https://cal.com/your-name/15min"
-                />
-              </div>
-              <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
-                If provided, the AI will use this link for all your bookings. This overrides the "Work Calendar" integration below.
-              </p>
+        {/* Unified Calendar Section */}
+        <Section title="Calendar & Scheduling" icon={Calendar} description="Choose how leads book meetings with you">
+          <div className="space-y-6">
+            {/* Toggle Mode */}
+            <div className="flex p-1 bg-gray-100 rounded-xl w-full sm:w-fit">
+              <button
+                type="button"
+                onClick={() => setUseManual(true)}
+                className={clsx(
+                  "flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all",
+                  useManual ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                Direct URL
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseManual(false)}
+                className={clsx(
+                  "flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all",
+                  !useManual ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                Managed Integration
+              </button>
             </div>
-          </div>
-        </Section>
 
-        {/* Calendar Connection (Managed) */}
-        <Section title="Work Calendar" icon={Calendar} description="Enable AI to schedule meetings on your behalf via Managed Cal">
-          {user?.calendar_connected ? (
-            <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand-600 shadow-sm border border-brand-50">
-                  <ShieldCheck size={24} />
+            {useManual ? (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                  <p className="text-[11px] text-blue-700 font-bold leading-relaxed">
+                    Paste your personal booking link below. The AI will send this exact URL to leads whenever they ask to schedule.
+                  </p>
                 </div>
                 <div>
-                  <p className="font-bold text-brand-900 text-sm">Work Calendar Connected</p>
-                  <p className="text-[10px] text-brand-600 font-bold uppercase tracking-tight">Syncing via {company?.calcom_base_url?.replace('https://', '') || 'Managed Cal'}</p>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Booking URL</label>
+                  <div className="relative">
+                    <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input 
+                      className="input pl-10 font-mono text-xs font-bold bg-white" 
+                      value={manualCalUrl} 
+                      onChange={e => setManualCalUrl(e.target.value)}
+                      placeholder="https://cal.com/your-name/15min"
+                    />
+                  </div>
                 </div>
               </div>
-              <button 
-                type="button"
-                onClick={disconnectCalendar}
-                className="btn-secondary py-2 px-6 text-xs font-bold text-red-600 border-red-100 hover:bg-red-50 w-full sm:w-auto"
-              >
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-                <Calendar size={28} className="text-gray-400" />
+            ) : (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                {user?.calendar_connected ? (
+                  <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand-600 shadow-sm border border-brand-50">
+                        <ShieldCheck size={24} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-brand-900 text-sm">Managed Cal Active</p>
+                        <p className="text-[10px] text-brand-600 font-bold uppercase tracking-tight">Syncing via {company?.calcom_base_url?.replace('https://', '') || 'Cal.com'}</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={disconnectCalendar}
+                      className="btn-secondary py-2 px-6 text-xs font-bold text-red-600 border-red-100 hover:bg-red-50 w-full sm:w-auto"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 text-center">
+                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
+                      <ShieldCheck size={28} className="text-gray-400" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-1">One-Click Integration</h3>
+                    <p className="text-xs text-gray-500 mb-6 max-w-sm mx-auto font-medium leading-relaxed">
+                      Connect your work calendar to let our platform manage your availability automatically.
+                    </p>
+                    <button 
+                      type="button"
+                      onClick={() => setShowProviderModal(true)}
+                      className="btn-primary px-10 py-3 font-bold text-sm shadow-lg shadow-brand-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      Connect Work Calendar
+                    </button>
+                  </div>
+                )}
               </div>
-              <h3 className="font-bold text-gray-900 mb-1">No Work Calendar Integrated</h3>
-              <p className="text-xs text-gray-500 mb-6 max-w-sm mx-auto font-medium leading-relaxed">
-                Connect your work calendar via Okta to allow the AI to automatically schedule meetings using our managed shadow profiles.
-              </p>
-              <button 
-                type="button"
-                onClick={() => setShowProviderModal(true)}
-                className="btn-primary px-10 py-3 font-bold text-sm shadow-lg shadow-brand-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Connect Work Calendar
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </Section>
 
         {/* Company Calendar Instance (Admin only) */}
         {user?.role === 'admin' && (
-          <Section title="Booking Instance" icon={Globe} description="Configure your self-hosted Cal.com instance URL">
+          <Section title="Instance Configuration" icon={Globe} description="Configure your self-hosted Cal.com URL">
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Self-Hosted URL</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Platform Cal URL</label>
                 <div className="relative">
                   <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input 
-                    className="input pl-10 font-mono text-xs font-bold" 
+                    className="input pl-10 font-mono text-xs font-bold bg-white" 
                     value={(company as any)?.calcom_base_url || 'https://cal.com'} 
                     onChange={e => setCompany(c => c ? {...c, calcom_base_url: e.target.value} : null)}
                     placeholder="https://booking.yourcompany.com"
                   />
                 </div>
                 <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
-                  Agents will use this instance for all booking links generated by the AI.
+                  Required for "Managed Integration" mode to function correctly.
                 </p>
               </div>
             </div>
@@ -228,7 +258,7 @@ export default function SettingsPage() {
             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Industry</label>
             <div className="relative">
               <select 
-                className="input pr-10 appearance-none font-bold" 
+                className="input pr-10 appearance-none font-bold bg-white" 
                 value={company?.industry || ''} 
                 onChange={handleIndustryChange}
               >
@@ -254,7 +284,7 @@ export default function SettingsPage() {
                 Industry Lingo
               </label>
               <textarea
-                className="input min-h-[100px] resize-none text-sm leading-relaxed font-bold"
+                className="input min-h-[100px] resize-none text-sm leading-relaxed font-bold bg-white"
                 value={company?.ai_config.industry_lingo || ''}
                 onChange={e => updateAI('industry_lingo', e.target.value)}
                 placeholder="e.g. use terms like 'Pre-approval', 'HELOC', 'Amortization'."
@@ -266,7 +296,7 @@ export default function SettingsPage() {
                 Company Memory
               </label>
               <textarea
-                className="input min-h-[120px] resize-none text-sm leading-relaxed font-bold"
+                className="input min-h-[120px] resize-none text-sm leading-relaxed font-bold bg-white"
                 value={company?.ai_config.company_memory || ''}
                 onChange={e => updateAI('company_memory', e.target.value)}
                 placeholder="e.g. We specialize in first-time home buyers in Ontario."
@@ -281,7 +311,7 @@ export default function SettingsPage() {
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Response tone</label>
               <select 
-                className="input font-bold"
+                className="input font-bold bg-white"
                 value={company?.ai_config.tone || 'friendly and professional'}
                 onChange={e => updateAI('tone', e.target.value)}
               >
@@ -300,7 +330,7 @@ export default function SettingsPage() {
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Twilio Phone Number</label>
               <input 
-                className="input font-mono text-xs font-bold" 
+                className="input font-mono text-xs font-bold bg-white" 
                 value={company?.twilio_phone_number || ''} 
                 onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
                 placeholder="+1234567890"
