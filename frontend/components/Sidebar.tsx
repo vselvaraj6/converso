@@ -21,10 +21,8 @@ export default function Sidebar() {
       {/* Logo - Hidden on mobile because it's in the mobile header */}
       <div className="h-16 hidden md:flex items-center px-5 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
-            <MessageSquare size={14} className="text-white" />
-          </div>
-          <span className="font-bold text-gray-900 text-lg">Converso</span>
+          <img src="/logo.svg" alt="Converso Logo" className="w-8 h-8 rounded-lg" />
+          <span className="font-black text-gray-900 text-xl tracking-tight">Converso</span>
         </div>
       </div>
 

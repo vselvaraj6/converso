@@ -33,9 +33,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-col justify-between w-[40%] bg-[#f8faff] p-12 xl:p-20 border-r border-gray-100">
         <div>
           <Link href="/" className="flex items-center gap-2 mb-16">
-            <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-200 text-white font-bold text-xl">
-              C
-            </div>
+            <img src="/logo.svg" alt="Converso Logo" className="w-10 h-10 rounded-xl shadow-lg shadow-brand-100" />
             <span className="text-2xl font-black text-gray-900 tracking-tight">Converso</span>
           </Link>
 
@@ -71,7 +69,7 @@ export default function LoginPage() {
 
           <div className="mb-10 lg:hidden">
              <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold">C</div>
+              <img src="/logo.svg" alt="Converso Logo" className="w-8 h-8 rounded-lg" />
               <span className="text-xl font-bold">Converso</span>
             </div>
             <h2 className="text-3xl font-bold text-gray-900">Sign in to Converso</h2>

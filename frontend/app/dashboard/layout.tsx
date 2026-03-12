@@ -24,10 +24,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile Header */}
       <header className="flex md:hidden items-center justify-between px-4 h-16 bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
-            <span className="text-white font-bold text-xs">C</span>
-          </div>
-          <span className="font-bold text-lg">Converso</span>
+          <img src="/logo.svg" alt="Converso Logo" className="w-7 h-7 rounded-lg" />
+          <span className="font-black text-lg tracking-tight">Converso</span>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
