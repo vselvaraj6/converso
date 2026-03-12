@@ -3,11 +3,9 @@ Meetings (calendar events) API endpoints.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
-from uuid import UUID
-
+from typing import Any, Dict
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -26,11 +24,16 @@ async def list_meetings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Return calendar events for the current user, joined with lead info."""
+    """Return calendar events for the current user's company, joined with lead info."""
     query = (
         select(CalendarEvent, Lead)
         .join(Lead, CalendarEvent.lead_id == Lead.id)
-        .where(CalendarEvent.sales_agent_id == current_user.id)
+        .where(
+            or_(
+                CalendarEvent.sales_agent_id == current_user.id,
+                Lead.company_id == current_user.company_id
+            )
+        )
     )
 
     if upcoming_only:
