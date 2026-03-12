@@ -40,27 +40,27 @@ docker compose up -d --build
 ```
 
 This starts:
-- **nginx** on port 80 (the only port you need to expose)
+- **nginx** on port **8080** (the primary entry point for the project)
 - **Next.js** frontend on port 3000 (internal)
-- **FastAPI** backend on port 8000 (internal)
-- **PostgreSQL** on port 5432 (internal)
+- **FastAPI** backend on port **8001** (internal and exposed)
+- **PostgreSQL** on port 5432 (internal and exposed)
 - **Redis** on port 6379 (internal)
 - **Celery worker + beat** (background task runners)
 
 ### 3. Create your account
 
-Open `http://localhost` → click **Create one** → fill in your name, company, email and password.
+Open `http://localhost:8080` → click **Create one** → fill in your name, company, email and password.
 
 ### 4. Configure Cloudflare Tunnel
 
-Point your Cloudflare tunnel to `http://localhost:80` (nginx handles routing internally).
+Point your Cloudflare tunnel to `http://localhost:8080` (nginx handles routing internally).
 
 ```yaml
 # cloudflared config.yml
 tunnel: <your-tunnel-id>
 ingress:
   - hostname: converso.yourdomain.com
-    service: http://localhost:80
+    service: http://localhost:8080
   - service: http_status:404
 ```
 
@@ -341,9 +341,28 @@ Go to `https://github.com/vselvaraj6/converso/settings/actions/runners` — you 
 
 ## Troubleshooting
 
+**Docker Networking: "iptables failed: No chain/target/match by that name"**
+If you see errors related to `DOCKER-ISOLATION-STAGE-1` or `DOCKER-ISOLATION-STAGE-2`, run these commands to manually create the missing chains:
+```bash
+sudo iptables -N DOCKER-ISOLATION-STAGE-1
+sudo iptables -N DOCKER-ISOLATION-STAGE-2
+sudo iptables -A FORWARD -j DOCKER-ISOLATION-STAGE-1
+sudo iptables -A DOCKER-ISOLATION-STAGE-1 ! -i docker0 -o docker0 -j DOCKER-ISOLATION-STAGE-2
+sudo iptables -A DOCKER-ISOLATION-STAGE-1 -j RETURN
+sudo iptables -A DOCKER-ISOLATION-STAGE-2 -j RETURN
+```
+
+**Port 8080 or 8081 already in use**
+If these ports are occupied on your host, change the left-hand side of the `ports` mapping in `docker-compose.yml` and update `nginx.conf` if necessary.
+
 **Frontend can't reach the API**
 - Check `docker compose logs nginx` — nginx must be running
 - Verify the frontend container started: `docker compose ps`
+- Ensure `API_URL` in `docker-compose.yml` points to `http://app:8001` (internal container networking).
+
+**Registration returns "Internal Server Error"**
+- Check `docker compose logs app`
+- We use `pbkdf2_sha256` for hashing to avoid `bcrypt`'s 72-character limit and compatibility issues.
 
 **Twilio webhook returning errors**
 - Confirm your Cloudflare tunnel is active: `cloudflared tunnel info`

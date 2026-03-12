@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     # Application
     app_name: str = Field(default="Converso", env="APP_NAME")
     app_env: str = Field(default="development", env="APP_ENV")
-    app_port: int = Field(default=8000, env="APP_PORT")
+    app_port: int = Field(default=8001, env="APP_PORT")
     app_host: str = Field(default="0.0.0.0", env="APP_HOST")
     
     # Database
