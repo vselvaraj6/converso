@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -14,6 +14,31 @@ from app.models import Company, User
 router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# ── Industry Templates ────────────────────────────────────────────────────────
+
+INDUSTRY_TEMPLATES = {
+    "Mortgage": {
+        "industry_lingo": "Use terms like 'Pre-approval', 'HELOC', 'Amortization', 'LTV ratio', 'Fixed vs Variable', 'Closing costs'.",
+        "company_memory": "We are a top-rated mortgage brokerage. We help clients find the best rates by comparing 30+ lenders. We specialize in first-time home buyers, refinances, and debt consolidation."
+    },
+    "Real Estate": {
+        "industry_lingo": "Use terms like 'MLS listing', 'Buyer representation', 'Seller's market', 'Open house', 'Comparables (Comps)', 'Escrow'.",
+        "company_memory": "We are a full-service real estate team. We help buyers find their dream homes and sellers get top dollar for their property. We know every neighborhood in the city."
+    },
+    "Insurance": {
+        "industry_lingo": "Use terms like 'Premium', 'Deductible', 'Liability coverage', 'Policy limit', 'Underwriting', 'Claim process'.",
+        "company_memory": "We provide comprehensive insurance solutions for home, auto, and life. Our goal is to protect what matters most to you with personalized coverage at competitive rates."
+    },
+    "SaaS / Software": {
+        "industry_lingo": "Use terms like 'ROI', 'Implementation', 'Scalability', 'API integration', 'User adoption', 'SLA', 'Cloud-native'.",
+        "company_memory": "We provide a cutting-edge software platform that automates complex business workflows. Our solution helps teams increase productivity by 40% and reduces manual errors."
+    },
+    "Solar Energy": {
+        "industry_lingo": "Use terms like 'Photovoltaic (PV)', 'Net metering', 'Grid-tied', 'Inverter efficiency', 'Tax credits', 'Energy independence'.",
+        "company_memory": "We are a leading solar installation company. We help homeowners transition to clean, renewable energy while significantly reducing their monthly electricity bills."
+    }
+}
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -135,6 +160,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "role": current_user.role,
         "company_id": str(current_user.company_id),
     }
+
+
+@router.get("/company/industry-templates")
+async def get_industry_templates(current_user: User = Depends(get_current_user)):
+    return INDUSTRY_TEMPLATES
 
 
 @router.get("/company")

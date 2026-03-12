@@ -80,6 +80,10 @@ export async function getCompany() {
   return request<Company>('/auth/company')
 }
 
+export async function getIndustryTemplates() {
+  return request<Record<string, { industry_lingo: string; company_memory: string }>>('/auth/company/industry-templates')
+}
+
 export async function updateCompany(data: Partial<Company>) {
   return request<Company>('/auth/company', {
     method: 'PATCH',
