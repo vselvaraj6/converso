@@ -65,6 +65,9 @@ jobs:
           docker compose run --rm postgres psql -U converso -tc "SELECT 1 FROM pg_database WHERE datname = 'test_converso'" | grep -q 1 || \
           docker compose run --rm postgres createdb -U converso test_converso
           
+          echo "→ Waiting for test database to be ready..."
+          sleep 5
+          
           echo "→ Running pytest suite..."
           docker compose run --rm \
             -e APP_ENV=testing \

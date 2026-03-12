@@ -224,13 +224,18 @@ class WorkflowService:
     async def _handle_calendar_booking(self, lead: Lead, company: Company, requested_time: Optional[str] = None) -> Dict:
         booking_url = getattr(company, "cal_booking_url", None)
         event_type_id = getattr(company, "cal_event_type_id", None)
+        
+        logger.info(f"Handling booking for lead {lead.id}, company {company.id}. URL: {booking_url}, Event ID: {event_type_id}")
+        
         if not booking_url:
+            logger.warning(f"No booking URL set for company {company.id}")
             return {"booking_url": None, "confirmation_message": "I'll have someone reach out to find a time that works for you."}
 
         first_name = lead.name.split()[0] if lead.name else "there"
         slots_text = ""
         if event_type_id:
             try:
+                logger.info(f"Fetching slots for event type {event_type_id}")
                 start_search = datetime.utcnow().isoformat() + "Z"
                 end_search = (datetime.utcnow() + timedelta(days=3)).isoformat() + "Z"
                 slots = await self.calendar.get_available_slots(event_type_id, start_search, end_search)
@@ -240,8 +245,11 @@ class WorkflowService:
                         dt = datetime.fromisoformat(slot["time"].replace("Z", "+00:00")).replace(tzinfo=None)
                         formatted_slots.append(dt.strftime("%A, %b %d at %I:%M %p"))
                     slots_text = "\n\nAvailable times:\n- " + "\n- ".join(formatted_slots)
+                    logger.info(f"Successfully formatted {len(formatted_slots)} slots")
+                else:
+                    logger.info("No available slots found")
             except Exception as e:
-                logger.error(f"Error fetching slots: {e}")
+                logger.error(f"Error fetching slots: {e}", exc_info=True)
 
         return {
             "booking_url": booking_url,
