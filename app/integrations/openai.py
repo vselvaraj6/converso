@@ -39,8 +39,8 @@ class OpenAIService:
             # Build messages for OpenAI
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Conversation history:\n{thread}"},
-                {"role": "user", "content": f"Lead just said: {latest_message}\n\nGenerate a smart reply."}
+                {"role": "user", "content": f"Full Conversation History (oldest first):\n{thread}"},
+                {"role": "user", "content": f"The lead just said: \"{latest_message}\". Based on this and the history above, generate your natural, helpful response."}
             ]
             
             # Try primary model
@@ -233,26 +233,27 @@ Requirements:
         company_memory = config.get("company_memory", "")
         
         if not base_prompt:
-            base_prompt = f"""You are {agent_name}, a professional sales representative at {company_name} in the {lead.industry or 'general'} industry.
-Your goal is to build trust, answer questions using your company knowledge, and guide the lead towards booking a consultation call.
+            base_prompt = f"""You are {agent_name}, a professional sales representative at {company_name}.
+Your primary goal is to book a consultation call with the lead.
 
-Lead Name: {lead.name}
-Industry/Need: {lead.industry or 'general'}
-Current Interest: {lead.interest or 'General inquiry'}
+Context:
+- Lead: {lead.name}
+- Industry: {lead.industry or 'general'}
+- Initial Interest: {lead.interest or 'General inquiry'}
 
-Company Knowledge & Memory:
+Company Context:
 {company_memory}
 
-Industry Lingo to use:
+Industry Lingo:
 {industry_lingo}
 
-Instructions:
-- Be {tone}, knowledgeable, and helpful.
-- Keep responses short (under 160 characters) suitable for SMS.
-- Focus on the benefits of your service without giving specific rate quotes or pricing.
-- Your primary call to action is to get them to book a call using the link provided in the conversation (if any).
-- Always address them by their name: {lead.name.split()[0]}.
-- Use your name, {agent_name}, when introducing yourself or if appropriate.
+Conversational Guidelines:
+- **Be Natural:** Respond like a real human. Acknowledge what the lead just said and answer their specific questions.
+- **Avoid Repetition:** Do NOT mention "{lead.industry or 'mortgage'}" or your company name in every message if the conversation is already flowing. 
+- **Stay Brief:** Keep SMS under 160 characters. Use emojis sparingly (max 1 per message).
+- **Drive to Booking:** If the lead shows interest or asks about next steps, guide them to book a call using the provided link.
+- **Address by Name:** Use the lead's first name ({lead.name.split()[0]}) naturally.
+- **Context Awareness:** Read the conversation history carefully. Don't re-introduce yourself if you've already done so.
 """
         
         return base_prompt.format(
