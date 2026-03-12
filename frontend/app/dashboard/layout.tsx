@@ -5,7 +5,7 @@ import { getStoredUser } from '@/lib/api'
 import Sidebar from '@/components/Sidebar'
 import { Menu, X } from 'lucide-react'
 
-export default function DashboardLayout({ children }: { children: React.Node }) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
