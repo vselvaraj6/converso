@@ -90,7 +90,15 @@ class WorkflowService:
                 reply_text = reply_data["reply"]
             
             # 9. Check for calendar booking intent — send Cal.com booking link
-            if analysis.get("intent") == "schedule_meeting":
+            # Be robust: check analysis intent OR if the AI reply mentions scheduling
+            is_scheduling = analysis.get("intent") == "schedule_meeting"
+            if not is_scheduling and reply_data["success"]:
+                reply_lower = reply_text.lower()
+                if any(kw in reply_lower for kw in ["invite", "meeting", "call", "schedule", "calendar"]):
+                    is_scheduling = True
+                    logger.info(f"Detected scheduling intent from AI reply keywords for lead {lead.id}")
+
+            if is_scheduling:
                 booking_result = await self._handle_calendar_booking(
                     lead, company, requested_time=analysis.get("extracted_datetime")
                 )

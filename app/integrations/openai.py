@@ -91,7 +91,8 @@ Current Date: {current_date}
 
 Extract:
 1. Sentiment (positive/neutral/negative)
-2. Intent (schedule_meeting/ask_question/not_interested/request_info/other)
+2. Intent (schedule_meeting/ask_question/not_interested/request_info/other). 
+   Set to 'schedule_meeting' if the lead wants to talk, meet, call, or speaks about availability.
 3. Urgency level (high/medium/low)
 4. Any datetime mentioned. If relative like 'tomorrow' or 'next Monday', convert to ISO date string (YYYY-MM-DD) based on current date {current_date}. 
    If a specific time is mentioned, include it in ISO format (YYYY-MM-DDTHH:MM:SSZ).
