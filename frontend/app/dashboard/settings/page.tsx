@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, type Company, type User } from '@/lib/api'
+import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
 import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -19,20 +19,6 @@ function Section({ title, icon: Icon, children, description }: {
         </div>
       </div>
       {children}
-    </div>
-  )
-}
-
-function EnvRow({ label, envKey, description }: { label: string; envKey: string; description: string }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-start justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
-      <div>
-        <p className="text-sm font-medium text-gray-800">{label}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5">{description}</p>
-      </div>
-      <code className="text-[10px] sm:text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono break-all sm:break-normal">
-        {envKey}
-      </code>
     </div>
   )
 }
@@ -302,17 +288,20 @@ function ProviderSelectionModal({ user, onClose, onConnected }: { user: User | n
   const connect = async (provider: string) => {
     setConnecting(provider)
     try {
-      // Simulate OAuth/Okta flow
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // 1. Perform backend-managed connection flow
+      await connectCalendar(provider)
       
-      const updated = await updateMe({ 
-        calendar_connected: true,
-        calcom_username: user?.name.toLowerCase().replace(/\s/g, '-'),
-        calcom_event_id: Math.floor(100000 + Math.random() * 900000)
+      // 2. Fetch fresh user data to reflect the new state
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
-      onConnected(updated)
-    } catch (err) {
-      alert(`Failed to connect ${provider} calendar`)
+      if (!response.ok) throw new Error('Failed to refresh user data')
+      const updatedUser = await response.json()
+      localStorage.setItem('user', JSON.stringify(updatedUser))
+      
+      onConnected(updatedUser)
+    } catch (err: any) {
+      alert(`Failed to connect ${provider} calendar: ${err.message}`)
     } finally {
       setConnecting(null)
     }

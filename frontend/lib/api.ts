@@ -84,6 +84,23 @@ export async function updateMe(data: any) {
   return user
 }
 
+export async function connectCalendar(provider: string) {
+  const data = await request<{ status: string; username: string; event_id: number }>('/auth/calendar/connect', {
+    method: 'POST',
+    body: JSON.stringify({ provider }),
+  })
+  
+  // Refresh local user state
+  const user = getStoredUser()
+  if (user) {
+    user.calendar_connected = true
+    user.calcom_event_id = data.event_id
+    localStorage.setItem('user', JSON.stringify(user))
+  }
+  
+  return data
+}
+
 // ── Company ──────────────────────────────────────────────────────────────────
 
 export async function getCompany() {

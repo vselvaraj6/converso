@@ -62,6 +62,18 @@ class TokenResponse(BaseModel):
     user: dict
 
 
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    calendar_connected: Optional[bool] = None
+    calcom_api_key: Optional[str] = None
+    calcom_event_id: Optional[int] = None
+
+
+class CalendarConnectRequest(BaseModel):
+    provider: str  # "google" or "microsoft"
+
+
 class CompanyUpdate(BaseModel):
     name: Optional[str] = None
     industry: Optional[str] = None
@@ -114,8 +126,15 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     token = create_access_token({"sub": str(user.id)}, expires_delta=timedelta(days=7))
     return TokenResponse(
         access_token=token,
-        user={"id": str(user.id), "email": user.email, "name": user.name,
-              "role": user.role, "company_id": str(user.company_id)},
+        user={
+            "id": str(user.id), 
+            "email": user.email, 
+            "name": user.name,
+            "role": user.role, 
+            "company_id": str(user.company_id),
+            "calendar_connected": user.calendar_connected,
+            "calcom_event_id": user.calcom_event_id
+        },
     )
 
 
@@ -156,17 +175,16 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     token = create_access_token({"sub": str(user.id)}, expires_delta=timedelta(days=7))
     return TokenResponse(
         access_token=token,
-        user={"id": str(user.id), "email": user.email, "name": user.name,
-              "role": user.role, "company_id": str(user.company_id)},
+        user={
+            "id": str(user.id), 
+            "email": user.email, 
+            "name": user.name,
+            "role": user.role, 
+            "company_id": str(user.company_id),
+            "calendar_connected": user.calendar_connected,
+            "calcom_event_id": user.calcom_event_id
+        },
     )
-
-
-class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    calendar_connected: Optional[bool] = None
-    calcom_api_key: Optional[str] = None
-    calcom_event_id: Optional[int] = None
 
 
 @router.get("/me")
@@ -209,6 +227,38 @@ async def update_me(
         "company_id": str(current_user.company_id),
         "calendar_connected": current_user.calendar_connected,
         "calcom_event_id": current_user.calcom_event_id
+    }
+
+
+@router.post("/calendar/connect")
+async def connect_calendar(
+    data: CalendarConnectRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Finalize the calendar connection by creating shadow Cal.com identifiers.
+    This simulates the return from an Okta/OAuth flow.
+    """
+    # 1. Update user connection status
+    current_user.calendar_connected = True
+    
+    # 2. Provision 'Shadow' Cal.com details
+    # In a production environment, this would call the Cal.com API 
+    # using the platform's API key to create a user/event for this agent.
+    import random
+    clean_name = current_user.name.lower().replace(" ", "-")
+    current_user.calcom_username = f"{clean_name}-{random.randint(100, 999)}"
+    current_user.calcom_event_id = random.randint(100000, 999999)
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return {
+        "status": "success",
+        "provider": data.provider,
+        "username": current_user.calcom_username,
+        "event_id": current_user.calcom_event_id
     }
 
 
