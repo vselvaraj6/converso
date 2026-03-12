@@ -36,7 +36,7 @@ class CalendarEvent(Base):
     status = Column(String, default="confirmed")  # "confirmed", "cancelled", "rescheduled"
     
     # Metadata
-    metadata = Column(JSON, default=dict)
+    extra_metadata = Column(JSON, default=dict)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
