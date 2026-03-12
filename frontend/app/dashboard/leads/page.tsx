@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { getLeads, createLead, type Lead } from '@/lib/api'
-import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2 } from 'lucide-react'
+import { getLeads, createLead, importLeads, type Lead } from '@/lib/api'
+import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2, Upload, FileText, AlertCircle, CheckCircle2, X } from 'lucide-react'
 import clsx from 'clsx'
 
 const STATUSES = ['all', 'new', 'contacted', 'qualified', 'converted', 'lost']
@@ -31,6 +31,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -70,9 +71,20 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-gray-500 text-sm mt-1">{total} total leads in pipeline</p>
         </div>
-        <button className="btn-primary w-full sm:w-auto shadow-md shadow-brand-100" onClick={() => setShowModal(true)}>
-          <Plus size={16} /> Add lead
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            className="btn-secondary w-full sm:w-auto shadow-sm" 
+            onClick={() => setShowImportModal(true)}
+          >
+            <Upload size={16} /> Import
+          </button>
+          <button 
+            className="btn-primary w-full sm:w-auto shadow-md shadow-brand-100" 
+            onClick={() => setShowModal(true)}
+          >
+            <Plus size={16} /> Add lead
+          </button>
+        </div>
       </div>
 
       {/* Filters & Search */}
@@ -118,7 +130,7 @@ export default function LeadsPage() {
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="hidden md:block card overflow-hidden shadow-sm">
+            <div className="hidden md:block card overflow-hidden shadow-sm border-gray-100">
               <div className="table-container">
                 <table className="w-full text-sm min-w-[900px]">
                   <thead>
@@ -147,7 +159,7 @@ export default function LeadsPage() {
                         </td>
                         <td className="px-6 py-4 text-gray-600 font-medium">{lead.company || '—'}</td>
                         <td className="px-6 py-4">
-                          <span className={clsx('badge', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
+                          <span className={clsx('badge text-[10px]', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
                             {lead.status}
                           </span>
                         </td>
@@ -175,7 +187,7 @@ export default function LeadsPage() {
                 <Link 
                   key={lead.id} 
                   href={`/dashboard/leads/${lead.id}`}
-                  className="card p-4 active:scale-[0.98] transition-transform space-y-3"
+                  className="card p-4 active:scale-[0.98] transition-transform space-y-3 shadow-sm border-gray-100"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -199,7 +211,7 @@ export default function LeadsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 justify-end">
                       <span className="text-lg">{lead.sentiment ? SENTIMENT_EMOJI[lead.sentiment] : ''}</span>
-                      <span className="capitalize">{lead.sentiment || 'No data'}</span>
+                      <span className="capitalize text-[10px] font-medium">{lead.sentiment || 'No data'}</span>
                     </div>
                   </div>
                 </Link>
@@ -232,9 +244,12 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Add Lead Modal */}
+      {/* Modals */}
       {showModal && (
         <AddLeadModal onClose={() => setShowModal(false)} onCreated={load} />
+      )}
+      {showImportModal && (
+        <ImportLeadsModal onClose={() => setShowImportModal(false)} onImported={load} />
       )}
     </div>
   )
@@ -273,12 +288,14 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Add new lead</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <Plus size={24} className="rotate-45" />
+            <X size={20} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-medium">{error}</div>
+            <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2">
+              <AlertCircle size={16} /> {error}
+            </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -317,6 +334,134 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImported: () => void }) {
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState<{ success_count: number; error_count: number; errors: string[] } | null>(null)
+  const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleUpload() {
+    if (!file) return
+    setUploading(true)
+    setError('')
+    try {
+      const data = await importLeads(file)
+      setResult(data)
+      if (data.success_count > 0) onImported()
+    } catch (err: any) {
+      setError(err.message || 'Failed to import file')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) setFile(e.target.files[0])
+  }
+
+  return (
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 overflow-y-auto">
+      <div className="card w-full max-w-md p-6 my-auto shadow-2xl border-none">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Import Leads</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        {!result ? (
+          <div className="space-y-6">
+            <div className="bg-brand-50 rounded-xl p-4 border border-brand-100">
+              <h3 className="text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">Expected Format</h3>
+              <p className="text-xs text-brand-600 leading-relaxed">
+                Upload an Excel (.xlsx, .xls) or CSV file with the following columns:
+                <br /><strong className="text-brand-800">name, email, phone</strong> (required)
+                <br /><span className="opacity-70 text-[10px]">Optional: title, company, industry, interest</span>
+              </p>
+            </div>
+
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className={clsx(
+                "border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all",
+                file ? "border-brand-500 bg-brand-50/30" : "border-gray-200 hover:border-brand-400 hover:bg-gray-50"
+              )}
+            >
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".csv,.xlsx,.xls" 
+                onChange={handleFileChange} 
+              />
+              <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
+                <Upload size={20} className={file ? "text-brand-600" : "text-gray-400"} />
+              </div>
+              {file ? (
+                <div>
+                  <p className="text-sm font-bold text-gray-900 truncate px-4">{file.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Click to upload or drag and drop</p>
+                  <p className="text-xs text-gray-400 mt-1">CSV, XLSX or XLS</p>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-xs font-medium flex items-center gap-2">
+                <AlertCircle size={14} /> {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button className="btn-secondary flex-1" onClick={onClose} disabled={uploading}>Cancel</button>
+              <button 
+                className="btn-primary flex-[2]" 
+                onClick={handleUpload} 
+                disabled={!file || uploading}
+              >
+                {uploading ? "Importing..." : "Start Import"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto">
+              <CheckCircle2 size={32} className="text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">Import Complete</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Successfully imported <span className="font-bold text-green-600">{result.success_count}</span> leads.
+              </p>
+            </div>
+
+            {result.error_count > 0 && (
+              <div className="bg-orange-50 border border-yellow-100 rounded-xl p-4 text-left">
+                <p className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-2">
+                  Warnings ({result.error_count})
+                </p>
+                <ul className="text-[11px] text-orange-600 space-y-1 max-h-32 overflow-y-auto">
+                  {result.errors.map((err, i) => <li key={i}>• {err}</li>)}
+                  {result.error_count > 10 && <li className="opacity-60 italic">And {result.error_count - 10} more errors...</li>}
+                </ul>
+              </div>
+            )}
+
+            <button className="btn-primary w-full py-3 shadow-lg shadow-brand-100" onClick={onClose}>
+              Done
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

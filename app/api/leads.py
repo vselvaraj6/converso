@@ -6,11 +6,13 @@ Provides RESTful endpoints for retrieving and managing lead information.
 
 from typing import Dict, Any, Optional
 from uuid import UUID
+import io
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel, EmailStr
+import pandas as pd
 
 from app.api.auth import get_current_user
 from app.core.database import get_db
@@ -61,23 +63,14 @@ async def list_leads(
 ) -> LeadListResponse:
     """
     List leads with pagination and optional filtering.
-    
-    Args:
-        skip: Number of records to skip (for pagination)
-        limit: Maximum number of records to return (max: 100)
-        status: Optional filter by lead status
-        db: Database session
-        
-    Returns:
-        LeadListResponse with paginated lead data
     """
     # Build query with optional status filter
-    query = select(Lead)
+    query = select(Lead).where(Lead.company_id == current_user.company_id)
     if status:
         query = query.where(Lead.status == status)
     
     # Get total count for pagination
-    count_query = select(func.count()).select_from(Lead)
+    count_query = select(func.count()).select_from(Lead).where(Lead.company_id == current_user.company_id)
     if status:
         count_query = count_query.where(Lead.status == status)
     
@@ -120,20 +113,10 @@ async def get_lead(
 ) -> Dict[str, Any]:
     """
     Get detailed information for a specific lead.
-    
-    Args:
-        lead_id: UUID of the lead to retrieve
-        db: Database session
-        
-    Returns:
-        Complete lead information including relationships
-        
-    Raises:
-        HTTPException: 404 if lead not found
     """
     # Query lead with relationships
     result = await db.execute(
-        select(Lead).where(Lead.id == lead_id)
+        select(Lead).where(Lead.id == lead_id, Lead.company_id == current_user.company_id)
     )
     lead = result.scalar_one_or_none()
     
@@ -168,6 +151,100 @@ async def get_lead(
     }
 
 
+@router.post("/import")
+async def import_leads(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Import leads from an Excel or CSV file.
+    Expected columns: name, email, phone (required)
+    Optional columns: title, company, industry, interest
+    """
+    contents = await file.read()
+    filename = file.filename.lower()
+    
+    try:
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents))
+        elif filename.endswith(('.xls', '.xlsx')):
+            df = pd.read_excel(io.BytesIO(contents))
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail="Unsupported file format. Please upload a CSV or Excel file."
+            )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=400, detail=f"Error parsing file: {str(e)}")
+
+    # Validate columns
+    required_cols = {'name', 'email', 'phone'}
+    cols = {str(c).lower().strip() for c in df.columns}
+    missing = required_cols - cols
+    if missing:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Missing required columns: {', '.join(missing)}. "
+                   f"Expected: name, email, phone"
+        )
+
+    # Normalize column names for easier access
+    original_columns = list(df.columns)
+    df.columns = [str(c).lower().strip() for c in df.columns]
+    
+    success_count = 0
+    errors = []
+    
+    for i, row in df.iterrows():
+        try:
+            name = str(row['name']).strip()
+            email = str(row['email']).strip()
+            phone = str(row['phone']).strip().replace("+1", "").replace("-", "").replace(" ", "")
+            
+            if not name or name == 'nan' or not email or email == 'nan' or not phone or phone == 'nan':
+                errors.append(f"Row {i+2}: Name, email, and phone are required")
+                continue
+
+            # Check if email already exists
+            existing = await db.execute(
+                select(Lead).where(Lead.email == email)
+            )
+            if existing.scalar_one_or_none():
+                errors.append(f"Row {i+2}: Email {email} already exists")
+                continue
+
+            # Create lead
+            lead = Lead(
+                company_id=current_user.company_id,
+                name=name,
+                email=email,
+                phone=phone,
+                title=str(row.get('title', '')).strip() if pd.notna(row.get('title')) else None,
+                lead_company=str(row.get('company', '')).strip() if pd.notna(row.get('company')) else None,
+                industry=str(row.get('industry', '')).strip() if pd.notna(row.get('industry')) else None,
+                source="import",
+                interest=str(row.get('interest', '')).strip() if pd.notna(row.get('interest')) else None,
+                status=LeadStatus.NEW
+            )
+            db.add(lead)
+            success_count += 1
+            
+        except Exception as e:
+            errors.append(f"Row {i+2}: {str(e)}")
+
+    if success_count > 0:
+        await db.commit()
+    
+    return {
+        "success_count": success_count,
+        "error_count": len(errors),
+        "errors": errors[:10]  # Return first 10 errors
+    }
+
+
 @router.post("/", response_model=LeadResponse)
 async def create_lead(
     lead_data: CreateLeadRequest,
@@ -176,19 +253,6 @@ async def create_lead(
 ) -> LeadResponse:
     """
     Create a new lead.
-    
-    This endpoint allows you to manually add leads to the system.
-    If no company_id is provided, it will use or create a default company.
-    
-    Args:
-        lead_data: Lead information
-        db: Database session
-        
-    Returns:
-        Created lead information
-        
-    Raises:
-        HTTPException: 400 if email already exists
     """
     try:
         # Check if email already exists
@@ -201,37 +265,12 @@ async def create_lead(
                 detail=f"Lead with email {lead_data.email} already exists"
             )
         
-        # Get or create default company if not provided
-        if not lead_data.company_id:
-            # Try to find default company
-            company_result = await db.execute(
-                select(Company).limit(1)
-            )
-            company = company_result.scalar_one_or_none()
-            
-            if not company:
-                # Create default company
-                company = Company(
-                    name="Default Company",
-                    ai_config={
-                        "temperature": 0.7,
-                        "tone": "friendly and professional",
-                        "prompt_template": ""
-                    }
-                )
-                db.add(company)
-                await db.flush()
-            
-            company_id = company.id
-        else:
-            company_id = lead_data.company_id
-        
         # Normalize phone number (remove +1 if present)
         phone = lead_data.phone.replace("+1", "").replace("-", "").replace(" ", "")
         
         # Create lead
         lead = Lead(
-            company_id=company_id,
+            company_id=current_user.company_id,
             name=lead_data.name,
             email=lead_data.email,
             phone=phone,

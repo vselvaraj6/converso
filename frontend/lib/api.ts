@@ -111,6 +111,27 @@ export async function createLead(data: CreateLeadPayload) {
   )
 }
 
+export async function importLeads(file: File) {
+  const token = getToken()
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(`${BASE}/leads/import`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error(err.detail || 'Import failed')
+  }
+
+  return res.json() as Promise<{ success_count: number; error_count: number; errors: string[] }>
+}
+
 // ── Meetings ──────────────────────────────────────────────────────────────────
 
 export async function getMeetings(upcomingOnly = true) {
