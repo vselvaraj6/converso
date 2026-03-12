@@ -84,8 +84,7 @@ class WorkflowService:
             # 9. Check for calendar booking intent — send Cal.com booking link
             if analysis.get("intent") == "schedule_meeting":
                 booking_result = await self._handle_calendar_booking(lead, company)
-                if booking_result.get("booking_url"):
-                    reply_text = booking_result["confirmation_message"]
+                reply_text = booking_result["confirmation_message"]
             
             # 10. Send reply
             send_result = await self.twilio.send_sms(
