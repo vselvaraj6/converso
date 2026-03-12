@@ -8,8 +8,13 @@ on:
 jobs:
   deploy:
     name: Deploy
-    runs-on: self-hosted   # runs on your homelab runner
+    runs-on: self-hosted
     timeout-minutes: 15
+
+    env:
+      # Pin the Compose project name so Docker always refers to the same
+      # stack regardless of which directory the runner checks out into.
+      COMPOSE_PROJECT_NAME: converso
 
     steps:
       - name: Checkout latest code
@@ -17,17 +22,29 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Pull latest & rebuild
-        working-directory: ${{ github.workspace }}
+      - name: Write .env from GitHub Secrets
         run: |
-          echo "→ Pulling latest code..."
-          git pull origin main
+          cat > .env <<'ENVEOF'
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL=gpt-4-turbo
+          VAPI_API_KEY=${{ secrets.VAPI_API_KEY }}
+          VAPI_BASE_URL=https://api.vapi.ai
+          CALCOM_BASE_URL=${{ secrets.CALCOM_BASE_URL }}
+          CALCOM_API_KEY=${{ secrets.CALCOM_API_KEY }}
+          CALCOM_WEBHOOK_SECRET=${{ secrets.CALCOM_WEBHOOK_SECRET }}
+          ENVEOF
 
+      - name: Rebuild and restart containers
+        run: |
           echo "→ Rebuilding containers..."
           docker compose up -d --build --remove-orphans
 
           echo "→ Running database migrations..."
-          docker compose exec -T app alembic upgrade head || echo "No pending migrations"
+          docker compose exec -T app alembic upgrade head
 
           echo "→ Removing dangling images..."
           docker image prune -f
@@ -35,13 +52,22 @@ jobs:
       - name: Health check
         run: |
           echo "→ Waiting for app to be ready..."
-          sleep 8
-          curl -sf http://localhost/api/health || (echo "Health check failed!" && exit 1)
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost/api/health; then
+              echo "Health check passed."
+              exit 0
+            fi
+            echo "  attempt $i/12 — retrying in 5s..."
+            sleep 5
+          done
+          echo "Health check failed after 60s!" >&2
+          docker compose logs --tail=50 app >&2
+          exit 1
 
       - name: Notify success
         if: success()
-        run: echo "Converso deployed successfully at $(date)"
+        run: echo "✓ Converso deployed successfully at $(date)"
 
       - name: Notify failure
         if: failure()
-        run: echo "Deployment FAILED at $(date)" >&2
+        run: echo "✗ Deployment FAILED at $(date)" >&2

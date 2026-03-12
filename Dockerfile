@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
-COPY . .
+# Copy application code and set ownership in one layer
+COPY --chown=converso:converso . .
 
 # Create non-root user
 RUN useradd -m -u 1000 converso && chown -R converso:converso /app
@@ -45,8 +45,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8000/api/health')"
 
-# Copy start script
-COPY --chown=converso:converso start.sh .
 RUN chmod +x start.sh
 
 # Run the application
