@@ -2,22 +2,24 @@ import pytest
 import asyncio
 from typing import AsyncGenerator, Generator
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
 import os
 
 # Set test environment
 os.environ["APP_ENV"] = "testing"
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://test:test@localhost:5432/test_converso"
-os.environ["REDIS_URL"] = "redis://localhost:6379/15"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://converso:password@localhost:5432/test_converso")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/15")
 
 from app.main import app
 from app.core.database import Base, get_db
 from app.core.config import settings
+from app.models import Company, User, Lead, Message, CalendarEvent
 
-# Test database engine
+# Use the URL from environment/settings
 test_engine = create_async_engine(
-    settings.database_url,
+    DATABASE_URL,
     poolclass=NullPool,
 )
 
@@ -32,8 +34,8 @@ TestSessionLocal = async_sessionmaker(
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """Create event loop for async tests"""
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
@@ -43,27 +45,69 @@ def event_loop() -> Generator:
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test"""
     async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     
     async with TestSessionLocal() as session:
         yield session
-    
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await session.rollback()
+        await session.close()
 
 
 @pytest.fixture(scope="function")
-def client(db_session: AsyncSession) -> TestClient:
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create test client with overridden database dependency"""
     async def override_get_db():
         yield db_session
     
     app.dependency_overrides[get_db] = override_get_db
     
-    with TestClient(app) as test_client:
-        yield test_client
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
     
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+async def test_user(db_session: AsyncSession) -> User:
+    """Create a test user and company"""
+    from app.core.security import get_password_hash
+    
+    company = Company(
+        name="Test Company",
+        ai_config={"temperature": 0.7, "tone": "friendly"}
+    )
+    db_session.add(company)
+    await db_session.flush()
+    
+    user = User(
+        company_id=company.id,
+        email="test@example.com",
+        name="Test User",
+        hashed_password=get_password_hash("password123"),
+        role="admin",
+        is_active=True
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+async def auth_client(client: AsyncClient, test_user: User) -> AsyncClient:
+    """Create a test client with authentication headers"""
+    from app.core.security import create_access_token
+    from datetime import timedelta
+    
+    token = create_access_token(
+        {"sub": str(test_user.id)}, 
+        expires_delta=timedelta(days=1)
+    )
+    client.headers.update({
+        "Authorization": f"Bearer {token}"
+    })
+    return client
 
 
 @pytest.fixture
@@ -74,20 +118,9 @@ def sample_lead_data():
         "email": "john@example.com",
         "phone": "+14165551234",
         "title": "CEO",
-        "lead_company": "Example Corp",
+        "company": "Example Corp",
         "industry": "Technology",
         "status": "new"
-    }
-
-
-@pytest.fixture
-def sample_message_data():
-    """Sample message data for testing"""
-    return {
-        "direction": "inbound",
-        "channel": "sms",
-        "content": "I'm interested in your product",
-        "twilio_message_sid": "SM123456789"
     }
 
 

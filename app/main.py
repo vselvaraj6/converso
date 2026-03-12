@@ -43,11 +43,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up Converso application...")
     
     # Create database tables if they don't exist
-    # This ensures the database schema is ready before accepting requests
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    logger.info("Database tables created/verified successfully")
+    # Skip this in testing as conftest.py handles it
+    if settings.app_env != "testing":
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created/verified successfully")
     
     yield
     

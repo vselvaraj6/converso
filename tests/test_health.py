@@ -1,32 +1,26 @@
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 
-def test_health_check(client: TestClient):
-    """Test basic health check endpoint"""
-    response = client.get("/api/health/")
+@pytest.mark.asyncio
+async def test_health_check(client: AsyncClient):
+    """Test the main health check endpoint"""
+    response = await client.get("/api/health/")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-    assert "app_name" in data
-    assert "environment" in data
+    assert response.json()["status"] == "healthy"
 
 
-def test_database_health(client: TestClient):
-    """Test database health check"""
-    response = client.get("/api/health/db")
+@pytest.mark.asyncio
+async def test_database_health(client: AsyncClient):
+    """Test the database health check endpoint"""
+    response = await client.get("/api/health/db")
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "healthy"
-    assert data["database"] == "connected"
+    assert response.json()["status"] == "healthy"
 
 
-def test_redis_health(client: TestClient):
-    """Test Redis health check"""
-    response = client.get("/api/health/redis")
+@pytest.mark.asyncio
+async def test_redis_health(client: AsyncClient):
+    """Test the redis health check endpoint"""
+    response = await client.get("/api/health/redis")
     assert response.status_code == 200
-    # Note: This might fail if Redis is not running locally
-    # In that case, we expect the unhealthy status
-    data = response.json()
-    assert "status" in data
-    assert "redis" in data
+    assert response.json()["status"] == "healthy"

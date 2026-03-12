@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, text
 import logging
 
 from app.models import (
@@ -163,7 +163,7 @@ class WorkflowService:
             }
             
             await self.db.commit()
-            return {"success": True, "lead_id": str(lead.id), "reply_sent": reply_text}
+            return {"success": True, "lead_id": str(lead.id), "reply_sent": reply_text, "analysis": analysis}
             
         except Exception as e:
             logger.error(f"Inbound message processing error: {e}")
@@ -190,7 +190,7 @@ class WorkflowService:
                     else:
                         errors += 1
                 except Exception as e:
-                    logger.error(f"Error processing lead {lead.id}: {e}")
+                    logger.error(f"Error processing lead {lead.id}: {e}", exc_info=True)
                     errors += 1
             
             await self.db.commit()
@@ -250,19 +250,16 @@ class WorkflowService:
     
     async def _get_leads_for_outbound(self) -> List[Lead]:
         """Get leads based on per-lead nudge intervals"""
-        now = datetime.utcnow()
         # Find leads past their specific nudge_interval_days
-        # Using a simple comparison: last_contacted < (now - interval)
-        result = await self.db.execute(
-            select(Lead).where(
+        query = select(Lead).where(
                 and_(
                     Lead.status.in_([LeadStatus.NEW, LeadStatus.CONTACTED]),
                     Lead.call_attempts < 3,
                     (Lead.last_contacted == None) | 
-                    (Lead.last_contacted < (now - func.cast(func.concat(Lead.nudge_interval_days, ' days'), func.interval)))
+                    (Lead.last_contacted + text("INTERVAL '1 day' * nudge_interval_days") < func.now())
                 )
             ).limit(50)
-        )
+        result = await self.db.execute(query)
         return result.scalars().all()
     
     async def _should_use_voice(self, lead: Lead) -> bool:
@@ -302,6 +299,8 @@ class WorkflowService:
             if call_result["success"]:
                 lead.call_attempts += 1
                 lead.last_call_attempt = datetime.utcnow()
+                lead.last_contacted = datetime.utcnow()
+                lead.last_contact_method = "voice"
                 self.db.add(Message(lead_id=lead.id, direction=MessageDirection.OUTBOUND, channel="voice", content=f"Call initiated by {agent_name}", vapi_call_id=call_result["call"]["id"]))
             return call_result
         except Exception as e:
@@ -312,12 +311,9 @@ class WorkflowService:
         try:
             company = await self.db.get(Company, lead.company_id)
             agent_name = "your representative"
-            
-            # Fetch agent name from assigned_agent_id
             if lead.assigned_agent_id:
                 agent = await self.db.get(User, lead.assigned_agent_id)
-                if agent:
-                    agent_name = agent.name
+                if agent: agent_name = agent.name
             
             messages = await self._get_conversation_history(lead.id, limit=5)
             if messages:

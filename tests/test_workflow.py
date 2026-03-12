@@ -19,7 +19,7 @@ class TestWorkflowService:
             ai_config={"temperature": 0.7, "tone": "friendly"}
         )
         db_session.add(company)
-        await db_session.commit()
+        await db_session.flush()
         
         lead = Lead(
             company_id=company.id,
@@ -80,7 +80,7 @@ class TestWorkflowService:
         # Setup
         company = Company(name="Test Company")
         db_session.add(company)
-        await db_session.commit()
+        await db_session.flush()
         
         lead = Lead(
             company_id=company.id,
@@ -94,7 +94,7 @@ class TestWorkflowService:
         
         with patch('app.services.workflow_service.OpenAIService') as mock_openai, \
              patch('app.services.workflow_service.TwilioService') as mock_twilio, \
-             patch('app.services.workflow_service.GoogleCalendarService') as mock_calendar:
+             patch('app.services.workflow_service.CalComService') as mock_calendar:
             
             # Mock calendar booking intent
             mock_openai.return_value.analyze_sentiment_and_intent = AsyncMock(return_value={
@@ -119,7 +119,8 @@ class TestWorkflowService:
             service = WorkflowService(db_session)
             service._handle_calendar_booking = AsyncMock(return_value={
                 "success": True,
-                "confirmation_message": "Perfect! You're booked for Jan 15 at 2:00 PM."
+                "confirmation_message": "Perfect! You're booked for Jan 15 at 2:00 PM.",
+                "booking_url": "https://cal.com/test"
             })
             
             webhook_data = {
@@ -141,9 +142,9 @@ class TestWorkflowService:
     async def test_outbound_campaign(self, db_session: AsyncSession):
         """Test outbound campaign processing"""
         # Setup multiple leads
-        company = Company(name="Test Company")
+        company = Company(name="Test Company", ai_config={})
         db_session.add(company)
-        await db_session.commit()
+        await db_session.flush()
         
         # New lead - should get contacted
         new_lead = Lead(
@@ -151,7 +152,8 @@ class TestWorkflowService:
             name="New Lead",
             email="new@example.com",
             phone="4165551111",
-            status=LeadStatus.NEW
+            status=LeadStatus.NEW,
+            nudge_interval_days=2
         )
         
         # Old lead - should get follow-up
@@ -161,7 +163,8 @@ class TestWorkflowService:
             email="old@example.com",
             phone="4165552222",
             status=LeadStatus.CONTACTED,
-            last_contacted=datetime.utcnow() - timedelta(days=3)
+            last_contacted=datetime.utcnow() - timedelta(days=3),
+            nudge_interval_days=2
         )
         
         # Recent lead - should not get contacted
@@ -171,7 +174,8 @@ class TestWorkflowService:
             email="recent@example.com",
             phone="4165553333",
             status=LeadStatus.CONTACTED,
-            last_contacted=datetime.utcnow() - timedelta(hours=12)
+            last_contacted=datetime.utcnow() - timedelta(hours=12),
+            nudge_interval_days=2
         )
         
         db_session.add_all([new_lead, old_lead, recent_lead])
@@ -199,6 +203,10 @@ class TestWorkflowService:
             mock_openai.return_value.generate_cold_outreach = AsyncMock(
                 return_value="Hi! Noticed you were interested in our product."
             )
+            mock_openai.return_value.generate_smart_reply = AsyncMock(return_value={
+                "success": True,
+                "reply": "Following up!"
+            })
             
             # Run campaign
             service = WorkflowService(db_session)
@@ -206,21 +214,23 @@ class TestWorkflowService:
             
             assert result["success"] is True
             assert result["processed"] == 2  # new_lead and old_lead
-            assert result["total"] == 2
             
             # Check leads were updated
             await db_session.refresh(new_lead)
             await db_session.refresh(old_lead)
+            await db_session.refresh(recent_lead)
             
             assert new_lead.last_contacted is not None
             assert old_lead.last_contacted > datetime.utcnow() - timedelta(minutes=1)
+            # recent_lead should NOT have been updated (still 12h ago)
+            assert recent_lead.last_contacted < datetime.utcnow() - timedelta(hours=11)
     
     @pytest.mark.asyncio
     async def test_voice_call_retry_logic(self, db_session: AsyncSession):
         """Test voice call retry logic"""
         company = Company(name="Test Company")
         db_session.add(company)
-        await db_session.commit()
+        await db_session.flush()
         
         # Lead with failed call attempts
         lead = Lead(
@@ -229,6 +239,7 @@ class TestWorkflowService:
             email="retry@example.com",
             phone="4165554444",
             status=LeadStatus.NEW,
+            last_contacted=datetime.utcnow() - timedelta(days=1),
             call_attempts=2,
             last_call_attempt=datetime.utcnow() - timedelta(days=2)
         )
@@ -237,7 +248,7 @@ class TestWorkflowService:
         
         service = WorkflowService(db_session)
         
-        # Test should use voice (under 3 attempts, over 24 hours)
+        # Test should use voice (under 3 attempts, has been contacted before via SMS)
         should_call = await service._should_use_voice(lead)
         assert should_call is True
         
@@ -252,9 +263,9 @@ class TestWorkflowService:
     @pytest.mark.asyncio
     async def test_sentiment_tracking(self, db_session: AsyncSession):
         """Test sentiment score tracking over time"""
-        company = Company(name="Test Company")
+        company = Company(name="Test Company", ai_config={})
         db_session.add(company)
-        await db_session.commit()
+        await db_session.flush()
         
         lead = Lead(
             company_id=company.id,

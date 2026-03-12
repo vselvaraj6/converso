@@ -56,6 +56,22 @@ jobs:
             sudo iptables -A DOCKER-ISOLATION-STAGE-2 -j RETURN
           }
 
+      - name: Run Tests
+        run: |
+          echo "→ Starting temporary containers for testing..."
+          docker compose build
+          
+          # Create test DB if not exists
+          docker compose run --rm postgres psql -U converso -tc "SELECT 1 FROM pg_database WHERE datname = 'test_converso'" | grep -q 1 || \
+          docker compose run --rm postgres createdb -U converso test_converso
+          
+          echo "→ Running pytest suite..."
+          docker compose run --rm \
+            -e APP_ENV=testing \
+            -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
+            -e REDIS_URL=redis://redis:6379/15 \
+            app pytest
+
       - name: Rebuild and restart containers
         run: |
           echo "→ Rebuilding containers (clean build)..."
