@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", env="APP_ENV")
     app_port: int = Field(default=8001, env="APP_PORT")
     app_host: str = Field(default="0.0.0.0", env="APP_HOST")
+    app_url: str = Field(default="https://converso.hawkly.app", env="APP_URL")
     
     # Database
     database_url: str = Field(

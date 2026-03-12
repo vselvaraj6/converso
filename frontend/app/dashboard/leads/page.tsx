@@ -1,8 +1,8 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { getLeads, createLead, importLeads, type Lead } from '@/lib/api'
-import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2, Upload, FileText, AlertCircle, CheckCircle2, X, Clock } from 'lucide-react'
+import { getLeads, createLead, importLeads, exportLeads, type Lead } from '@/lib/api'
+import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2, Upload, Download, FileText, AlertCircle, CheckCircle2, X, Clock } from 'lucide-react'
 import clsx from 'clsx'
 
 const STATUSES = ['all', 'new', 'contacted', 'qualified', 'converted', 'lost']
@@ -86,7 +86,19 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Leads</h1>
           <p className="text-gray-500 text-sm mt-1 font-medium">{total} total leads in pipeline</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button 
+            className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
+            onClick={async () => {
+              try {
+                await exportLeads()
+              } catch (e) {
+                alert('Export failed')
+              }
+            }}
+          >
+            <Download size={14} /> Export
+          </button>
           <button 
             className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
             onClick={() => setShowImportModal(true)}

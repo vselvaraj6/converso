@@ -297,7 +297,7 @@ class WorkflowService:
             call_result = await self.vapi.create_phone_call(
                 phone_number=f"+1{lead.phone}",
                 assistant_id=assistant_id,
-                webhook_url="https://converso.hawkly.app/api/webhooks/vapi/inbound"
+                webhook_url=f"{settings.app_url}/api/webhooks/vapi/inbound"
             )
             if call_result["success"]:
                 lead.call_attempts += 1

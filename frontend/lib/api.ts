@@ -151,6 +151,29 @@ export async function importLeads(file: File) {
   return res.json() as Promise<{ success_count: number; error_count: number; errors: string[] }>
 }
 
+export async function exportLeads() {
+  const token = getToken()
+  const res = await fetch(`${BASE}/leads/export`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!res.ok) {
+    throw new Error('Export failed')
+  }
+
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'leads_export.csv'
+  document.body.appendChild(a)
+  a.click()
+  window.URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+}
+
 // ── Meetings ──────────────────────────────────────────────────────────────────
 
 export async function getMeetings(upcomingOnly = true) {

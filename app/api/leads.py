@@ -9,6 +9,7 @@ from uuid import UUID
 import io
 
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel, EmailStr
@@ -40,6 +41,7 @@ class CreateLeadRequest(BaseModel):
     industry: Optional[str] = None
     source: Optional[str] = "manual"
     interest: Optional[str] = None
+    nudge_interval_days: Optional[int] = 2
     company_id: Optional[UUID] = None  # If not provided, uses default company
 
 
@@ -63,6 +65,50 @@ class LeadResponse(BaseModel):
     phone: str
     status: str
     created_at: str
+
+
+@router.get("/export")
+async def export_leads(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Export all leads for the current user's company to CSV.
+    """
+    result = await db.execute(
+        select(Lead).where(Lead.company_id == current_user.company_id)
+    )
+    leads = result.scalars().all()
+
+    if not leads:
+        raise HTTPException(status_code=404, detail="No leads found to export")
+
+    data = []
+    for lead in leads:
+        data.append({
+            "Name": lead.name,
+            "Email": lead.email,
+            "Phone": lead.phone,
+            "Company": lead.lead_company,
+            "Title": lead.title,
+            "Industry": lead.industry,
+            "Status": lead.status,
+            "Interest": lead.interest,
+            "Sentiment": lead.sentiment_score.get("latest") if lead.sentiment_score else "",
+            "Nudge Interval (Days)": lead.nudge_interval_days,
+            "Call Attempts": lead.call_attempts,
+            "Created At": lead.created_at.strftime("%Y-%m-%d %H:%M:%S") if lead.created_at else "",
+            "Last Contacted": lead.last_contacted.strftime("%Y-%m-%d %H:%M:%S") if lead.last_contacted else ""
+        })
+
+    df = pd.DataFrame(data)
+    stream = io.StringIO()
+    df.to_csv(stream, index=False)
+
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=leads_export.csv"
+
+    return response
 
 
 @router.get("/", response_model=LeadListResponse)
@@ -355,7 +401,7 @@ async def create_lead(
             source=lead_data.source,
             interest=lead_data.interest,
             status=LeadStatus.NEW,
-            nudge_interval_days=lead_data.nudge_interval_days or 2
+            nudge_interval_days=lead_data.nudge_interval_days
         )
         
         db.add(lead)
