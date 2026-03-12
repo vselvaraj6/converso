@@ -40,9 +40,11 @@ services:
       - "3001:3000"
     environment:
       - DATABASE_URL=postgresql://converso:password@postgres:5432/calcom
+      - DATABASE_DIRECT_URL=postgresql://converso:password@postgres:5432/calcom
       - NEXT_PUBLIC_WEBAPP_URL=http://localhost:3001
-      - NEXTAUTH_SECRET=secret
-      - CALENDSO_ENCRYPTION_KEY=secret
+      - NEXTAUTH_URL=http://localhost:3001
+      - NEXTAUTH_SECRET=ae26ea82931508da3127a968a64184c1
+      - CALENDSO_ENCRYPTION_KEY=ae26ea82931508da3127a968a64184c1
       - NEXT_PUBLIC_IS_E2E=1
     depends_on:
       postgres:
