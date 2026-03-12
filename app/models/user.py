@@ -33,6 +33,9 @@ class User(Base):
     
     # Calendar settings
     calendar_email = Column(String, nullable=True)
+    calendar_connected = Column(Boolean, default=False)
+    calcom_api_key = Column(String, nullable=True)
+    calcom_event_id = Column(Integer, nullable=True)
     working_hours = Column(JSON, default={"start": 9, "end": 17})
     
     # Timestamps

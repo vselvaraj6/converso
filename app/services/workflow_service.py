@@ -222,38 +222,58 @@ class WorkflowService:
         return list(reversed(messages))
     
     async def _handle_calendar_booking(self, lead: Lead, company: Company, requested_time: Optional[str] = None) -> Dict:
-        booking_url = getattr(company, "cal_booking_url", None)
-        event_type_id = getattr(company, "cal_event_type_id", None)
+        """
+        Return the booking URL or slots, prioritizing the assigned agent's calendar.
+        """
+        # 1. Determine which calendar settings to use (Agent vs Company)
+        agent = None
+        if lead.assigned_agent_id:
+            agent = await self.db.get(User, lead.assigned_agent_id)
         
-        logger.info(f"Handling booking for lead {lead.id}, company {company.id}. URL: {booking_url}, Event ID: {event_type_id}")
+        # Check if agent has a connected calendar
+        has_agent_cal = agent and agent.calendar_connected and agent.calcom_api_key
+        
+        booking_url = agent.calcom_api_key if has_agent_cal else company.cal_booking_url
+        event_type_id = agent.calcom_event_id if has_agent_cal else company.cal_event_type_id
+        
+        logger.info(f"Handling booking for lead {lead.id}. Agent Cal: {has_agent_cal}, URL: {booking_url}")
         
         if not booking_url:
-            logger.warning(f"No booking URL set for company {company.id}")
-            return {"booking_url": None, "confirmation_message": "I'll have someone reach out to find a time that works for you."}
+            logger.warning(f"No calendar connected for agent {lead.assigned_agent_id} or company {company.id}")
+            return {
+                "booking_url": None, 
+                "confirmation_message": "I'd love to get that scheduled. I'll have someone from our team reach out to you shortly to find a time that works!"
+            }
 
         first_name = lead.name.split()[0] if lead.name else "there"
         slots_text = ""
+        
+        # 2. Try to fetch available slots
         if event_type_id:
             try:
+                # If agent has their own API key, we should ideally use it here
+                # For now, CalComService uses global settings, but we can pass the key if needed
                 logger.info(f"Fetching slots for event type {event_type_id}")
                 start_search = datetime.utcnow().isoformat() + "Z"
                 end_search = (datetime.utcnow() + timedelta(days=3)).isoformat() + "Z"
                 slots = await self.calendar.get_available_slots(event_type_id, start_search, end_search)
+                
                 if slots:
                     formatted_slots = []
                     for slot in slots[:3]:
                         dt = datetime.fromisoformat(slot["time"].replace("Z", "+00:00")).replace(tzinfo=None)
                         formatted_slots.append(dt.strftime("%A, %b %d at %I:%M %p"))
                     slots_text = "\n\nAvailable times:\n- " + "\n- ".join(formatted_slots)
-                    logger.info(f"Successfully formatted {len(formatted_slots)} slots")
-                else:
-                    logger.info("No available slots found")
             except Exception as e:
-                logger.error(f"Error fetching slots: {e}", exc_info=True)
+                logger.error(f"Error fetching slots: {e}")
+
+        # Construct response
+        # If it's a direct Cal.com link (not a key), use it
+        final_link = booking_url if "cal.com" in str(booking_url) else f"https://cal.com/booking/{event_type_id}"
 
         return {
-            "booking_url": booking_url,
-            "confirmation_message": f"Great, {first_name}! I can certainly help with that.{slots_text}\n\nYou can also pick any other time that works for you here: {booking_url}"
+            "booking_url": final_link,
+            "confirmation_message": f"Great, {first_name}! I can certainly help with that.{slots_text}\n\nYou can also pick any other time that works for you here: {final_link}"
         }
     
     async def _get_leads_for_outbound(self) -> List[Lead]:

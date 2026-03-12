@@ -75,6 +75,15 @@ export function getStoredUser(): User | null {
   return raw ? JSON.parse(raw) : null
 }
 
+export async function updateMe(data: any) {
+  const user = await request<User>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+  localStorage.setItem('user', JSON.stringify(user))
+  return user
+}
+
 // ── Company ──────────────────────────────────────────────────────────────────
 
 export async function getCompany() {
@@ -196,6 +205,8 @@ export interface User {
   name: string
   role: string
   company_id: string
+  calendar_connected: boolean
+  calcom_event_id: number | null
 }
 
 export interface Lead {
@@ -295,6 +306,7 @@ export interface CreateLeadPayload {
   phone: string
   title?: string
   company?: string
+  lead_company?: string
   industry?: string
   source?: string
   interest?: string
