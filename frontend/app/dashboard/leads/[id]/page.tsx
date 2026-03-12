@@ -54,7 +54,7 @@ export default function LeadDetailPage() {
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="p-4 sm:p-8 max-w-6xl">
       {/* Back */}
       <Link href="/dashboard/leads" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-6">
         <ArrowLeft size={14} /> Back to leads
@@ -147,7 +147,7 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Conversation */}
-        <div className="lg:col-span-2 card flex flex-col" style={{ maxHeight: '80vh' }}>
+        <div className="lg:col-span-2 card flex flex-col max-h-[60vh] lg:max-h-[80vh]">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
             <MessageSquare size={16} className="text-gray-500" />
             <h2 className="font-semibold text-gray-900">Conversation</h2>
@@ -167,7 +167,7 @@ export default function LeadDetailPage() {
                 >
                   <div
                     className={clsx(
-                      'max-w-xs lg:max-w-md rounded-2xl px-4 py-2.5 text-sm',
+                      'max-w-[75%] sm:max-w-xs lg:max-w-md rounded-2xl px-4 py-2.5 text-sm',
                       msg.direction === 'outbound'
                         ? 'bg-brand-600 text-white rounded-br-sm'
                         : 'bg-gray-100 text-gray-900 rounded-bl-sm',

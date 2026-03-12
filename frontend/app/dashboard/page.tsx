@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const byStatus = (s: string) => leads.filter(l => l.status === s).length
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
@@ -63,7 +63,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent leads */}
-      <div className="card">
+      <div className="card overflow-x-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Recent leads</h2>
           <Link href="/dashboard/leads" className="text-sm text-brand-600 hover:underline flex items-center gap-1">

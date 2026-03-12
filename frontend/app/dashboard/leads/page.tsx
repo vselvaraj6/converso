@@ -52,9 +52,9 @@ export default function LeadsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-gray-500 text-sm mt-1">{total} total</p>
@@ -94,7 +94,7 @@ export default function LeadsPage() {
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-x-auto">
         {loading ? (
           <div className="p-12 text-center text-gray-400 text-sm">Loading…</div>
         ) : filtered.length === 0 ? (
@@ -208,7 +208,7 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">{error}</div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Full name *</label>
               <input className="input" value={form.name} onChange={set('name')} required />

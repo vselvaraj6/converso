@@ -1,7 +1,8 @@
 'use client'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, MessageSquare, Calendar, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, MessageSquare, Calendar, Settings, LogOut, X } from 'lucide-react'
 import { logout } from '@/lib/api'
 import clsx from 'clsx'
 
@@ -13,19 +14,37 @@ const nav = [
   { href: '/dashboard/settings',      label: 'Settings',      icon: Settings },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const path = usePathname()
+  const prevPath = useRef(path)
+
+  // Auto-close on navigation (mobile)
+  useEffect(() => {
+    if (prevPath.current !== path) {
+      prevPath.current = path
+      onClose?.()
+    }
+  }, [path, onClose])
 
   return (
     <aside className="w-56 shrink-0 flex flex-col bg-white border-r border-gray-200 min-h-screen">
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
             <MessageSquare size={14} className="text-white" />
           </div>
           <span className="font-bold text-gray-900 text-lg">Converso</span>
         </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="md:hidden p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Navigation */}

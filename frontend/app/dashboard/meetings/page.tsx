@@ -53,7 +53,7 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
   const today = isToday(meeting.start_time)
   return (
     <div className={clsx(
-      'card p-5 flex gap-5 transition-shadow hover:shadow-md',
+      'card p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:gap-5 transition-shadow hover:shadow-md',
       today && 'border-brand-300 ring-1 ring-brand-200',
     )}>
       {/* Date column */}
@@ -164,7 +164,7 @@ export default function MeetingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-4 sm:p-8 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>

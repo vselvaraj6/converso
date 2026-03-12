@@ -19,7 +19,7 @@ function Section({ title, icon: Icon, children }: {
 
 function EnvRow({ label, envKey, description }: { label: string; envKey: string; description: string }) {
   return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-100 last:border-0">
+    <div className="flex items-start justify-between gap-3 flex-wrap py-3 border-b border-gray-100 last:border-0">
       <div>
         <p className="text-sm font-medium text-gray-800">{label}</p>
         <p className="text-xs text-gray-400 mt-0.5">{description}</p>
@@ -40,7 +40,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl space-y-6">
+    <div className="p-4 sm:p-8 max-w-3xl space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500 text-sm mt-1">Manage your Converso configuration</p>

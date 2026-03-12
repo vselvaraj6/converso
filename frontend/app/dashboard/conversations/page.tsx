@@ -41,7 +41,7 @@ export default function ConversationsPage() {
     : leads
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Conversations</h1>
         <p className="text-gray-500 text-sm mt-1">Leads with active message threads</p>
@@ -69,7 +69,7 @@ export default function ConversationsPage() {
             <Link
               key={lead.id}
               href={`/dashboard/leads/${lead.id}`}
-              className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors"
             >
               <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-sm shrink-0">
                 {lead.name.charAt(0).toUpperCase()}
