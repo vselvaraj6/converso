@@ -43,18 +43,26 @@ jobs:
           echo "→ Tearing down existing stack..."
           docker compose down --remove-orphans 2>/dev/null || true
 
-          echo "→ Flushing stale nftables state (Docker's actual backend)..."
-          sudo nft flush ruleset
+          echo "→ Recreating missing Docker isolation chains..."
+          sudo iptables -N DOCKER-ISOLATION-STAGE-1 || true
+          sudo iptables -N DOCKER-ISOLATION-STAGE-2 || true
+          sudo iptables -A FORWARD -j DOCKER-ISOLATION-STAGE-1 || true
+          sudo iptables -A DOCKER-ISOLATION-STAGE-1 ! -i docker0 -o docker0 -j DOCKER-ISOLATION-STAGE-2 || true
+          sudo iptables -A DOCKER-ISOLATION-STAGE-1 -j RETURN || true
+          sudo iptables -A DOCKER-ISOLATION-STAGE-2 -j RETURN || true
 
-          echo "→ Restarting Docker daemon to recreate chains..."
+          echo "→ Restarting Docker daemon to ensure clean state..."
           sudo systemctl restart docker
-          sleep 3
+          sleep 5
 
       - name: Rebuild and restart containers
         run: |
           echo "→ Rebuilding containers..."
-          docker compose build --no-cache
+          docker compose build
           docker compose up -d --remove-orphans
+
+          echo "→ Waiting for database..."
+          sleep 10
 
           echo "→ Running database migrations..."
           docker compose exec -T app alembic upgrade head
@@ -64,9 +72,9 @@ jobs:
 
       - name: Health check
         run: |
-          echo "→ Waiting for app to be ready..."
+          echo "→ Waiting for app to be ready on port 8080..."
           for i in $(seq 1 12); do
-            if curl -sf http://localhost/api/health; then
+            if curl -sf http://localhost:8080/api/health; then
               echo "Health check passed."
               exit 0
             fi
