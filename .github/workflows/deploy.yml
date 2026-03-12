@@ -43,13 +43,21 @@ jobs:
           echo "→ Tearing down existing stack..."
           docker compose down --remove-orphans 2>/dev/null || true
 
+          echo "→ Checking sudo access..."
+          if ! sudo -n true 2>/dev/null; then
+            echo "ERROR: Runner user lacks passwordless sudo." >&2
+            echo "Run this once on the homelab:" >&2
+            echo "  echo \"\$(whoami) ALL=(ALL) NOPASSWD: /usr/sbin/iptables, /sbin/iptables, /bin/systemctl\" | sudo tee /etc/sudoers.d/github-runner-docker" >&2
+            exit 1
+          fi
+
           echo "→ Flushing stale iptables state..."
-          sudo iptables -F 2>/dev/null || true
-          sudo iptables -X 2>/dev/null || true
-          sudo iptables -t nat -F 2>/dev/null || true
-          sudo iptables -t nat -X 2>/dev/null || true
-          sudo iptables -t mangle -F 2>/dev/null || true
-          sudo iptables -t mangle -X 2>/dev/null || true
+          sudo iptables -F
+          sudo iptables -X
+          sudo iptables -t nat -F
+          sudo iptables -t nat -X
+          sudo iptables -t mangle -F
+          sudo iptables -t mangle -X
 
           echo "→ Restarting Docker daemon to recreate chains..."
           sudo systemctl restart docker
