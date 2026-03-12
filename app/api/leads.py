@@ -108,6 +108,7 @@ async def list_leads(
             "status": lead.status,
             "last_contacted": lead.last_contacted.isoformat() if lead.last_contacted else None,
             "sentiment": lead.sentiment_score.get("latest") if lead.sentiment_score else None,
+            "nudge_interval_days": lead.nudge_interval_days,
             "created_at": lead.created_at.isoformat()
         } for lead in leads],
         total=total,

@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { getLeads, createLead, importLeads, type Lead } from '@/lib/api'
-import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2, Upload, FileText, AlertCircle, CheckCircle2, X } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2, Upload, FileText, AlertCircle, CheckCircle2, X, Clock } from 'lucide-react'
 import clsx from 'clsx'
 
 const STATUSES = ['all', 'new', 'contacted', 'qualified', 'converted', 'lost']
@@ -19,6 +19,21 @@ const SENTIMENT_EMOJI: Record<string, string> = {
   positive: '😊',
   neutral:  '😐',
   negative: '😟',
+}
+
+const formatDateTime = (dateStr: string | null) => {
+  if (!dateStr) return 'Never'
+  try {
+    const d = new Date(dateStr)
+    return d.toLocaleString([], { 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
+  } catch (e) {
+    return '—'
+  }
 }
 
 const PAGE_SIZE = 25
@@ -68,8 +83,8 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
-          <p className="text-gray-500 text-sm mt-1">{total} total leads in pipeline</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Leads</h1>
+          <p className="text-gray-500 text-sm mt-1 font-medium">{total} total leads in pipeline</p>
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -92,7 +107,7 @@ export default function LeadsPage() {
         <div className="relative flex-1 lg:max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
-            className="input pl-10 shadow-sm"
+            className="input pl-10 shadow-sm font-medium"
             placeholder="Search by name, email, company…"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -121,10 +136,10 @@ export default function LeadsPage() {
         {loading ? (
           <div className="card p-12 text-center">
             <div className="animate-spin w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-gray-400 text-sm">Loading your leads…</p>
+            <p className="text-gray-400 text-sm font-bold">Loading your leads…</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="card p-12 text-center text-gray-400 text-sm">
+          <div className="card p-12 text-center text-gray-400 text-sm font-bold shadow-sm">
             No leads found matching your criteria.
           </div>
         ) : (
@@ -132,15 +147,16 @@ export default function LeadsPage() {
             {/* Desktop Table View */}
             <div className="hidden md:block card overflow-hidden shadow-sm border-gray-100">
               <div className="table-container">
-                <table className="w-full text-sm min-w-[900px]">
+                <table className="w-full text-sm min-w-[1000px]">
                   <thead>
-                    <tr className="text-left text-gray-500 text-xs uppercase tracking-wider bg-gray-50/50 border-b border-gray-100">
-                      <th className="px-6 py-4 font-bold">Lead Details</th>
-                      <th className="px-6 py-4 font-bold">Company</th>
-                      <th className="px-6 py-4 font-bold">Status</th>
-                      <th className="px-6 py-4 font-bold text-center">Sentiment</th>
-                      <th className="px-6 py-4 font-bold">Last contacted</th>
-                      <th className="px-6 py-4 font-bold"></th>
+                    <tr className="text-left text-gray-500 text-[10px] uppercase tracking-wider bg-gray-50/50 border-b border-gray-100 font-bold">
+                      <th className="px-6 py-4">Lead Details</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-center">Interval</th>
+                      <th className="px-6 py-4 text-center">Sentiment</th>
+                      <th className="px-6 py-4">Created</th>
+                      <th className="px-6 py-4">Last contacted</th>
+                      <th className="px-6 py-4"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -153,21 +169,26 @@ export default function LeadsPage() {
                             </div>
                             <div>
                               <div className="font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{lead.name}</div>
-                              <div className="text-gray-400 text-[11px] font-medium">{lead.email}</div>
+                              <div className="text-gray-400 text-[11px] font-medium">{lead.lead_company || lead.company || '—'}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 font-bold">{lead.company || '—'}</td>
                         <td className="px-6 py-4">
                           <span className={clsx('badge text-[10px] font-bold uppercase', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
                             {lead.status}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-xs font-bold text-gray-600">{(lead as any).nudge_interval_days}d</span>
+                        </td>
                         <td className="px-6 py-4 text-center text-lg" title={lead.sentiment || 'No sentiment data'}>
                           {lead.sentiment ? SENTIMENT_EMOJI[lead.sentiment] : '—'}
                         </td>
-                        <td className="px-6 py-4 text-gray-500 text-xs font-medium">
-                          {lead.last_contacted ? new Date(lead.last_contacted).toLocaleDateString() : 'Never'}
+                        <td className="px-6 py-4 text-gray-500 text-[11px] font-bold">
+                          {formatDateTime(lead.created_at)}
+                        </td>
+                        <td className="px-6 py-4 text-gray-500 text-[11px] font-bold">
+                          {formatDateTime(lead.last_contacted)}
                         </td>
                         <td className="px-6 py-4 text-right">
                           <Link href={`/dashboard/leads/${lead.id}`} className="p-2 rounded-lg hover:bg-white hover:shadow-sm text-gray-400 hover:text-brand-600 transition-all">
@@ -182,7 +203,7 @@ export default function LeadsPage() {
             </div>
 
             {/* Mobile Card View */}
-            <div className="grid grid-cols-1 gap-4 md:hidden">
+            <div className="grid grid-cols-1 gap-4 md:hidden pb-12">
               {filtered.map(lead => (
                 <Link 
                   key={lead.id} 
@@ -196,7 +217,7 @@ export default function LeadsPage() {
                       </div>
                       <div>
                         <div className="font-bold text-gray-900">{lead.name}</div>
-                        <div className="text-gray-400 text-[11px] font-medium">{lead.email}</div>
+                        <div className="text-gray-400 text-[11px] font-medium">{lead.lead_company || lead.company || '—'}</div>
                       </div>
                     </div>
                     <span className={clsx('badge text-[10px] font-bold uppercase', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
@@ -204,12 +225,20 @@ export default function LeadsPage() {
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-50">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Building2 size={12} className="text-gray-400" />
-                      <span className="truncate font-medium">{lead.company || 'No company'}</span>
+                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-50">
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Created</p>
+                      <p className="text-[10px] font-bold text-gray-600">{formatDateTime(lead.created_at)}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500 justify-end">
+                    <div className="space-y-1 text-right">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Last contact</p>
+                      <p className="text-[10px] font-bold text-gray-600">{formatDateTime(lead.last_contacted)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Interval</p>
+                      <p className="text-[10px] font-bold text-gray-600">{(lead as any).nudge_interval_days} days</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-end">
                       <span className="text-lg">{lead.sentiment ? SENTIMENT_EMOJI[lead.sentiment] : ''}</span>
                       <span className="capitalize text-[10px] font-bold">{lead.sentiment || 'No data'}</span>
                     </div>
@@ -287,13 +316,13 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
       <div className="card w-full max-w-lg p-6 my-auto shadow-2xl border-none">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Add new lead</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={20} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2">
+            <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}
@@ -375,7 +404,7 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
       <div className="card w-full max-w-md p-6 my-auto shadow-2xl border-none">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Import Leads</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={20} />
           </button>
         </div>
