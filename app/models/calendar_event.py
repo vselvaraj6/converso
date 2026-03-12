@@ -13,7 +13,7 @@ class CalendarEvent(Base):
     
     # Foreign keys
     lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False)
-    sales_agent_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    sales_agent_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     
     # Event details
     title = Column(String, nullable=False)
