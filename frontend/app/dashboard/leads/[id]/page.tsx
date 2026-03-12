@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getLead, getLeadMessages, updateLead, deleteLead, type LeadDetail, type Message } from '@/lib/api'
-import { ArrowLeft, Phone, Mail, Building2, MessageSquare, Calendar, Tag, Edit2, Trash2, X, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, Building2, MessageSquare, Calendar, Tag, Edit2, Trash2, X, AlertCircle, Clock } from 'lucide-react'
 import clsx from 'clsx'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -22,14 +22,14 @@ const SENTIMENT_COLORS: Record<string, string> = {
   negative: 'text-red-500',
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | null }) {
-  if (!value) return null
+function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | number | null }) {
+  if (value === undefined || value === null || value === '') return null
   return (
     <div className="flex items-start gap-3">
       <Icon size={15} className="text-gray-400 mt-0.5 shrink-0" />
       <div>
-        <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm text-gray-800">{value}</p>
+        <p className="text-xs text-gray-400 font-medium">{label}</p>
+        <p className="text-sm text-gray-800 font-bold">{value}</p>
       </div>
     </div>
   )
@@ -156,19 +156,19 @@ export default function LeadDetailPage() {
     <div className="max-w-6xl mx-auto pb-12">
       {/* Header / Nav */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Link href="/dashboard/leads" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900">
+        <Link href="/dashboard/leads" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 font-bold">
           <ArrowLeft size={14} /> Back to leads
         </Link>
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowEditModal(true)}
-            className="btn-secondary py-1.5 px-3 text-xs"
+            className="btn-secondary py-1.5 px-3 text-xs font-bold"
           >
             <Edit2 size={14} /> Edit
           </button>
           <button 
             onClick={handleDelete}
-            className="btn-secondary py-1.5 px-3 text-xs text-red-600 hover:bg-red-50 border-red-100"
+            className="btn-secondary py-1.5 px-3 text-xs font-bold text-red-600 hover:bg-red-50 border-red-100"
           >
             <Trash2 size={14} /> Delete
           </button>
@@ -183,7 +183,7 @@ export default function LeadDetailPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="min-w-0">
                   <h1 className="text-xl font-bold text-gray-900 truncate">{lead.name}</h1>
-                  {lead.title && <p className="text-sm text-gray-500 truncate">{lead.title}</p>}
+                  {lead.title && <p className="text-sm text-gray-500 truncate font-medium">{lead.title}</p>}
                 </div>
               </div>
               
@@ -212,6 +212,7 @@ export default function LeadDetailPage() {
               <InfoRow icon={Tag}       label="Industry" value={lead.industry} />
               <InfoRow icon={MessageSquare} label="Interest" value={lead.interest} />
               <InfoRow icon={Calendar}  label="Source"   value={lead.source} />
+              <InfoRow icon={Clock}     label="Nudge Interval" value={`${lead.nudge_interval_days} days`} />
             </div>
           </div>
 
@@ -240,8 +241,8 @@ export default function LeadDetailPage() {
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                   <MessageSquare size={20} className="text-gray-300" />
                 </div>
-                <p className="text-gray-400 text-sm font-medium">No messages yet.</p>
-                <p className="text-gray-300 text-xs mt-1">Outreach will start automatically based on campaign rules.</p>
+                <p className="text-gray-400 text-sm font-bold">No messages yet.</p>
+                <p className="text-gray-300 text-xs mt-1 font-medium">Outreach will start automatically based on campaign rules.</p>
               </div>
             ) : (
               messages.map(msg => (
@@ -300,7 +301,7 @@ export default function LeadDetailPage() {
 function EditLeadModal({ lead, onClose, onUpdated }: { 
   lead: LeadDetail; 
   onClose: () => void; 
-  onUpdated: (lead: Partial<LeadDetail>) => void 
+  onUpdated: (lead: any) => void 
 }) {
   const [form, setForm] = useState({
     name: lead.name || '',
@@ -310,6 +311,7 @@ function EditLeadModal({ lead, onClose, onUpdated }: {
     title: lead.title || '',
     industry: lead.industry || '',
     interest: lead.interest || '',
+    nudge_interval_days: lead.nudge_interval_days || 2,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -341,43 +343,48 @@ function EditLeadModal({ lead, onClose, onUpdated }: {
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2">
+            <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Full name</label>
-              <input className="input" value={form.name} onChange={set('name')} required />
+              <input className="input font-bold" value={form.name} onChange={set('name')} required />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</label>
-              <input type="email" className="input" value={form.email} onChange={set('email')} required />
+              <input type="email" className="input font-bold" value={form.email} onChange={set('email')} required />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone</label>
-              <input className="input" value={form.phone} onChange={set('phone')} required />
+              <input className="input font-bold" value={form.phone} onChange={set('phone')} required />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Company</label>
-              <input className="input" value={form.company} onChange={set('company')} />
+              <input className="input font-bold" value={form.company} onChange={set('company')} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Title</label>
-              <input className="input" value={form.title} onChange={set('title')} />
+              <input className="input font-bold" value={form.title} onChange={set('title')} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Industry</label>
-              <input className="input" value={form.industry} onChange={set('industry')} />
+              <input className="input font-bold" value={form.industry} onChange={set('industry')} />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Interest / notes</label>
-              <textarea className="input min-h-[80px] resize-none" value={form.interest} onChange={set('interest')} />
+              <textarea className="input min-h-[80px] resize-none font-bold text-sm" value={form.interest} onChange={set('interest')} />
+            </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="text-[10px] font-bold text-brand-600 uppercase tracking-wider">Nudge Interval (Days)</label>
+              <input type="number" className="input font-bold text-brand-600" min="1" max="30" value={form.nudge_interval_days} onChange={set('nudge_interval_days')} />
+              <p className="text-[10px] text-gray-400 italic font-medium">Number of days to wait before automatic follow-up.</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" className="btn-secondary w-full sm:w-auto" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary w-full sm:w-auto px-8" disabled={loading}>
+            <button type="button" className="btn-secondary w-full sm:w-auto font-bold text-xs" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary w-full sm:w-auto px-8 font-bold text-xs shadow-md shadow-brand-100" disabled={loading}>
               {loading ? 'Saving…' : 'Save Changes'}
             </button>
           </div>

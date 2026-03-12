@@ -19,7 +19,9 @@ class OpenAIService:
         lead: Lead,
         conversation_history: List[Message],
         company_config: Dict,
-        latest_message: str
+        latest_message: str,
+        agent_name: str = "your representative",
+        company_name: str = "our company"
     ) -> Dict:
         """Generate a smart reply based on conversation history and context"""
         try:
@@ -32,7 +34,7 @@ class OpenAIService:
             tone = prompt_config.get("tone", "friendly and professional")
             
             # Create system prompt
-            system_prompt = self._create_system_prompt(lead, prompt_config, tone)
+            system_prompt = self._create_system_prompt(lead, prompt_config, tone, agent_name, company_name)
             
             # Build messages for OpenAI
             messages = [
@@ -75,7 +77,7 @@ class OpenAIService:
             return {
                 "success": False,
                 "error": str(e),
-                "reply": "Hi! Thanks for reaching out. How can I help you today?"
+                "reply": f"Hi! This is {agent_name} from {company_name}. Thanks for reaching out. How can I help you today?"
             }
     
     async def analyze_sentiment_and_intent(
@@ -154,7 +156,9 @@ Respond in JSON format."""
     async def generate_cold_outreach(
         self,
         lead: Lead,
-        company_config: Dict
+        company_config: Dict,
+        agent_name: str = "your representative",
+        company_name: str = "our company"
     ) -> str:
         """Generate initial outreach message for new leads"""
         try:
@@ -162,6 +166,7 @@ Respond in JSON format."""
             temperature = prompt_config.get("temperature", 0.7)
             
             prompt = f"""Create a brief, friendly SMS message to reach out to a new lead.
+My name is {agent_name} and I am from {company_name}.
 Lead name: {lead.name}
 Company: {lead.lead_company}
 Industry: {lead.industry}
@@ -171,7 +176,8 @@ Requirements:
 - Keep it under 160 characters
 - Be warm and professional
 - Include a simple question to start conversation
-- Use the lead's first name"""
+- Use the lead's first name
+- Introduce yourself briefly as {agent_name} from {company_name}"""
             
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -180,13 +186,13 @@ Requirements:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=temperature,
-                max_tokens=60
+                max_tokens=100
             )
             
             return response.choices[0].message.content.strip()
         except Exception as e:
             logger.error(f"Cold outreach generation error: {e}")
-            return f"Hi {lead.name.split()[0]}! Thanks for your interest. How can we help you today?"
+            return f"Hi {lead.name.split()[0]}! This is {agent_name} from {company_name}. Thanks for your interest. How can we help you today?"
     
     async def summarize_conversation(
         self,
@@ -220,14 +226,14 @@ Requirements:
             thread_lines.append(f"{timestamp} - {direction}: {msg.content}")
         return "\n".join(thread_lines)
     
-    def _create_system_prompt(self, lead: Lead, config: Dict, tone: str) -> str:
+    def _create_system_prompt(self, lead: Lead, config: Dict, tone: str, agent_name: str, company_name: str) -> str:
         """Create a dynamic system prompt based on configuration"""
         base_prompt = config.get("prompt_template", "")
         industry_lingo = config.get("industry_lingo", "")
         company_memory = config.get("company_memory", "")
         
         if not base_prompt:
-            base_prompt = f"""You are a professional sales representative for a company in the {lead.industry or 'general'} industry.
+            base_prompt = f"""You are {agent_name}, a professional sales representative at {company_name} in the {lead.industry or 'general'} industry.
 Your goal is to build trust, answer questions using your company knowledge, and guide the lead towards booking a consultation call.
 
 Lead Name: {lead.name}
@@ -246,11 +252,14 @@ Instructions:
 - Focus on the benefits of your service without giving specific rate quotes or pricing.
 - Your primary call to action is to get them to book a call using the link provided in the conversation (if any).
 - Always address them by their name: {lead.name.split()[0]}.
+- Use your name, {agent_name}, when introducing yourself or if appropriate.
 """
         
         return base_prompt.format(
             lead_name=lead.name,
             industry=lead.industry or "Mortgage/Real Estate",
             company=lead.lead_company or "our firm",
-            tone=tone
+            tone=tone,
+            agent_name=agent_name,
+            company_name=company_name
         )

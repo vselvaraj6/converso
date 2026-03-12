@@ -73,16 +73,16 @@ export default function LeadsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            className="btn-secondary w-full sm:w-auto shadow-sm" 
+            className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
             onClick={() => setShowImportModal(true)}
           >
-            <Upload size={16} /> Import
+            <Upload size={14} /> Import
           </button>
           <button 
-            className="btn-primary w-full sm:w-auto shadow-md shadow-brand-100" 
+            className="btn-primary w-full sm:w-auto shadow-md shadow-brand-100 font-bold text-xs" 
             onClick={() => setShowModal(true)}
           >
-            <Plus size={16} /> Add lead
+            <Plus size={14} /> Add lead
           </button>
         </div>
       </div>
@@ -104,7 +104,7 @@ export default function LeadsPage() {
               key={s}
               onClick={() => { setStatus(s); setPage(1) }}
               className={clsx(
-                'px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-all whitespace-nowrap shadow-sm border',
+                'px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap shadow-sm border',
                 status === s
                   ? 'bg-brand-600 text-white border-brand-600'
                   : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
@@ -135,12 +135,12 @@ export default function LeadsPage() {
                 <table className="w-full text-sm min-w-[900px]">
                   <thead>
                     <tr className="text-left text-gray-500 text-xs uppercase tracking-wider bg-gray-50/50 border-b border-gray-100">
-                      <th className="px-6 py-4 font-semibold">Lead Details</th>
-                      <th className="px-6 py-4 font-semibold">Company</th>
-                      <th className="px-6 py-4 font-semibold">Status</th>
-                      <th className="px-6 py-4 font-semibold text-center">Sentiment</th>
-                      <th className="px-6 py-4 font-semibold">Last contacted</th>
-                      <th className="px-6 py-4 font-semibold"></th>
+                      <th className="px-6 py-4 font-bold">Lead Details</th>
+                      <th className="px-6 py-4 font-bold">Company</th>
+                      <th className="px-6 py-4 font-bold">Status</th>
+                      <th className="px-6 py-4 font-bold text-center">Sentiment</th>
+                      <th className="px-6 py-4 font-bold">Last contacted</th>
+                      <th className="px-6 py-4 font-bold"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -153,20 +153,20 @@ export default function LeadsPage() {
                             </div>
                             <div>
                               <div className="font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{lead.name}</div>
-                              <div className="text-gray-400 text-[11px]">{lead.email}</div>
+                              <div className="text-gray-400 text-[11px] font-medium">{lead.email}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600 font-medium">{lead.company || '—'}</td>
+                        <td className="px-6 py-4 text-gray-600 font-bold">{lead.company || '—'}</td>
                         <td className="px-6 py-4">
-                          <span className={clsx('badge text-[10px]', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
+                          <span className={clsx('badge text-[10px] font-bold uppercase', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
                             {lead.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center text-lg" title={lead.sentiment || 'No sentiment data'}>
                           {lead.sentiment ? SENTIMENT_EMOJI[lead.sentiment] : '—'}
                         </td>
-                        <td className="px-6 py-4 text-gray-500 text-xs">
+                        <td className="px-6 py-4 text-gray-500 text-xs font-medium">
                           {lead.last_contacted ? new Date(lead.last_contacted).toLocaleDateString() : 'Never'}
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -196,10 +196,10 @@ export default function LeadsPage() {
                       </div>
                       <div>
                         <div className="font-bold text-gray-900">{lead.name}</div>
-                        <div className="text-gray-400 text-[11px]">{lead.email}</div>
+                        <div className="text-gray-400 text-[11px] font-medium">{lead.email}</div>
                       </div>
                     </div>
-                    <span className={clsx('badge text-[10px]', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
+                    <span className={clsx('badge text-[10px] font-bold uppercase', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
                       {lead.status}
                     </span>
                   </div>
@@ -207,11 +207,11 @@ export default function LeadsPage() {
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-50">
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <Building2 size={12} className="text-gray-400" />
-                      <span className="truncate">{lead.company || 'No company'}</span>
+                      <span className="truncate font-medium">{lead.company || 'No company'}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-gray-500 justify-end">
                       <span className="text-lg">{lead.sentiment ? SENTIMENT_EMOJI[lead.sentiment] : ''}</span>
-                      <span className="capitalize text-[10px] font-medium">{lead.sentiment || 'No data'}</span>
+                      <span className="capitalize text-[10px] font-bold">{lead.sentiment || 'No data'}</span>
                     </div>
                   </div>
                 </Link>
@@ -224,7 +224,7 @@ export default function LeadsPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Page {page} of {totalPages}</span>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Page {page} of {totalPages}</span>
           <div className="flex gap-2">
             <button
               className="btn-secondary px-4 py-2 text-xs font-bold"
@@ -257,7 +257,7 @@ export default function LeadsPage() {
 
 function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', company: '', title: '', industry: '', source: 'manual', interest: '',
+    name: '', email: '', phone: '', company: '', title: '', industry: '', source: 'manual', interest: '', nudge_interval_days: 2,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -299,37 +299,42 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Full name *</label>
-              <input className="input" placeholder="e.g. Sarah Connor" value={form.name} onChange={set('name')} required />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Full name *</label>
+              <input className="input font-medium" placeholder="e.g. Sarah Connor" value={form.name} onChange={set('name')} required />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Email *</label>
-              <input type="email" className="input" placeholder="sarah@example.com" value={form.email} onChange={set('email')} required />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Email *</label>
+              <input type="email" className="input font-medium" placeholder="sarah@example.com" value={form.email} onChange={set('email')} required />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Phone *</label>
-              <input className="input" placeholder="+1234567890" value={form.phone} onChange={set('phone')} required />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Phone *</label>
+              <input className="input font-medium" placeholder="+1234567890" value={form.phone} onChange={set('phone')} required />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Company</label>
-              <input className="input" placeholder="Acme Corp" value={form.company} onChange={set('company')} />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Company</label>
+              <input className="input font-medium" placeholder="Acme Corp" value={form.company} onChange={set('company')} />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Title</label>
-              <input className="input" placeholder="VP of Sales" value={form.title} onChange={set('title')} />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Title</label>
+              <input className="input font-medium" placeholder="VP of Sales" value={form.title} onChange={set('title')} />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Industry</label>
-              <input className="input" placeholder="Mortgage" value={form.industry} onChange={set('industry')} />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Industry</label>
+              <input className="input font-medium" placeholder="Mortgage" value={form.industry} onChange={set('industry')} />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider">Interest / notes</label>
-              <textarea className="input min-h-[80px] resize-none" placeholder="Details about their needs..." value={form.interest} onChange={set('interest')} />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Interest / notes</label>
+              <textarea className="input min-h-[80px] resize-none font-medium text-sm" placeholder="Details about their needs..." value={form.interest} onChange={set('interest')} />
+            </div>
+            <div className="sm:col-span-2 space-y-1.5">
+              <label className="block text-[10px] font-bold text-brand-600 uppercase tracking-wider">Nudge Interval (Days)</label>
+              <input type="number" className="input font-bold" min="1" max="30" value={form.nudge_interval_days} onChange={set('nudge_interval_days')} />
+              <p className="text-[10px] text-gray-400 italic font-medium">Wait this many days before automatically following up if they don't respond.</p>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" className="btn-secondary w-full sm:w-auto order-2 sm:order-1" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary w-full sm:w-auto order-1 sm:order-2 px-8" disabled={loading}>
+            <button type="button" className="btn-secondary w-full sm:w-auto order-2 sm:order-1 font-bold text-xs" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary w-full sm:w-auto order-1 sm:order-2 px-8 font-bold text-xs" disabled={loading}>
               {loading ? 'Creating…' : 'Create lead'}
             </button>
           </div>
@@ -379,10 +384,10 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
           <div className="space-y-6">
             <div className="bg-brand-50 rounded-xl p-4 border border-brand-100">
               <h3 className="text-xs font-bold text-brand-700 uppercase tracking-wider mb-2">Expected Format</h3>
-              <p className="text-xs text-brand-600 leading-relaxed">
+              <p className="text-xs text-brand-600 leading-relaxed font-medium">
                 Upload an Excel (.xlsx, .xls) or CSV file with the following columns:
                 <br /><strong className="text-brand-800">name, email, phone</strong> (required)
-                <br /><span className="opacity-70 text-[10px]">Optional: title, company, industry, interest</span>
+                <br /><span className="opacity-70 text-[10px] font-bold">Optional: title, company, industry, interest</span>
               </p>
             </div>
 
@@ -406,26 +411,26 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
               {file ? (
                 <div>
                   <p className="text-sm font-bold text-gray-900 truncate px-4">{file.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-xs text-gray-500 mt-1 font-medium">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-400 mt-1">CSV, XLSX or XLS</p>
+                  <p className="text-sm font-bold text-gray-700">Click to upload or drag and drop</p>
+                  <p className="text-xs text-gray-400 mt-1 font-medium">CSV, XLSX or XLS</p>
                 </div>
               )}
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-xs font-medium flex items-center gap-2">
+              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-xs font-bold flex items-center gap-2">
                 <AlertCircle size={14} /> {error}
               </div>
             )}
 
             <div className="flex gap-3">
-              <button className="btn-secondary flex-1" onClick={onClose} disabled={uploading}>Cancel</button>
+              <button className="btn-secondary flex-1 font-bold text-xs" onClick={onClose} disabled={uploading}>Cancel</button>
               <button 
-                className="btn-primary flex-[2]" 
+                className="btn-primary flex-[2] font-bold text-xs shadow-md shadow-brand-100" 
                 onClick={handleUpload} 
                 disabled={!file || uploading}
               >
@@ -440,24 +445,24 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900">Import Complete</h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 mt-1 font-medium">
                 Successfully imported <span className="font-bold text-green-600">{result.success_count}</span> leads.
               </p>
             </div>
 
             {result.error_count > 0 && (
-              <div className="bg-orange-50 border border-yellow-100 rounded-xl p-4 text-left">
+              <div className="bg-orange-50 border border-yellow-100 rounded-xl p-4 text-left shadow-inner">
                 <p className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-2">
                   Warnings ({result.error_count})
                 </p>
-                <ul className="text-[11px] text-orange-600 space-y-1 max-h-32 overflow-y-auto">
+                <ul className="text-[11px] text-orange-600 space-y-1 max-h-32 overflow-y-auto font-medium">
                   {result.errors.map((err, i) => <li key={i}>• {err}</li>)}
                   {result.error_count > 10 && <li className="opacity-60 italic">And {result.error_count - 10} more errors...</li>}
                 </ul>
               </div>
             )}
 
-            <button className="btn-primary w-full py-3 shadow-lg shadow-brand-100" onClick={onClose}>
+            <button className="btn-primary w-full py-3 shadow-lg shadow-brand-100 font-bold" onClick={onClose}>
               Done
             </button>
           </div>

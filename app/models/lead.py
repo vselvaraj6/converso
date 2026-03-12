@@ -99,6 +99,9 @@ class Lead(Base):
     call_attempts = Column(Integer, default=0, nullable=False)
     last_call_attempt = Column(DateTime, nullable=True)
     
+    # Automated nurturing configuration
+    nudge_interval_days = Column(Integer, default=2, nullable=False)  # Default to nudge every 2 days if no response
+    
     # AI-powered insights
     sentiment_score = Column(JSON, default=dict, nullable=False)
     # Example structure:

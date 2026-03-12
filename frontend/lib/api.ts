@@ -197,6 +197,7 @@ export interface LeadDetail extends Lead {
   sentiment_score: Record<string, any> | null
   lead_score: number
   days_since_contact: number | null
+  nudge_interval_days: number
   is_qualified: boolean
   updated_at: string
 }
@@ -272,4 +273,5 @@ export interface CreateLeadPayload {
   industry?: string
   source?: string
   interest?: string
+  nudge_interval_days?: number
 }
