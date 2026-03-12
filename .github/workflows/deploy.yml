@@ -56,9 +56,8 @@ jobs:
 
       - name: Rebuild and restart containers
         run: |
-          echo "→ Rebuilding containers..."
-          # Use up -d without down to minimize downtime and avoid network destruction
-          docker compose build
+          echo "→ Rebuilding containers (clean build)..."
+          docker compose build --no-cache
           docker compose up -d --remove-orphans
 
           echo "→ Waiting for database..."
