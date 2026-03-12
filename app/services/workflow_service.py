@@ -231,11 +231,14 @@ class WorkflowService:
         if lead.assigned_agent_id:
             agent = await self.db.get(User, lead.assigned_agent_id)
         
-        # Check if agent has a managed calendar connection
-        has_agent_cal = agent and agent.calendar_connected and agent.calcom_username and agent.calcom_event_id
+        # Check if agent has a manual URL or managed calendar connection
+        has_agent_cal = agent and (agent.manual_calendar_url or (agent.calendar_connected and agent.calcom_username and agent.calcom_event_id))
         
-        # If agent has a shadow cal, construct the URL based on their username and event ID
-        if has_agent_cal:
+        # Determine booking URL
+        if agent and agent.manual_calendar_url:
+            booking_url = agent.manual_calendar_url
+            event_type_id = None # Manual URLs don't necessarily have an internal ID for slot fetching
+        elif has_agent_cal:
             base_url = (company.calcom_base_url or "https://cal.com").rstrip("/")
             booking_url = f"{base_url}/{agent.calcom_username}/{agent.calcom_event_id}"
             event_type_id = agent.calcom_event_id

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
-import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe } from 'lucide-react'
+import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon } from 'lucide-react'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children, description }: {
@@ -31,9 +31,13 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showProviderModal, setShowProviderModal] = useState(false)
+  const [manualCalUrl, setManualCalUrl] = useState('')
 
   useEffect(() => {
-    setUser(getStoredUser())
+    const stored = getStoredUser()
+    setUser(stored)
+    setManualCalUrl(stored?.manual_calendar_url || '')
+    
     Promise.all([getCompany(), getIndustryTemplates()])
       .then(([c, t]) => {
         setCompany(c)
@@ -47,7 +51,15 @@ export default function SettingsPage() {
     if (!company) return
     setSaving(true)
     try {
+      // Save company settings
       await updateCompany(company)
+      
+      // Save user manual cal URL if changed
+      if (manualCalUrl !== user?.manual_calendar_url) {
+        const updated = await updateMe({ manual_calendar_url: manualCalUrl })
+        setUser(updated)
+      }
+      
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -125,8 +137,29 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        {/* Calendar Connection */}
-        <Section title="Work Calendar" icon={Calendar} description="Enable AI to schedule meetings on your behalf">
+        {/* Manual Calendar URL */}
+        <Section title="Direct Calendar Link" icon={LinkIcon} description="Enter your personal booking URL directly">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Manual Booking URL</label>
+              <div className="relative">
+                <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  className="input pl-10 font-mono text-xs font-bold" 
+                  value={manualCalUrl} 
+                  onChange={e => setManualCalUrl(e.target.value)}
+                  placeholder="https://cal.com/your-name/15min"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
+                If provided, the AI will use this link for all your bookings. This overrides the "Work Calendar" integration below.
+              </p>
+            </div>
+          </div>
+        </Section>
+
+        {/* Calendar Connection (Managed) */}
+        <Section title="Work Calendar" icon={Calendar} description="Enable AI to schedule meetings on your behalf via Managed Cal">
           {user?.calendar_connected ? (
             <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -153,7 +186,7 @@ export default function SettingsPage() {
               </div>
               <h3 className="font-bold text-gray-900 mb-1">No Work Calendar Integrated</h3>
               <p className="text-xs text-gray-500 mb-6 max-w-sm mx-auto font-medium leading-relaxed">
-                Connect your work calendar via Okta to allow the AI to automatically schedule meetings when a lead is ready. We handle the complexity of scheduling for you.
+                Connect your work calendar via Okta to allow the AI to automatically schedule meetings using our managed shadow profiles.
               </p>
               <button 
                 type="button"

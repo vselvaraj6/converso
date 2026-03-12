@@ -66,6 +66,7 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     calendar_connected: Optional[bool] = None
+    manual_calendar_url: Optional[str] = None
     calcom_api_key: Optional[str] = None
     calcom_event_id: Optional[int] = None
 
@@ -134,6 +135,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
             "role": user.role, 
             "company_id": str(user.company_id),
             "calendar_connected": user.calendar_connected,
+            "manual_calendar_url": user.manual_calendar_url,
             "calcom_event_id": user.calcom_event_id
         },
     )
@@ -183,6 +185,7 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
             "role": user.role, 
             "company_id": str(user.company_id),
             "calendar_connected": user.calendar_connected,
+            "manual_calendar_url": user.manual_calendar_url,
             "calcom_event_id": user.calcom_event_id
         },
     )
@@ -197,6 +200,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "role": current_user.role,
         "company_id": str(current_user.company_id),
         "calendar_connected": current_user.calendar_connected,
+        "manual_calendar_url": current_user.manual_calendar_url,
         "calcom_event_id": current_user.calcom_event_id
     }
 
@@ -213,6 +217,8 @@ async def update_me(
         current_user.email = data.email
     if data.calendar_connected is not None:
         current_user.calendar_connected = data.calendar_connected
+    if data.manual_calendar_url is not None:
+        current_user.manual_calendar_url = data.manual_calendar_url
     if data.calcom_api_key is not None:
         current_user.calcom_api_key = data.calcom_api_key
     if data.calcom_event_id is not None:
@@ -227,6 +233,7 @@ async def update_me(
         "role": current_user.role,
         "company_id": str(current_user.company_id),
         "calendar_connected": current_user.calendar_connected,
+        "manual_calendar_url": current_user.manual_calendar_url,
         "calcom_event_id": current_user.calcom_event_id
     }
 

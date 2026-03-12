@@ -223,6 +223,7 @@ export interface User {
   role: string
   company_id: string
   calendar_connected: boolean
+  manual_calendar_url: string | null
   calcom_event_id: number | null
 }
 

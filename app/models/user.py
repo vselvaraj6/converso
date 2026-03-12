@@ -33,6 +33,7 @@ class User(Base):
     
     # Managed Calendar (Platform handles Cal.com integration)
     calendar_connected = Column(Boolean, default=False)
+    manual_calendar_url = Column(String, nullable=True)
     calcom_user_id = Column(Integer, nullable=True)
     calcom_username = Column(String, nullable=True)
     calcom_event_id = Column(Integer, nullable=True)
