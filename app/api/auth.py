@@ -53,6 +53,7 @@ class RegisterRequest(BaseModel):
     password: str
     name: str
     company_name: str
+    industry: Optional[str] = "Mortgage"
 
 
 class TokenResponse(BaseModel):
@@ -124,9 +125,18 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    # Start with base config
+    ai_config = {"temperature": 0.7, "tone": "friendly and professional", "prompt_template": ""}
+    
+    # If industry template exists, autopopulate
+    template = INDUSTRY_TEMPLATES.get(data.industry)
+    if template:
+        ai_config.update(template)
+
     company = Company(
         name=data.company_name,
-        ai_config={"temperature": 0.7, "tone": "friendly and professional", "prompt_template": ""},
+        industry=data.industry,
+        ai_config=ai_config,
     )
     db.add(company)
     await db.flush()

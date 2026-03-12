@@ -52,10 +52,11 @@ export async function register(
   password: string,
   name: string,
   company_name: string,
+  industry: string = 'Mortgage',
 ) {
   const data = await request<{ access_token: string; user: User }>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, name, company_name }),
+    body: JSON.stringify({ email, password, name, company_name, industry }),
   })
   localStorage.setItem('token', data.access_token)
   localStorage.setItem('user', JSON.stringify(data.user))
