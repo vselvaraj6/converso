@@ -263,7 +263,7 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [loading, setLoading] = useState(false)
 
   function set(field: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }))
   }
 
