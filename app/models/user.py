@@ -31,10 +31,10 @@ class User(Base):
     oauth_tokens = Column(JSON, default=dict)
     # Example: {"google": {"access_token": "", "refresh_token": "", "expires_at": ""}}
     
-    # Calendar settings
-    calendar_email = Column(String, nullable=True)
+    # Managed Calendar (Platform handles Cal.com integration)
     calendar_connected = Column(Boolean, default=False)
-    calcom_api_key = Column(String, nullable=True)
+    calcom_user_id = Column(Integer, nullable=True)
+    calcom_username = Column(String, nullable=True)
     calcom_event_id = Column(Integer, nullable=True)
     working_hours = Column(JSON, default={"start": 9, "end": 17})
     

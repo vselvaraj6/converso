@@ -223,18 +223,23 @@ class WorkflowService:
     
     async def _handle_calendar_booking(self, lead: Lead, company: Company, requested_time: Optional[str] = None) -> Dict:
         """
-        Return the booking URL or slots, prioritizing the assigned agent's calendar.
+        Return the booking URL or slots, prioritizing the assigned agent's managed calendar.
         """
         # 1. Determine which calendar settings to use (Agent vs Company)
         agent = None
         if lead.assigned_agent_id:
             agent = await self.db.get(User, lead.assigned_agent_id)
         
-        # Check if agent has a connected calendar
-        has_agent_cal = agent and agent.calendar_connected and agent.calcom_api_key
+        # Check if agent has a managed calendar connection
+        has_agent_cal = agent and agent.calendar_connected and agent.calcom_username and agent.calcom_event_id
         
-        booking_url = agent.calcom_api_key if has_agent_cal else company.cal_booking_url
-        event_type_id = agent.calcom_event_id if has_agent_cal else company.cal_event_type_id
+        # If agent has a shadow cal, construct the URL based on their username and event ID
+        if has_agent_cal:
+            booking_url = f"https://cal.com/{agent.calcom_username}/{agent.calcom_event_id}"
+            event_type_id = agent.calcom_event_id
+        else:
+            booking_url = company.cal_booking_url
+            event_type_id = company.cal_event_type_id
         
         logger.info(f"Handling booking for lead {lead.id}. Agent Cal: {has_agent_cal}, URL: {booking_url}")
         
@@ -251,8 +256,6 @@ class WorkflowService:
         # 2. Try to fetch available slots
         if event_type_id:
             try:
-                # If agent has their own API key, we should ideally use it here
-                # For now, CalComService uses global settings, but we can pass the key if needed
                 logger.info(f"Fetching slots for event type {event_type_id}")
                 start_search = datetime.utcnow().isoformat() + "Z"
                 end_search = (datetime.utcnow() + timedelta(days=3)).isoformat() + "Z"
@@ -267,13 +270,9 @@ class WorkflowService:
             except Exception as e:
                 logger.error(f"Error fetching slots: {e}")
 
-        # Construct response
-        # If it's a direct Cal.com link (not a key), use it
-        final_link = booking_url if "cal.com" in str(booking_url) else f"https://cal.com/booking/{event_type_id}"
-
         return {
-            "booking_url": final_link,
-            "confirmation_message": f"Great, {first_name}! I can certainly help with that.{slots_text}\n\nYou can also pick any other time that works for you here: {final_link}"
+            "booking_url": booking_url,
+            "confirmation_message": f"Great, {first_name}! I can certainly help with that.{slots_text}\n\nYou can also pick any other time that works for you here: {booking_url}"
         }
     
     async def _get_leads_for_outbound(self) -> List[Lead]:
