@@ -271,6 +271,74 @@ converso/
 
 ---
 
+## GitHub Actions Self-Hosted Runner Setup
+
+Run these commands **on your homelab machine** (one time only).
+
+### Step 1 — Get a registration token from GitHub
+
+Go to: `https://github.com/vselvaraj6/converso/settings/actions/runners/new`
+
+Select **Linux** and copy the token shown on that page. It looks like `AXXXXXXXXXXXXXXXXXXXXXXXXX`.
+
+### Step 2 — Download and configure the runner
+
+```bash
+# Create a directory for the runner
+mkdir -p ~/actions-runner && cd ~/actions-runner
+
+# Detect your CPU architecture automatically
+ARCH=$(uname -m)
+case $ARCH in
+  x86_64)  RUNNER_ARCH="x64" ;;
+  aarch64) RUNNER_ARCH="arm64" ;;
+  armv7l)  RUNNER_ARCH="arm" ;;
+  *)       echo "Unknown arch: $ARCH"; exit 1 ;;
+esac
+
+# Download the latest runner (check https://github.com/actions/runner/releases for latest version)
+RUNNER_VERSION="2.322.0"
+curl -fsSL -o actions-runner.tar.gz \
+  "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-${RUNNER_ARCH}-${RUNNER_VERSION}.tar.gz"
+
+# Verify the download succeeded
+ls -lh actions-runner.tar.gz
+
+# Extract
+tar xzf actions-runner.tar.gz
+
+# Configure (paste YOUR token from Step 1 after --token)
+./config.sh \
+  --url https://github.com/vselvaraj6/converso \
+  --token YOUR_TOKEN_HERE \
+  --name homelab \
+  --unattended
+```
+
+### Step 3 — Install as a systemd service (survives reboots)
+
+```bash
+sudo ./svc.sh install
+sudo ./svc.sh start
+
+# Verify it's running
+sudo ./svc.sh status
+```
+
+### Step 4 — Allow the runner to use Docker
+
+```bash
+# Replace 'ubuntu' with whatever user the runner runs as
+sudo usermod -aG docker ubuntu
+# Log out and back in (or run: newgrp docker)
+```
+
+### Step 5 — Confirm it's online
+
+Go to `https://github.com/vselvaraj6/converso/settings/actions/runners` — you should see **homelab** with a green **Idle** status.
+
+---
+
 ## Troubleshooting
 
 **Frontend can't reach the API**
