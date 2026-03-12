@@ -181,6 +181,7 @@ export interface Lead {
   email: string
   phone: string
   company: string | null
+  lead_company: string | null
   status: string
   last_contacted: string | null
   sentiment: string | null
