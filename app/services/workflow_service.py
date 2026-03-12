@@ -109,7 +109,8 @@ class WorkflowService:
                     lead, company, requested_time=analysis.get("extracted_datetime")
                 )
                 if booking_result.get("booking_url"):
-                    reply_text = booking_result["confirmation_message"]
+                    # Append the link naturally instead of overwriting the whole reply
+                    reply_text = f"{reply_text}\n\n{booking_result['confirmation_message']}"
             
             # 10. Send reply
             send_result = await self.twilio.send_sms(
@@ -272,7 +273,7 @@ class WorkflowService:
 
         return {
             "booking_url": booking_url,
-            "confirmation_message": f"Great, {first_name}! I can certainly help with that.{slots_text}\n\nYou can also pick any other time that works for you here: {booking_url}"
+            "confirmation_message": f"Here are some available times:{slots_text}\n\nYou can also book a different time here: {booking_url}"
         }
     
     async def _get_leads_for_outbound(self) -> List[Lead]:
