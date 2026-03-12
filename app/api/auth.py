@@ -36,6 +36,15 @@ class TokenResponse(BaseModel):
     user: dict
 
 
+class CompanyUpdate(BaseModel):
+    name: Optional[str] = None
+    industry: Optional[str] = None
+    ai_config: Optional[dict] = None
+    twilio_phone_number: Optional[str] = None
+    cal_booking_url: Optional[str] = None
+    cal_event_type_id: Optional[int] = None
+
+
 # ── Dependency ────────────────────────────────────────────────────────────────
 
 async def get_current_user(
@@ -124,4 +133,62 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "name": current_user.name,
         "role": current_user.role,
         "company_id": str(current_user.company_id),
+    }
+
+
+@router.get("/company")
+async def get_company(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Company).where(Company.id == current_user.company_id))
+    company = result.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return {
+        "id": str(company.id),
+        "name": company.name,
+        "industry": company.industry,
+        "ai_config": company.ai_config,
+        "twilio_phone_number": company.twilio_phone_number,
+        "cal_booking_url": company.cal_booking_url,
+        "cal_event_type_id": company.cal_event_type_id
+    }
+
+
+@router.patch("/company")
+async def update_company(
+    data: CompanyUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Company).where(Company.id == current_user.company_id))
+    company = result.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    if data.name is not None:
+        company.name = data.name
+    if data.industry is not None:
+        company.industry = data.industry
+    if data.twilio_phone_number is not None:
+        company.twilio_phone_number = data.twilio_phone_number
+    if data.cal_booking_url is not None:
+        company.cal_booking_url = data.cal_booking_url
+    if data.cal_event_type_id is not None:
+        company.cal_event_type_id = data.cal_event_type_id
+    if data.ai_config is not None:
+        current_config = company.ai_config or {}
+        company.ai_config = {**current_config, **data.ai_config}
+    
+    await db.commit()
+    await db.refresh(company)
+    return {
+        "id": str(company.id),
+        "name": company.name,
+        "industry": company.industry,
+        "ai_config": company.ai_config,
+        "twilio_phone_number": company.twilio_phone_number,
+        "cal_booking_url": company.cal_booking_url,
+        "cal_event_type_id": company.cal_event_type_id
     }

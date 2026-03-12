@@ -223,12 +223,22 @@ Requirements:
     def _create_system_prompt(self, lead: Lead, config: Dict, tone: str) -> str:
         """Create a dynamic system prompt based on configuration"""
         base_prompt = config.get("prompt_template", "")
+        industry_lingo = config.get("industry_lingo", "")
+        company_memory = config.get("company_memory", "")
         
         if not base_prompt:
-            base_prompt = f"""You are a professional mortgage sales representative. Your goal is to build trust and guide the lead towards booking a consultation call.
+            base_prompt = f"""You are a professional sales representative for a company in the {lead.industry or 'general'} industry.
+Your goal is to build trust, answer questions using your company knowledge, and guide the lead towards booking a consultation call.
+
 Lead Name: {lead.name}
-Industry/Need: {lead.industry or 'Mortgage/Real Estate'}
-Current Interest: {lead.interest or 'Home financing'}
+Industry/Need: {lead.industry or 'general'}
+Current Interest: {lead.interest or 'General inquiry'}
+
+Company Knowledge & Memory:
+{company_memory}
+
+Industry Lingo to use:
+{industry_lingo}
 
 Instructions:
 - Be {tone}, knowledgeable, and helpful.

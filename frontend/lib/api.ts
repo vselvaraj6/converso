@@ -73,6 +73,19 @@ export function getStoredUser(): User | null {
   return raw ? JSON.parse(raw) : null
 }
 
+// ── Company ──────────────────────────────────────────────────────────────────
+
+export async function getCompany() {
+  return request<Company>('/auth/company')
+}
+
+export async function updateCompany(data: Partial<Company>) {
+  return request<Company>('/auth/company', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
 export async function getLeads(params?: {
@@ -147,6 +160,22 @@ export interface LeadDetail extends Lead {
   days_since_contact: number | null
   is_qualified: boolean
   updated_at: string
+}
+
+export interface Company {
+  id: string
+  name: string
+  industry: string | null
+  ai_config: {
+    temperature: number
+    tone: string
+    prompt_template: string
+    industry_lingo?: string
+    company_memory?: string
+  }
+  twilio_phone_number: string | null
+  cal_booking_url: string | null
+  cal_event_type_id: number | null
 }
 
 export interface LeadListResponse {
