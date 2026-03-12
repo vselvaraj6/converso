@@ -268,6 +268,7 @@ export interface Company {
     company_memory?: string
   }
   twilio_phone_number: string | null
+  calcom_base_url: string | null
   cal_booking_url: string | null
   cal_event_type_id: number | null
   vapi_assistant_id: string | null
