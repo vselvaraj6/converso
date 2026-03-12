@@ -26,6 +26,9 @@ class Company(Base):
     # Cal.com event type ID — used when the AI books on the lead's behalf via API.
     cal_event_type_id = Column(Integer, nullable=True)
     
+    # VAPI (Voice AI) integration
+    vapi_assistant_id = Column(String, nullable=True)
+    
     # Features enabled
     sms_enabled = Column(Boolean, default=True)
     voice_enabled = Column(Boolean, default=True)

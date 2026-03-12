@@ -190,6 +190,16 @@ export default function SettingsPage() {
                 placeholder="+1234567890"
               />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">VAPI Assistant ID (Optional)</label>
+              <input 
+                className="input font-mono text-xs" 
+                value={company?.vapi_assistant_id || ''} 
+                onChange={e => setCompany(c => c ? {...c, vapi_assistant_id: e.target.value} : null)}
+                placeholder="uuid-of-your-assistant"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">If empty, a dynamic assistant will be created for each call.</p>
+            </div>
           </div>
         </Section>
 

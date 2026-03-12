@@ -347,33 +347,37 @@ class WorkflowService:
         try:
             company = await self.db.get(Company, lead.company_id)
             
-            # Create assistant prompt
-            prompt = self.vapi.create_lead_assistant_prompt(
-                {"name": lead.name, "company": lead.lead_company, "industry": lead.industry, "interest": lead.interest},
-                {"name": company.name, "ai_config": company.ai_config}
-            )
+            # Use specific assistant if provided, otherwise create dynamic one
+            assistant_id = company.vapi_assistant_id
             
-            # Create or get assistant
-            # In production, cache assistant IDs
-            assistant_result = await self.vapi.create_assistant(
-                name=f"{company.name} Sales Assistant",
-                system_prompt=prompt,
-                first_message=f"Hi {lead.name.split()[0]}, this is from {company.name}. Do you have a moment to chat about how we can help with {lead.interest or 'your needs'}?"
-            )
-            
-            if not assistant_result["success"]:
-                return assistant_result
+            if not assistant_id:
+                # Create assistant prompt
+                prompt = self.vapi.create_lead_assistant_prompt(
+                    {"name": lead.name, "company": lead.lead_company, "industry": lead.industry, "interest": lead.interest},
+                    {"name": company.name, "ai_config": company.ai_config}
+                )
+                
+                # Create dynamic assistant
+                assistant_result = await self.vapi.create_assistant(
+                    name=f"{company.name} Sales Assistant",
+                    system_prompt=prompt,
+                    first_message=f"Hi {lead.name.split()[0]}, this is from {company.name}. Do you have a moment to chat about how we can help with {lead.interest or 'your needs'}?"
+                )
+                
+                if not assistant_result["success"]:
+                    return assistant_result
+                assistant_id = assistant_result["assistant"]["id"]
             
             # Initiate call
             call_result = await self.vapi.create_phone_call(
                 phone_number=f"+1{lead.phone}",
-                assistant_id=assistant_result["assistant"]["id"],
+                assistant_id=assistant_id,
                 variables={
                     "lead_name": lead.name,
                     "company": lead.lead_company,
                     "interest": lead.interest
                 },
-                webhook_url=f"{settings.app_host}/api/webhooks/vapi/inbound"
+                webhook_url="https://converso.hawkly.app/api/webhooks/vapi/inbound"
             )
             
             if call_result["success"]:

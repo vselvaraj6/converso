@@ -43,6 +43,7 @@ class CompanyUpdate(BaseModel):
     twilio_phone_number: Optional[str] = None
     cal_booking_url: Optional[str] = None
     cal_event_type_id: Optional[int] = None
+    vapi_assistant_id: Optional[str] = None
 
 
 # ── Dependency ────────────────────────────────────────────────────────────────
@@ -152,7 +153,8 @@ async def get_company(
         "ai_config": company.ai_config,
         "twilio_phone_number": company.twilio_phone_number,
         "cal_booking_url": company.cal_booking_url,
-        "cal_event_type_id": company.cal_event_type_id
+        "cal_event_type_id": company.cal_event_type_id,
+        "vapi_assistant_id": company.vapi_assistant_id
     }
 
 
@@ -177,6 +179,8 @@ async def update_company(
         company.cal_booking_url = data.cal_booking_url
     if data.cal_event_type_id is not None:
         company.cal_event_type_id = data.cal_event_type_id
+    if data.vapi_assistant_id is not None:
+        company.vapi_assistant_id = data.vapi_assistant_id
     if data.ai_config is not None:
         current_config = company.ai_config or {}
         company.ai_config = {**current_config, **data.ai_config}
@@ -190,5 +194,6 @@ async def update_company(
         "ai_config": company.ai_config,
         "twilio_phone_number": company.twilio_phone_number,
         "cal_booking_url": company.cal_booking_url,
-        "cal_event_type_id": company.cal_event_type_id
+        "cal_event_type_id": company.cal_event_type_id,
+        "vapi_assistant_id": company.vapi_assistant_id
     }

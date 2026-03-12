@@ -197,6 +197,7 @@ export interface Company {
   twilio_phone_number: string | null
   cal_booking_url: string | null
   cal_event_type_id: number | null
+  vapi_assistant_id: string | null
 }
 
 export interface LeadListResponse {

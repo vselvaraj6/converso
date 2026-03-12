@@ -119,67 +119,44 @@ async def vapi_inbound_webhook(
 ) -> Dict[str, str]:
     """
     Handle voice call events from VAPI.
-    
-    This endpoint receives webhooks from VAPI for voice call events including:
-    - call.started: Call has been initiated
-    - call.ended: Call has completed
-    - call.failed: Call failed to connect
-    
-    The webhook data includes call transcripts, duration, and recordings
-    which are processed and stored for lead tracking.
-    
-    Args:
-        request: FastAPI request object containing webhook data
-        db: Database session
-        
-    Returns:
-        Dict with status "received" to acknowledge the webhook
-        
-    Raises:
-        HTTPException: 500 for processing errors
+    VAPI sends a JSON message with event information.
     """
     try:
-        # Parse JSON webhook data
+        # Parse JSON webhook data from VAPI
         webhook_data = await request.json()
         
-        # Extract event type
-        event_type = webhook_data.get("type", "unknown")
-        call_id = webhook_data.get("call_id")
+        # Extract message and type
+        message = webhook_data.get("message", {})
+        event_type = message.get("type", "unknown")
         
-        logger.info(f"Received VAPI webhook: {event_type} for call {call_id}")
-        
-        # Process through VAPI service
-        vapi_service = VAPIService()
-        result = await vapi_service.handle_webhook(webhook_data)
-        
-        if result["success"]:
-            # Process based on event type
-            if event_type == "call.ended":
-                # Update lead with call information
-                workflow_service = WorkflowService(db)
-                
-                # Extract phone number and find lead
-                phone_number = webhook_data.get("phone_number", "").replace("+1", "")
-                
-                if phone_number:
-                    # Store call transcript and update lead status
-                    await workflow_service.process_voice_call_ended(
-                        phone=phone_number,
-                        call_id=call_id,
-                        duration=result.get("duration", 0),
-                        transcript=result.get("transcript", ""),
-                        recording_url=result.get("recording_url")
-                    )
+        # VAPI end-of-call-report contains the data we need
+        if event_type == "end-of-call-report":
+            call_id = message.get("callId")
+            duration = message.get("duration", 0)
+            transcript = message.get("transcript", "")
+            recording_url = message.get("recordingUrl")
             
-            elif event_type == "call.failed":
-                logger.warning(f"VAPI call failed: {result.get('error')}")
+            # Extract customer info
+            customer = message.get("customer", {})
+            phone_number = customer.get("number", "")
+            
+            logger.info(f"VAPI call ended for {phone_number}, duration: {duration}s")
+            
+            if phone_number:
+                workflow_service = WorkflowService(db)
+                await workflow_service.process_voice_call_ended(
+                    phone=phone_number,
+                    call_id=call_id,
+                    duration=int(duration) if duration else 0,
+                    transcript=transcript,
+                    recording_url=recording_url
+                )
         
-        # Always return success to VAPI
+        # Always return 200 to acknowledge
         return {"status": "received"}
 
     except Exception as e:
         logger.error(f"VAPI webhook processing error: {e}", exc_info=True)
-        # Return 200 to prevent retries
         return {"status": "received", "error": str(e)}
 
 
