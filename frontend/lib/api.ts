@@ -31,6 +31,7 @@ async function request<T>(
     throw new Error(err.detail || 'Request failed')
   }
 
+  if (res.status === 204) return {} as T
   return res.json() as Promise<T>
 }
 
@@ -102,6 +103,19 @@ export async function getLeads(params?: {
 
 export async function getLead(id: string) {
   return request<LeadDetail>(`/leads/${id}`)
+}
+
+export async function updateLead(id: string, data: any) {
+  return request<Lead>(`/leads/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteLead(id: string) {
+  return request<{ status: string; message: string }>(`/leads/${id}`, {
+    method: 'DELETE',
+  })
 }
 
 export async function createLead(data: CreateLeadPayload) {
@@ -176,7 +190,7 @@ export interface LeadDetail extends Lead {
   lead_owner: string | null
   last_contact_method: string | null
   call_attempts: number
-  sentiment_score: Record<string, string> | null
+  sentiment_score: Record<string, any> | null
   lead_score: number
   days_since_contact: number | null
   is_qualified: boolean
@@ -214,7 +228,7 @@ export interface Message {
   direction: 'inbound' | 'outbound'
   channel: string
   content: string
-  sentiment: Record<string, string> | null
+  sentiment: Record<string, any> | null
   created_at: string
   status: string | null
 }

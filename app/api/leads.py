@@ -4,7 +4,7 @@ Lead management API endpoints.
 Provides RESTful endpoints for retrieving and managing lead information.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from uuid import UUID
 import io
 
@@ -41,6 +41,18 @@ class CreateLeadRequest(BaseModel):
     source: Optional[str] = "manual"
     interest: Optional[str] = None
     company_id: Optional[UUID] = None  # If not provided, uses default company
+
+
+class UpdateLeadRequest(BaseModel):
+    """Request model for updating a lead."""
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    title: Optional[str] = None
+    company: Optional[str] = None
+    industry: Optional[str] = None
+    status: Optional[LeadStatus] = None
+    interest: Optional[str] = None
 
 
 class LeadResponse(BaseModel):
@@ -159,8 +171,6 @@ async def import_leads(
 ):
     """
     Import leads from an Excel or CSV file.
-    Expected columns: name, email, phone (required)
-    Optional columns: title, company, industry, interest
     """
     contents = await file.read()
     filename = file.filename.lower()
@@ -180,7 +190,6 @@ async def import_leads(
             raise e
         raise HTTPException(status_code=400, detail=f"Error parsing file: {str(e)}")
 
-    # Validate columns
     required_cols = {'name', 'email', 'phone'}
     cols = {str(c).lower().strip() for c in df.columns}
     missing = required_cols - cols
@@ -191,10 +200,7 @@ async def import_leads(
                    f"Expected: name, email, phone"
         )
 
-    # Normalize column names for easier access
-    original_columns = list(df.columns)
     df.columns = [str(c).lower().strip() for c in df.columns]
-    
     success_count = 0
     errors = []
     
@@ -208,7 +214,6 @@ async def import_leads(
                 errors.append(f"Row {i+2}: Name, email, and phone are required")
                 continue
 
-            # Check if email already exists
             existing = await db.execute(
                 select(Lead).where(Lead.email == email)
             )
@@ -216,7 +221,6 @@ async def import_leads(
                 errors.append(f"Row {i+2}: Email {email} already exists")
                 continue
 
-            # Create lead
             lead = Lead(
                 company_id=current_user.company_id,
                 name=name,
@@ -231,18 +235,84 @@ async def import_leads(
             )
             db.add(lead)
             success_count += 1
-            
         except Exception as e:
             errors.append(f"Row {i+2}: {str(e)}")
 
     if success_count > 0:
         await db.commit()
     
-    return {
-        "success_count": success_count,
-        "error_count": len(errors),
-        "errors": errors[:10]  # Return first 10 errors
-    }
+    return {"success_count": success_count, "error_count": len(errors), "errors": errors[:10]}
+
+
+@router.patch("/{lead_id}", response_model=LeadResponse)
+async def update_lead(
+    lead_id: UUID,
+    data: UpdateLeadRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> LeadResponse:
+    """
+    Update an existing lead.
+    """
+    result = await db.execute(
+        select(Lead).where(Lead.id == lead_id, Lead.company_id == current_user.company_id)
+    )
+    lead = result.scalar_one_or_none()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if data.name is not None:
+        lead.name = data.name
+    if data.email is not None:
+        lead.email = data.email
+    if data.phone is not None:
+        lead.phone = data.phone.replace("+1", "").replace("-", "").replace(" ", "")
+    if data.title is not None:
+        lead.title = data.title
+    if data.company is not None:
+        lead.lead_company = data.company
+    if data.industry is not None:
+        lead.industry = data.industry
+    if data.status is not None:
+        lead.status = data.status
+    if data.interest is not None:
+        lead.interest = data.interest
+        
+    await db.commit()
+    await db.refresh(lead)
+    
+    return LeadResponse(
+        id=str(lead.id),
+        name=lead.name,
+        email=lead.email,
+        phone=lead.phone,
+        status=lead.status,
+        created_at=lead.created_at.isoformat()
+    )
+
+
+@router.delete("/{lead_id}")
+async def delete_lead(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete a lead.
+    """
+    result = await db.execute(
+        select(Lead).where(Lead.id == lead_id, Lead.company_id == current_user.company_id)
+    )
+    lead = result.scalar_one_or_none()
+    
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    await db.delete(lead)
+    await db.commit()
+    
+    return {"status": "success", "message": "Lead deleted"}
 
 
 @router.post("/", response_model=LeadResponse)
