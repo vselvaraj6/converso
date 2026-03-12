@@ -52,21 +52,21 @@ export default function LeadsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
-    <div className="p-8">
+    <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-gray-500 text-sm mt-1">{total} total</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn-primary w-full sm:w-auto" onClick={() => setShowModal(true)}>
           <Plus size={16} /> Add lead
         </button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col lg:flex-row gap-3 mb-5">
+        <div className="relative flex-1 lg:max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             className="input pl-9"
@@ -100,45 +100,47 @@ export default function LeadsPage() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-gray-400 text-sm">No leads found.</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 text-xs uppercase tracking-wide bg-gray-50 border-b border-gray-200">
-                <th className="px-6 py-3 font-medium">Lead</th>
-                <th className="px-6 py-3 font-medium">Phone</th>
-                <th className="px-6 py-3 font-medium">Company</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Sentiment</th>
-                <th className="px-6 py-3 font-medium">Last contact</th>
-                <th className="px-6 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(lead => (
-                <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-3">
-                    <div className="font-medium text-gray-900">{lead.name}</div>
-                    <div className="text-gray-400 text-xs">{lead.email}</div>
-                  </td>
-                  <td className="px-6 py-3 text-gray-600">{lead.phone}</td>
-                  <td className="px-6 py-3 text-gray-600">{lead.company || '—'}</td>
-                  <td className="px-6 py-3">
-                    <span className={clsx('badge', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 capitalize text-gray-600">{lead.sentiment || '—'}</td>
-                  <td className="px-6 py-3 text-gray-500">
-                    {lead.last_contacted ? new Date(lead.last_contacted).toLocaleDateString() : 'Never'}
-                  </td>
-                  <td className="px-6 py-3">
-                    <Link href={`/dashboard/leads/${lead.id}`} className="text-brand-600 hover:underline text-xs">
-                      View →
-                    </Link>
-                  </td>
+          <div className="table-container">
+            <table className="w-full text-sm min-w-[800px]">
+              <thead>
+                <tr className="text-left text-gray-500 text-xs uppercase tracking-wide bg-gray-50 border-b border-gray-200">
+                  <th className="px-6 py-3 font-medium">Lead</th>
+                  <th className="px-6 py-3 font-medium">Phone</th>
+                  <th className="px-6 py-3 font-medium">Company</th>
+                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium">Sentiment</th>
+                  <th className="px-6 py-3 font-medium">Last contact</th>
+                  <th className="px-6 py-3 font-medium"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(lead => (
+                  <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3">
+                      <div className="font-medium text-gray-900">{lead.name}</div>
+                      <div className="text-gray-400 text-xs">{lead.email}</div>
+                    </td>
+                    <td className="px-6 py-3 text-gray-600">{lead.phone}</td>
+                    <td className="px-6 py-3 text-gray-600">{lead.company || '—'}</td>
+                    <td className="px-6 py-3">
+                      <span className={clsx('badge', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 capitalize text-gray-600">{lead.sentiment || '—'}</td>
+                    <td className="px-6 py-3 text-gray-500">
+                      {lead.last_contacted ? new Date(lead.last_contacted).toLocaleDateString() : 'Never'}
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      <Link href={`/dashboard/leads/${lead.id}`} className="text-brand-600 hover:underline text-xs font-medium">
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -208,7 +210,7 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 text-sm">{error}</div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Full name *</label>
               <input className="input" value={form.name} onChange={set('name')} required />
@@ -233,7 +235,7 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               <label className="block text-xs font-medium text-gray-700 mb-1">Industry</label>
               <input className="input" value={form.industry} onChange={set('industry')} />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-gray-700 mb-1">Interest / notes</label>
               <input className="input" value={form.interest} onChange={set('interest')} />
             </div>

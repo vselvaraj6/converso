@@ -41,7 +41,7 @@ export default function ConversationsPage() {
     : leads
 
   return (
-    <div className="p-8">
+    <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Conversations</h1>
         <p className="text-gray-500 text-sm mt-1">Leads with active message threads</p>
@@ -64,33 +64,33 @@ export default function ConversationsPage() {
           No conversations yet. Conversations appear here once outreach starts.
         </div>
       ) : (
-        <div className="card divide-y divide-gray-100">
+        <div className="card divide-y divide-gray-100 overflow-hidden">
           {filtered.map(lead => (
             <Link
               key={lead.id}
               href={`/dashboard/leads/${lead.id}`}
-              className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 md:gap-4 px-4 md:px-6 py-4 hover:bg-gray-50 transition-colors"
             >
               <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-semibold text-sm shrink-0">
                 {lead.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{lead.name}</span>
+                  <span className="font-medium text-gray-900 truncate">{lead.name}</span>
                   {lead.sentiment && (
-                    <span title={lead.sentiment}>{SENTIMENT_EMOJI[lead.sentiment] || ''}</span>
+                    <span title={lead.sentiment} className="shrink-0">{SENTIMENT_EMOJI[lead.sentiment] || ''}</span>
                   )}
                 </div>
                 <p className="text-xs text-gray-400 truncate">{lead.company || lead.email}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xs text-gray-400">
+                <p className="text-[10px] md:text-xs text-gray-400">
                   {lead.last_contacted
                     ? new Date(lead.last_contacted).toLocaleDateString()
                     : ''}
                 </p>
                 <span className={clsx(
-                  'text-xs font-medium capitalize',
+                  'text-[10px] md:text-xs font-medium capitalize',
                   lead.status === 'qualified' ? 'text-purple-600' :
                   lead.status === 'converted' ? 'text-green-600' :
                   'text-gray-500',

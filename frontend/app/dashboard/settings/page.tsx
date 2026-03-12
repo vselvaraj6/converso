@@ -19,12 +19,14 @@ function Section({ title, icon: Icon, children }: {
 
 function EnvRow({ label, envKey, description }: { label: string; envKey: string; description: string }) {
   return (
-    <div className="flex items-start justify-between py-3 border-b border-gray-100 last:border-0">
+    <div className="flex flex-col sm:flex-row sm:items-start justify-between py-3 border-b border-gray-100 last:border-0 gap-2">
       <div>
         <p className="text-sm font-medium text-gray-800">{label}</p>
         <p className="text-xs text-gray-400 mt-0.5">{description}</p>
       </div>
-      <code className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">{envKey}</code>
+      <code className="text-[10px] sm:text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono break-all sm:break-normal">
+        {envKey}
+      </code>
     </div>
   )
 }
@@ -40,7 +42,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-3xl space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500 text-sm mt-1">Manage your Converso configuration</p>
@@ -55,7 +57,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-gray-500">Email</span>
-            <span className="font-medium text-gray-900">{user?.email}</span>
+            <span className="font-medium text-gray-900 truncate ml-4">{user?.email}</span>
           </div>
           <div className="flex justify-between py-2">
             <span className="text-gray-500">Role</span>
@@ -70,7 +72,7 @@ export default function SettingsPage() {
           API keys are configured via the <code className="bg-gray-100 px-1 rounded text-xs">.env</code> file on your server.
           Restart the backend container after making changes.
         </p>
-        <div>
+        <div className="divide-y divide-gray-50">
           <EnvRow label="Twilio Account SID" envKey="TWILIO_ACCOUNT_SID" description="Twilio console → Account SID" />
           <EnvRow label="Twilio Auth Token"  envKey="TWILIO_AUTH_TOKEN"  description="Twilio console → Auth Token" />
           <EnvRow label="Twilio Phone Number" envKey="TWILIO_PHONE_NUMBER" description="Your Twilio phone number (+1...)" />
@@ -88,12 +90,12 @@ export default function SettingsPage() {
           <strong>Phone Numbers → Messaging → Webhook</strong>:
         </p>
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <code className="text-sm text-gray-700 font-mono">
+          <code className="text-xs sm:text-sm text-gray-700 font-mono break-all">
             https://&lt;your-domain&gt;/api/webhooks/twilio/inbound
           </code>
         </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Make sure your Cloudflare tunnel is pointing to port 80 (nginx) or port 8000 (direct to API).
+        <p className="text-[10px] sm:text-xs text-gray-400 mt-3">
+          Make sure your Cloudflare tunnel is pointing to port 8080 (nginx) or port 8001 (direct to API).
         </p>
       </Section>
 

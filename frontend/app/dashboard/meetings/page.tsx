@@ -53,19 +53,22 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
   const today = isToday(meeting.start_time)
   return (
     <div className={clsx(
-      'card p-5 flex gap-5 transition-shadow hover:shadow-md',
+      'card p-4 md:p-5 flex flex-col sm:flex-row gap-4 md:gap-5 transition-shadow hover:shadow-md',
       today && 'border-brand-300 ring-1 ring-brand-200',
     )}>
       {/* Date column */}
       <div className={clsx(
-        'w-14 shrink-0 rounded-xl flex flex-col items-center justify-center py-2 text-center',
+        'w-full sm:w-14 shrink-0 rounded-xl flex sm:flex-col items-center justify-between sm:justify-center px-4 sm:px-0 py-2 sm:py-2 text-center',
         today ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-700',
       )}>
-        <span className="text-xs font-medium uppercase">
+        <span className="text-xs font-medium uppercase sm:mb-1">
           {new Date(meeting.start_time).toLocaleDateString('en-US', { month: 'short' })}
         </span>
         <span className="text-2xl font-bold leading-none">
           {new Date(meeting.start_time).getDate()}
+        </span>
+        <span className="sm:hidden text-xs font-medium uppercase">
+          {new Date(meeting.start_time).toLocaleDateString('en-US', { weekday: 'short' })}
         </span>
       </div>
 
@@ -73,14 +76,16 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-gray-900 truncate">{meeting.title}</h3>
-              {today && (
-                <span className="badge bg-brand-100 text-brand-700 text-xs">Today</span>
-              )}
-              <span className={clsx('badge', STATUS_COLORS[meeting.status] ?? 'bg-gray-100 text-gray-600')}>
-                {meeting.status}
-              </span>
+              <div className="flex gap-1">
+                {today && (
+                  <span className="badge bg-brand-100 text-brand-700 text-[10px] px-1.5">Today</span>
+                )}
+                <span className={clsx('badge text-[10px] px-1.5', STATUS_COLORS[meeting.status] ?? 'bg-gray-100 text-gray-600')}>
+                  {meeting.status}
+                </span>
+              </div>
             </div>
             {meeting.description && (
               <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{meeting.description}</p>
@@ -88,53 +93,50 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-500">
-          <span className="flex items-center gap-1">
-            <Clock size={14} />
+        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-sm text-gray-500">
+          <span className="flex items-center gap-1.5">
+            <Clock size={14} className="shrink-0" />
             {formatTime(meeting.start_time)} – {formatTime(meeting.end_time)}
-            <span className="text-gray-400">({formatDuration(meeting.start_time, meeting.end_time)})</span>
+            <span className="text-gray-400 hidden xs:inline">({formatDuration(meeting.start_time, meeting.end_time)})</span>
           </span>
 
           {meeting.location && (
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <LocationIcon location={meeting.location} />
-              {meeting.location}
+              <span className="truncate">{meeting.location}</span>
             </span>
           )}
 
-          <span className="flex items-center gap-1">
-            <User size={14} />
+          <span className="flex items-center gap-1.5">
+            <User size={14} className="shrink-0" />
             <Link
               href={`/dashboard/leads/${meeting.lead.id}`}
-              className="text-brand-600 hover:underline"
+              className="text-brand-600 hover:underline truncate"
             >
               {meeting.lead.name}
             </Link>
-            {meeting.lead.company && (
-              <span className="text-gray-400">· {meeting.lead.company}</span>
-            )}
           </span>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col items-end justify-between shrink-0 gap-2">
+      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-between shrink-0 gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+        <Link
+          href={`/dashboard/leads/${meeting.lead.id}`}
+          className="text-xs text-gray-400 hover:text-brand-600 flex items-center gap-0.5 order-2 sm:order-1"
+        >
+          View Lead <ChevronRight size={12} />
+        </Link>
         {meeting.meeting_link && (
           <a
             href={meeting.meeting_link}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-primary text-xs px-3 py-1.5"
+            className="btn-primary text-xs px-4 py-2 sm:px-3 sm:py-1.5 order-1 sm:order-2"
           >
             <Video size={13} /> Join
           </a>
         )}
-        <Link
-          href={`/dashboard/leads/${meeting.lead.id}`}
-          className="text-xs text-gray-400 hover:text-brand-600 flex items-center gap-0.5"
-        >
-          Lead <ChevronRight size={12} />
-        </Link>
       </div>
     </div>
   )
@@ -157,15 +159,15 @@ export default function MeetingsPage() {
     if (items.length === 0) return null
     return (
       <div className="space-y-3">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{title}</h2>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">{title}</h2>
         {items.map(m => <MeetingCard key={m.id} meeting={m} />)}
       </div>
     )
   }
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-3xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
           <p className="text-gray-500 text-sm mt-1">
@@ -173,7 +175,7 @@ export default function MeetingsPage() {
           </p>
         </div>
         <button
-          className="btn-secondary text-sm"
+          className="btn-secondary text-sm w-full sm:w-auto"
           onClick={() => { setShowAll(v => !v); setLoading(true) }}
         >
           {showAll ? 'Show upcoming only' : 'Show all'}

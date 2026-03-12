@@ -47,14 +47,14 @@ export default function LeadDetailPage() {
   }, [id])
 
   if (loading) {
-    return <div className="p-8 text-gray-400 text-sm">Loading…</div>
+    return <div className="text-gray-400 text-sm">Loading…</div>
   }
   if (!lead) {
-    return <div className="p-8 text-red-500 text-sm">Lead not found.</div>
+    return <div className="text-red-500 text-sm">Lead not found.</div>
   }
 
   return (
-    <div className="p-8 max-w-6xl">
+    <div className="max-w-6xl mx-auto">
       {/* Back */}
       <Link href="/dashboard/leads" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-6">
         <ArrowLeft size={14} /> Back to leads
@@ -63,13 +63,13 @@ export default function LeadDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lead info */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="card p-6">
+          <div className="card p-5 md:p-6">
             <div className="flex items-start justify-between mb-4">
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">{lead.name}</h1>
-                {lead.title && <p className="text-sm text-gray-500">{lead.title}</p>}
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-gray-900 truncate">{lead.name}</h1>
+                {lead.title && <p className="text-sm text-gray-500 truncate">{lead.title}</p>}
               </div>
-              <span className={clsx('badge', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
+              <span className={clsx('badge shrink-0', STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600')}>
                 {lead.status}
               </span>
             </div>
@@ -85,8 +85,8 @@ export default function LeadDetailPage() {
 
           {/* AI insights */}
           {lead.sentiment_score && Object.keys(lead.sentiment_score).length > 0 && (
-            <div className="card p-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">AI Insights</h3>
+            <div className="card p-5 md:p-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider text-xs">AI Insights</h3>
               <div className="space-y-2">
                 {lead.sentiment_score.latest && (
                   <div className="flex justify-between text-sm">
@@ -114,9 +114,9 @@ export default function LeadDetailPage() {
             </div>
           )}
 
-          {/* Meta */}
-          <div className="card p-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Activity</h3>
+          {/* Activity */}
+          <div className="card p-5 md:p-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider text-xs">Activity</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">Lead score</span>
@@ -147,13 +147,13 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Conversation */}
-        <div className="lg:col-span-2 card flex flex-col" style={{ maxHeight: '80vh' }}>
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+        <div className="lg:col-span-2 card flex flex-col h-[500px] lg:h-auto lg:max-h-[80vh]">
+          <div className="px-5 md:px-6 py-4 border-b border-gray-100 flex items-center gap-2">
             <MessageSquare size={16} className="text-gray-500" />
             <h2 className="font-semibold text-gray-900">Conversation</h2>
             <span className="text-xs text-gray-400">({messages.length} messages)</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
             {messages.length === 0 ? (
               <p className="text-center text-gray-400 text-sm py-8">No messages yet. Outreach will start automatically.</p>
             ) : (
@@ -167,18 +167,18 @@ export default function LeadDetailPage() {
                 >
                   <div
                     className={clsx(
-                      'max-w-xs lg:max-w-md rounded-2xl px-4 py-2.5 text-sm',
+                      'max-w-[85%] lg:max-w-md rounded-2xl px-4 py-2.5 text-sm',
                       msg.direction === 'outbound'
                         ? 'bg-brand-600 text-white rounded-br-sm'
                         : 'bg-gray-100 text-gray-900 rounded-bl-sm',
                     )}
                   >
-                    <p>{msg.content}</p>
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
                     <p className={clsx(
-                      'text-xs mt-1',
-                      msg.direction === 'outbound' ? 'text-brand-200' : 'text-gray-400',
+                      'text-[10px] mt-1 opacity-70',
+                      msg.direction === 'outbound' ? 'text-white' : 'text-gray-500',
                     )}>
-                      {new Date(msg.created_at).toLocaleString()} · {msg.channel}
+                      {new Date(msg.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })} · {msg.channel}
                     </p>
                   </div>
                 </div>

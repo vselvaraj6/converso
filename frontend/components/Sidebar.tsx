@@ -17,9 +17,9 @@ export default function Sidebar() {
   const path = usePathname()
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col bg-white border-r border-gray-200 min-h-screen">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-gray-200">
+    <aside className="flex flex-col bg-white border-r border-gray-200 h-full">
+      {/* Logo - Hidden on mobile because it's in the mobile header */}
+      <div className="h-16 hidden md:flex items-center px-5 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center">
             <MessageSquare size={14} className="text-white" />

@@ -45,13 +45,13 @@ export default function DashboardPage() {
   const byStatus = (s: string) => leads.filter(l => l.status === s).length
 
   return (
-    <div className="p-8">
+    <div>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
           Good morning{user?.name ? `, ${user.name.split(' ')[0]}` : ''} 👋
         </h1>
-        <p className="text-gray-500 mt-1">Here's what's happening with your leads today.</p>
+        <p className="text-gray-500 mt-1 text-sm md:text-base">Here's what's happening with your leads today.</p>
       </div>
 
       {/* Stats */}
@@ -79,43 +79,45 @@ export default function DashboardPage() {
             <Link href="/dashboard/leads" className="text-brand-600 hover:underline">Add your first lead →</Link>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 text-xs uppercase tracking-wide border-b border-gray-100">
-                <th className="px-6 py-3 font-medium">Name</th>
-                <th className="px-6 py-3 font-medium">Company</th>
-                <th className="px-6 py-3 font-medium">Status</th>
-                <th className="px-6 py-3 font-medium">Last contact</th>
-                <th className="px-6 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {leads.map(lead => (
-                <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-3">
-                    <div className="font-medium text-gray-900">{lead.name}</div>
-                    <div className="text-gray-400 text-xs">{lead.email}</div>
-                  </td>
-                  <td className="px-6 py-3 text-gray-600">{lead.company || '—'}</td>
-                  <td className="px-6 py-3">
-                    <span className={clsx('badge', STATUS_COLORS[lead.status] || 'bg-gray-100 text-gray-600')}>
-                      {lead.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3 text-gray-500">
-                    {lead.last_contacted
-                      ? new Date(lead.last_contacted).toLocaleDateString()
-                      : 'Never'}
-                  </td>
-                  <td className="px-6 py-3">
-                    <Link href={`/dashboard/leads/${lead.id}`} className="text-brand-600 hover:underline">
-                      View →
-                    </Link>
-                  </td>
+          <div className="table-container">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead>
+                <tr className="text-left text-gray-500 text-xs uppercase tracking-wide border-b border-gray-100">
+                  <th className="px-6 py-3 font-medium">Name</th>
+                  <th className="px-6 py-3 font-medium">Company</th>
+                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium">Last contact</th>
+                  <th className="px-6 py-3 font-medium"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {leads.map(lead => (
+                  <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3">
+                      <div className="font-medium text-gray-900">{lead.name}</div>
+                      <div className="text-gray-400 text-xs">{lead.email}</div>
+                    </td>
+                    <td className="px-6 py-3 text-gray-600">{lead.company || '—'}</td>
+                    <td className="px-6 py-3">
+                      <span className={clsx('badge', STATUS_COLORS[lead.status] || 'bg-gray-100 text-gray-600')}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-gray-500">
+                      {lead.last_contacted
+                        ? new Date(lead.last_contacted).toLocaleDateString()
+                        : 'Never'}
+                    </td>
+                    <td className="px-6 py-3">
+                      <Link href={`/dashboard/leads/${lead.id}`} className="text-brand-600 hover:underline">
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
