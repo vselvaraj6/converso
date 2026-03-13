@@ -309,6 +309,7 @@ export interface Company {
   cal_booking_url: string | null
   cal_event_type_id: number | null
   vapi_assistant_id: string | null
+  created_at: string
 }
 
 export interface LeadListResponse {
