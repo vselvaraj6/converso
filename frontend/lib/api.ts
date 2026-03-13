@@ -264,6 +264,19 @@ export async function deleteCompany(id: string) {
   })
 }
 
+export async function createUserAsAdmin(companyId: string, data: any) {
+  return request<User>(`/platform/companies/${companyId}/users`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteUserAsAdmin(userId: string) {
+  return request<{ status: string }>(`/platform/users/${userId}`, {
+    method: 'DELETE',
+  })
+}
+
 export interface Lead {
   id: string
   name: string

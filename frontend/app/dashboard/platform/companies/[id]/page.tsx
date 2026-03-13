@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getCompanyDetails, updateCompanyAsAdmin, deleteCompany, type Company } from '@/lib/api'
+import { getCompanyDetails, updateCompanyAsAdmin, deleteCompany, createUserAsAdmin, deleteUserAsAdmin, type Company, type User } from '@/lib/api'
 import { 
   Building2, 
   Users, 
@@ -16,24 +16,32 @@ import {
   AlertCircle,
   Mail,
   MoreVertical,
-  User as UserIcon
+  User as UserIcon,
+  Plus,
+  X
 } from 'lucide-react'
 import clsx from 'clsx'
 
 export default function CompanyDetailAdminPage() {
   const { id } = useParams()
   const router = useRouter()
-  const [data, setData] = useState<{ company: Company; users: any[] } | null>(null)
+  const [data, setData] = useState<{ company: Company; users: User[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showAddUserModal, setShowAddUserModal] = useState(false)
 
-  useEffect(() => {
+  const load = () => {
     if (id) {
+      setLoading(true)
       getCompanyDetails(id as string)
         .then(setData)
         .finally(() => setLoading(false))
     }
+  }
+
+  useEffect(() => {
+    load()
   }, [id])
 
   async function handleSave() {
@@ -57,6 +65,16 @@ export default function CompanyDetailAdminPage() {
       router.push('/dashboard/platform')
     } catch (err) {
       alert('Failed to delete company')
+    }
+  }
+
+  async function handleDeleteUser(userId: string, userName: string) {
+    if (!confirm(`Are you sure you want to remove user "${userName}"?`)) return
+    try {
+      await deleteUserAsAdmin(userId)
+      load() // Reload list
+    } catch (err: any) {
+      alert(`Failed to remove user: ${err.message}`)
     }
   }
 
@@ -107,7 +125,7 @@ export default function CompanyDetailAdminPage() {
               <div>
                 <label className="label-text">Company Name</label>
                 <input 
-                  className="input text-sm font-bold" 
+                  className="input text-sm font-bold bg-white" 
                   value={data.company.name}
                   onChange={e => setData({...data, company: {...data.company, name: e.target.value}})}
                 />
@@ -115,7 +133,7 @@ export default function CompanyDetailAdminPage() {
               <div>
                 <label className="label-text">Industry</label>
                 <input 
-                  className="input text-sm font-bold" 
+                  className="input text-sm font-bold bg-white" 
                   value={data.company.industry || ''}
                   onChange={e => setData({...data, company: {...data.company, industry: e.target.value}})}
                 />
@@ -123,7 +141,7 @@ export default function CompanyDetailAdminPage() {
               <div>
                 <label className="label-text">Twilio Number</label>
                 <input 
-                  className="input text-sm font-bold font-mono" 
+                  className="input text-sm font-bold font-mono bg-white" 
                   value={data.company.twilio_phone_number || ''}
                   onChange={e => setData({...data, company: {...data.company, twilio_phone_number: e.target.value}})}
                 />
@@ -131,7 +149,7 @@ export default function CompanyDetailAdminPage() {
               <div>
                 <label className="label-text">Cal.com Base URL</label>
                 <input 
-                  className="input text-sm font-bold font-mono" 
+                  className="input text-sm font-bold font-mono bg-white" 
                   value={data.company.calcom_base_url || ''}
                   onChange={e => setData({...data, company: {...data.company, calcom_base_url: e.target.value}})}
                 />
@@ -139,7 +157,18 @@ export default function CompanyDetailAdminPage() {
             </div>
           </AdminSection>
 
-          <AdminSection title="Tenant Users" icon={Users}>
+          <AdminSection 
+            title="Tenant Users" 
+            icon={Users}
+            headerAction={
+              <button 
+                onClick={() => setShowAddUserModal(true)}
+                className="text-brand-600 hover:text-brand-700 font-bold text-xs flex items-center gap-1 bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Plus size={14} /> Add User
+              </button>
+            }
+          >
             <div className="divide-y divide-gray-50">
               {data.users.map(user => (
                 <div key={user.id} className="py-4 flex items-center justify-between group">
@@ -154,15 +183,19 @@ export default function CompanyDetailAdminPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span className={clsx(
                       "px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest",
                       user.role === 'admin' ? "bg-amber-50 text-amber-700 border border-amber-100" : "bg-blue-50 text-blue-700 border border-blue-100"
                     )}>
                       {user.role}
                     </span>
-                    <button className="p-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MoreVertical size={16} />
+                    <button 
+                      onClick={() => handleDeleteUser(user.id, user.name)}
+                      className="p-2 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                      title="Remove User"
+                    >
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
@@ -194,18 +227,89 @@ export default function CompanyDetailAdminPage() {
           </div>
         </div>
       </div>
+
+      {showAddUserModal && (
+        <AddUserAdminModal 
+          companyId={id as string}
+          onClose={() => setShowAddUserModal(false)}
+          onAdded={() => {
+            setShowAddUserModal(false)
+            load()
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function AdminSection({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
+function AddUserAdminModal({ companyId, onClose, onAdded }: { companyId: string; onClose: () => void; onAdded: () => void }) {
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'write' })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      await createUserAsAdmin(companyId, form)
+      onAdded()
+    } catch (err: any) {
+      setError(err.message || 'Failed to add user')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="card w-full max-w-sm p-6 shadow-2xl bg-white animate-in zoom-in duration-200">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Add Company User</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-xs font-bold">{error}</div>}
+          <div>
+            <label className="label-text">Full Name</label>
+            <input className="input text-sm" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
+          </div>
+          <div>
+            <label className="label-text">Email</label>
+            <input type="email" className="input text-sm" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
+          </div>
+          <div>
+            <label className="label-text">Initial Password</label>
+            <input type="text" className="input text-sm font-mono" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Temporary password" required />
+          </div>
+          <div>
+            <label className="label-text">Role</label>
+            <select className="input text-sm font-bold" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
+              <option value="admin">Admin</option>
+              <option value="write">Write</option>
+              <option value="read">Read</option>
+            </select>
+          </div>
+          <button className="btn-primary w-full py-3 mt-4 font-bold" disabled={loading}>
+            {loading ? 'Creating...' : 'Create User'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AdminSection({ title, icon: Icon, children, headerAction }: { title: string; icon: any; children: React.ReactNode; headerAction?: React.ReactNode }) {
   return (
     <div className="card p-6 shadow-sm border-gray-100 bg-white">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600">
-          <Icon size={20} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600">
+            <Icon size={20} />
+          </div>
+          <h2 className="font-bold text-gray-900">{title}</h2>
         </div>
-        <h2 className="font-bold text-gray-900">{title}</h2>
+        {headerAction}
       </div>
       {children}
     </div>

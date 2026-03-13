@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
+from pydantic import BaseModel, EmailStr
 
 from app.core.database import get_db
 from app.api.auth import get_current_user
-from app.models import Company, User, Lead, Message
-from pydantic import BaseModel
+from app.core.security import get_password_hash
+from app.models import Company, User, Lead, Message, UserRole
 
 router = APIRouter()
 
@@ -28,6 +29,19 @@ class CompanyUpdateAdmin(BaseModel):
     twilio_phone_number: str | None = None
     cal_booking_url: str | None = None
     calcom_base_url: str | None = None
+
+class UserCreateAdmin(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    role: UserRole = UserRole.WRITE
+
+class UserResponseAdmin(BaseModel):
+    id: UUID
+    email: str
+    name: str
+    role: UserRole
+    is_active: bool
 
 # ── Dependency ────────────────────────────────────────────────────────────────
 
@@ -102,6 +116,56 @@ async def get_company_details(
             for u in users
         ]
     }
+
+@router.post("/companies/{company_id}/users", response_model=UserResponseAdmin)
+async def create_user_as_admin(
+    company_id: UUID,
+    data: UserCreateAdmin,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superuser)
+):
+    """Add a user to a company (Platform Admin only)"""
+    # Check if company exists
+    company = await db.get(Company, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    
+    # Check if email exists
+    existing = await db.execute(select(User).where(User.email == data.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user = User(
+        company_id=company_id,
+        email=data.email,
+        name=data.name,
+        hashed_password=get_password_hash(data.password),
+        role=data.role,
+        is_active=True
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+@router.delete("/users/{user_id}")
+async def delete_user_as_admin(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superuser)
+):
+    """Remove a user from the platform (Platform Admin only)"""
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Don't allow deleting yourself
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+    
+    await db.delete(user)
+    await db.commit()
+    return {"status": "success", "message": f"User {user_id} removed"}
 
 @router.patch("/companies/{company_id}")
 async def update_company_as_admin(

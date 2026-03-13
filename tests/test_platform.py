@@ -39,7 +39,40 @@ class TestPlatformAdmin:
         assert response.json()["name"] == new_name
         assert response.json()["industry"] == "Enterprise"
 
-    async def test_get_platform_usage(self, client: AsyncClient, superuser_token_headers):
+    async def test_add_user_to_company_as_admin(self, client: AsyncClient, superuser_token_headers, test_company):
+        response = await client.post(
+            f"/api/platform/companies/{test_company.id}/users",
+            json={
+                "name": "New Employee",
+                "email": "new_emp@example.com",
+                "password": "password123",
+                "role": "write"
+            },
+            headers=superuser_token_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "New Employee"
+        assert data["email"] == "new_emp@example.com"
+        assert data["role"] == "write"
+
+    async def test_remove_user_as_admin(self, client: AsyncClient, superuser_token_headers, test_user):
+        response = await client.delete(
+            f"/api/platform/users/{test_user.id}",
+            headers=superuser_token_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "success"
+
+    async def test_cannot_delete_self_as_admin(self, client: AsyncClient, superuser_token_headers, superuser):
+        response = await client.delete(
+            f"/api/platform/users/{superuser.id}",
+            headers=superuser_token_headers
+        )
+        assert response.status_code == 400
+        assert "Cannot delete your own admin account" in response.json()["detail"]
+
+    async def test_delete_company_as_admin(self, client: AsyncClient, superuser_token_headers, db_session):
         response = await client.get("/api/platform/usage", headers=superuser_token_headers)
         assert response.status_code == 200
         data = response.json()
