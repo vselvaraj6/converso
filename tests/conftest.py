@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
+from datetime import timedelta
 import os
 
 # Set test environment
@@ -16,6 +17,7 @@ from app.main import app
 from app.core.database import Base, get_db
 from app.core.config import settings
 from app.models import Company, User, Lead, Message, CalendarEvent
+from app.core.security import get_password_hash, create_access_token
 
 # Use the URL from environment/settings
 test_engine = create_async_engine(
@@ -69,24 +71,29 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture(scope="function")
-async def test_user(db_session: AsyncSession) -> User:
-    """Create a test user and company"""
-    from app.core.security import get_password_hash
-    
+async def test_company(db_session: AsyncSession) -> Company:
+    """Fixture for a basic test company"""
     company = Company(
-        name="Test Company",
+        name="Fixture Company",
         ai_config={"temperature": 0.7, "tone": "friendly"}
     )
     db_session.add(company)
-    await db_session.flush()
-    
+    await db_session.commit()
+    await db_session.refresh(company)
+    return company
+
+
+@pytest.fixture(scope="function")
+async def superuser(db_session: AsyncSession, test_company: Company) -> User:
+    """Fixture for a superuser"""
     user = User(
-        company_id=company.id,
-        email="test@example.com",
-        name="Test User",
+        company_id=test_company.id,
+        email="super@converso.app",
+        name="Super Admin",
         hashed_password=get_password_hash("password123"),
         role="admin",
-        is_active=True
+        is_active=True,
+        is_superuser=True
     )
     db_session.add(user)
     await db_session.commit()
@@ -95,11 +102,40 @@ async def test_user(db_session: AsyncSession) -> User:
 
 
 @pytest.fixture(scope="function")
+async def superuser_token_headers(superuser: User) -> dict:
+    """Token headers for a superuser"""
+    token = create_access_token({"sub": str(superuser.id)}, expires_delta=timedelta(days=1))
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
+async def test_user(db_session: AsyncSession, test_company: Company) -> User:
+    """Create a test user and company"""
+    user = User(
+        company_id=test_company.id,
+        email="test@example.com",
+        name="Test User",
+        hashed_password=get_password_hash("password123"),
+        role="admin",
+        is_active=True,
+        is_superuser=False
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest.fixture(scope="function")
+async def normal_user_token_headers(test_user: User) -> dict:
+    """Token headers for a normal user"""
+    token = create_access_token({"sub": str(test_user.id)}, expires_delta=timedelta(days=1))
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
 async def auth_client(client: AsyncClient, test_user: User) -> AsyncClient:
     """Create a test client with authentication headers"""
-    from app.core.security import create_access_token
-    from datetime import timedelta
-    
     token = create_access_token(
         {"sub": str(test_user.id)}, 
         expires_delta=timedelta(days=1)
