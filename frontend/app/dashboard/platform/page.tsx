@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { listCompanies, getPlatformUsage, type CompanyStats } from '@/lib/api'
-import { Building2, Users, Zap, Search, Plus, ExternalLink, ShieldCheck, TrendingUp, ArrowUpRight, BarChart3, Clock, Activity } from 'lucide-react'
+import { Building2, Users, Zap, Search, Plus, ExternalLink, ShieldCheck, TrendingUp, ArrowUpRight, BarChart3, Clock, Activity, Phone, MessageCircle } from 'lucide-react'
 import clsx from 'clsx'
 
 export default function PlatformAdminPage() {
