@@ -227,15 +227,15 @@ export interface User {
   manual_calendar_url: string | null
   calcom_event_id: number | null
 }
-...
+
 // ── Platform Admin ──────────────────────────────────────────────────────────
 
 export interface CompanyStats {
   id: string
   name: string
   industry: string | null
-  user_count: int
-  lead_count: int
+  user_count: number
+  lead_count: number
   created_at: string
 }
 
