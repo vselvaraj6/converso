@@ -226,25 +226,33 @@ class WorkflowService:
         """
         Return the booking URL or slots, prioritizing the assigned agent's managed calendar.
         """
-        # 1. Determine which calendar settings to use (Agent vs Company)
+        # 1. Determine which calendar settings to use (Master Orchestrator Pattern)
         agent = None
         if lead.assigned_agent_id:
             agent = await self.db.get(User, lead.assigned_agent_id)
         
-        # Check if agent has a manual URL or managed calendar connection
-        has_agent_cal = agent and (agent.manual_calendar_url or (agent.calendar_connected and agent.calcom_username and agent.calcom_event_id))
-        
-        # Determine booking URL
+        # Determine booking URL with inheritance logic
         if agent and agent.manual_calendar_url:
+            # Priority 1: Agent's specific override
             booking_url = agent.manual_calendar_url
-            event_type_id = None # Manual URLs don't necessarily have an internal ID for slot fetching
-        elif has_agent_cal:
-            base_url = (company.calcom_base_url or "https://cal.com").rstrip("/")
-            booking_url = f"{base_url}/{agent.calcom_username}/{agent.calcom_event_id}"
-            event_type_id = agent.calcom_event_id
-        else:
+            event_type_id = None
+            logger.info(f"Using Agent manual override for lead {lead.id}: {booking_url}")
+        elif company.cal_booking_url:
+            # Priority 2: Company-wide Team Round Robin link
             booking_url = company.cal_booking_url
             event_type_id = company.cal_event_type_id
+            logger.info(f"Using Company master team link for lead {lead.id}: {booking_url}")
+        else:
+            # Fallback: Managed shadow integration (if it exists)
+            has_agent_cal = agent and agent.calendar_connected and agent.calcom_username and agent.calcom_event_id
+            if has_agent_cal:
+                base_url = (company.calcom_base_url or "https://cal.com").rstrip("/")
+                booking_url = f"{base_url}/{agent.calcom_username}/{agent.calcom_event_id}"
+                event_type_id = agent.calcom_event_id
+                logger.info(f"Using Agent managed shadow cal for lead {lead.id}: {booking_url}")
+            else:
+                booking_url = None
+                event_type_id = None
         
         logger.info(f"Handling booking for lead {lead.id}. Agent Cal: {has_agent_cal}, URL: {booking_url}")
         

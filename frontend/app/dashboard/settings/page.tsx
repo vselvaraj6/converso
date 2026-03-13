@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
-import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2 } from 'lucide-react'
+import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users } from 'lucide-react'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children, description }: {
@@ -30,15 +30,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [showProviderModal, setShowProviderModal] = useState(false)
   const [manualCalUrl, setManualCalUrl] = useState('')
-  const [useManual, setUseManual] = useState(true)
 
   useEffect(() => {
     const stored = getStoredUser()
     setUser(stored)
     setManualCalUrl(stored?.manual_calendar_url || '')
-    setUseManual(!!stored?.manual_calendar_url || !stored?.calendar_connected)
     
     Promise.all([getCompany(), getIndustryTemplates()])
       .then(([c, t]) => {
@@ -53,13 +50,11 @@ export default function SettingsPage() {
     if (!company) return
     setSaving(true)
     try {
-      // 1. Save company settings
+      // 1. Save company settings (including master team link)
       await updateCompany(company)
       
-      // 2. Save user manual cal URL
-      // We send manual_calendar_url only if useManual is true, else we clear it
-      const payload = { manual_calendar_url: useManual ? manualCalUrl : null }
-      const updated = await updateMe(payload)
+      // 2. Save user personal override
+      const updated = await updateMe({ manual_calendar_url: manualCalUrl || null })
       
       // 3. Update local state and storage
       setUser(updated)
@@ -100,22 +95,6 @@ export default function SettingsPage() {
     })
   }
 
-  const disconnectCalendar = async () => {
-    if (!confirm('Are you sure you want to disconnect your work calendar? AI will no longer be able to book meetings for you.')) return
-    try {
-      const updated = await updateMe({ 
-        calendar_connected: false, 
-        calcom_username: null, 
-        calcom_event_id: null 
-      })
-      setUser(updated)
-      localStorage.setItem('user', JSON.stringify(updated))
-      setUseManual(true)
-    } catch (err) {
-      alert('Failed to disconnect calendar')
-    }
-  }
-
   if (loading) return <div className="text-gray-400 text-sm p-8 font-bold font-sans">Loading settings…</div>
 
   return (
@@ -144,94 +123,51 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        {/* Unified Calendar Section */}
-        <Section title="Calendar & Scheduling" icon={Calendar} description="Choose how leads book meetings with you">
-          <div className="space-y-6">
-            {/* Toggle Mode */}
-            <div className="flex p-1 bg-gray-100 rounded-xl w-full sm:w-fit">
-              <button
-                type="button"
-                onClick={() => setUseManual(true)}
-                className={clsx(
-                  "flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all",
-                  useManual ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Direct URL
-              </button>
-              <button
-                type="button"
-                onClick={() => setUseManual(false)}
-                className={clsx(
-                  "flex-1 sm:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all",
-                  !useManual ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Managed Integration
-              </button>
+        {/* Master Team Link (Admin Only) */}
+        {user?.role === 'admin' && (
+          <Section title="Team Orchestration" icon={Users} description="Configure the master scheduling link for the entire company">
+            <div className="space-y-4">
+              <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4">
+                <p className="text-[11px] text-brand-700 font-bold leading-relaxed">
+                  Enter your master Cal.com Team Round Robin link. This will be the default link the AI sends to leads if an agent hasn't set their own override.
+                </p>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Team Booking URL</label>
+                <div className="relative">
+                  <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    className="input pl-10 font-mono text-xs font-bold bg-white" 
+                    value={company?.cal_booking_url || ''} 
+                    onChange={e => setCompany(c => c ? {...c, cal_booking_url: e.target.value} : null)}
+                    placeholder="https://cal.com/team/your-company/discovery"
+                  />
+                </div>
+              </div>
             </div>
+          </Section>
+        )}
 
-            {useManual ? (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                  <p className="text-[11px] text-blue-700 font-bold leading-relaxed">
-                    Paste your personal booking link below. The AI will send this exact URL to leads whenever they ask to schedule.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Booking URL</label>
-                  <div className="relative">
-                    <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                      className="input pl-10 font-mono text-xs font-bold bg-white" 
-                      value={manualCalUrl} 
-                      onChange={e => setManualCalUrl(e.target.value)}
-                      placeholder="https://cal.com/your-name/15min"
-                    />
-                  </div>
-                </div>
+        {/* Personal Booking Link */}
+        <Section title="Personal Booking" icon={LinkIcon} description="Set your own booking link to override the company default">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Personal URL</label>
+              <div className="relative">
+                <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  className="input pl-10 font-mono text-xs font-bold bg-white" 
+                  value={manualCalUrl} 
+                  onChange={e => setManualCalUrl(e.target.value)}
+                  placeholder="https://cal.com/your-name/15min"
+                />
               </div>
-            ) : (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                {user?.calendar_connected ? (
-                  <div className="bg-brand-50 border border-brand-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-brand-600 shadow-sm border border-brand-50">
-                        <ShieldCheck size={24} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-brand-900 text-sm">Managed Cal Active</p>
-                        <p className="text-[10px] text-brand-600 font-bold uppercase tracking-tight">Syncing via Converso Managed Cal</p>
-                      </div>
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={disconnectCalendar}
-                      className="btn-secondary py-2 px-6 text-xs font-bold text-red-600 border-red-100 hover:bg-red-50 w-full sm:w-auto"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 text-center">
-                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
-                      <ShieldCheck size={28} className="text-gray-400" />
-                    </div>
-                    <h3 className="font-bold text-gray-900 mb-1">One-Click Integration</h3>
-                    <p className="text-xs text-gray-500 mb-6 max-w-sm mx-auto font-medium leading-relaxed">
-                      Connect your work calendar to let our platform manage your availability automatically.
-                    </p>
-                    <button 
-                      type="button"
-                      onClick={() => setShowProviderModal(true)}
-                      className="btn-primary px-10 py-3 font-bold text-sm shadow-lg shadow-brand-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      Connect Work Calendar
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+              <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
+                {manualCalUrl 
+                  ? "✓ AI will use this link for your leads." 
+                  : `Defaulting to ${company?.cal_booking_url ? 'Company Team Link' : 'no link'} until you provide one.`}
+              </p>
+            </div>
           </div>
         </Section>
 
@@ -336,102 +272,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </form>
-
-      {showProviderModal && (
-        <ProviderSelectionModal 
-          user={user}
-          onClose={() => setShowProviderModal(false)} 
-          onConnected={(updated) => {
-            setUser(updated)
-            setShowProviderModal(false)
-          }}
-        />
-      )}
     </div>
   )
-}
-
-function ProviderSelectionModal({ user, onClose, onConnected }: { user: User | null; onClose: () => void; onConnected: (u: User) => void }) {
-  const [connecting, setConnecting] = useState<string | null>(null)
-
-  const connect = async (provider: string) => {
-    setConnecting(provider)
-    try {
-      // 1. Perform backend-managed connection flow
-      await connectCalendar(provider)
-      
-      // 2. Fetch fresh user data to reflect the new state
-      const response = await fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      })
-      if (!response.ok) throw new Error('Failed to refresh user data')
-      const updatedUser = await response.json()
-      localStorage.setItem('user', JSON.stringify(updatedUser))
-      
-      onConnected(updatedUser)
-    } catch (err: any) {
-      alert(`Failed to connect ${provider} calendar: ${err.message}`)
-    } finally {
-      setConnecting(null)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="card w-full max-w-sm p-6 my-auto shadow-2xl border-none bg-white animate-in zoom-in duration-200">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Choose your calendar</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          <button 
-            onClick={() => connect('google')}
-            disabled={!!connecting}
-            className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-gray-100 hover:border-brand-500 hover:bg-brand-50/30 transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm">
-                <img src="https://www.google.com/favicon.ico" className="w-5 h-5" alt="Google" />
-              </div>
-              <span className="font-bold text-gray-700">Google Calendar</span>
-            </div>
-            {connecting === 'google' ? (
-              <div className="w-5 h-5 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <ChevronRight size={18} className="text-gray-300 group-hover:text-brand-600" />
-            )}
-          </button>
-
-          <button 
-            onClick={() => connect('microsoft')}
-            disabled={!!connecting}
-            className="w-full flex items-center justify-between p-4 rounded-2xl border-2 border-gray-100 hover:border-brand-500 hover:bg-brand-50/30 transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-gray-100 shadow-sm">
-                <img src="https://www.microsoft.com/favicon.ico" className="w-5 h-5" alt="Microsoft" />
-              </div>
-              <span className="font-bold text-gray-700">Microsoft Outlook</span>
-            </div>
-            {connecting === 'microsoft' ? (
-              <div className="w-5 h-5 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <ChevronRight size={18} className="text-gray-300 group-hover:text-brand-600" />
-            )}
-          </button>
-        </div>
-
-        <p className="mt-6 text-[10px] text-gray-400 text-center font-medium leading-relaxed italic">
-          Sign in via Okta to grant Converso secure access to your availability.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function ChevronRight({ size, className }: { size: number; className?: string }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>
 }
