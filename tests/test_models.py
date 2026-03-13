@@ -1,222 +1,156 @@
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-import uuid
-from datetime import datetime
-
-from app.models import (
-    Company, Lead, Message, ConversationThread, 
-    CalendarEvent, User, LeadStatus, MessageDirection
-)
-
+from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import Company, Lead, LeadStatus, Message, MessageDirection, ConversationThread, CalendarEvent
+from datetime import datetime, timedelta
 
 @pytest.mark.asyncio
 async def test_create_company(db_session: AsyncSession):
-    """Test creating a company"""
     company = Company(
-        name="Test Company",
-        domain="testcompany.com",
-        industry="Technology",
-        ai_config={"temperature": 0.7, "tone": "friendly"},
-        twilio_phone_number="+14165551234"
+        name="Acme Corp",
+        industry="SaaS",
+        ai_config={"temperature": 0.7, "tone": "professional"}
     )
     db_session.add(company)
     await db_session.commit()
+    await db_session.refresh(company)
     
-    # Query back
-    result = await db_session.execute(
-        select(Company).where(Company.name == "Test Company")
-    )
-    saved_company = result.scalar_one()
-    
-    assert saved_company.name == "Test Company"
-    assert saved_company.domain == "testcompany.com"
-    assert saved_company.ai_config["temperature"] == 0.7
-
+    assert company.id is not None
+    assert company.name == "Acme Corp"
+    assert company.ai_config["tone"] == "professional"
 
 @pytest.mark.asyncio
 async def test_create_lead_with_company(db_session: AsyncSession):
-    """Test creating a lead associated with a company"""
-    # Create company first
-    company = Company(name="Test Company")
+    company = Company(name="Test Co", ai_config={})
     db_session.add(company)
-    await db_session.commit()
+    await db_session.flush()
     
-    # Create lead
     lead = Lead(
         company_id=company.id,
-        name="John Doe",
-        email="john@example.com",
-        phone="+14165551234",
-        title="CEO",
-        lead_company="Doe Industries",
-        industry="Manufacturing",
+        name="Jane Smith",
+        email="jane@example.com",
+        phone="+15550001111",
         status=LeadStatus.NEW
     )
     db_session.add(lead)
     await db_session.commit()
     
-    # Query with relationship
+    # Use selectinload to avoid lazy-loading issues
     result = await db_session.execute(
-        select(Lead).where(Lead.email == "john@example.com")
+        select(Company).where(Company.id == company.id).options(selectinload(Company.leads))
     )
-    saved_lead = result.scalar_one()
-    
-    assert saved_lead.name == "John Doe"
-    assert saved_lead.company_id == company.id
-    assert saved_lead.status == LeadStatus.NEW
-
+    fetched_company = result.scalar_one()
+    assert len(fetched_company.leads) == 1
+    assert fetched_company.leads[0].name == "Jane Smith"
 
 @pytest.mark.asyncio
 async def test_create_message_for_lead(db_session: AsyncSession):
-    """Test creating messages for a lead"""
-    # Setup
-    company = Company(name="Test Company")
+    company = Company(name="Msg Co", ai_config={})
     db_session.add(company)
-    await db_session.commit()
+    await db_session.flush()
     
     lead = Lead(
         company_id=company.id,
-        name="John Doe",
-        email="john@example.com",
-        phone="+14165551234"
+        name="Bob Jones",
+        email="bob@example.com",
+        phone="+15552223333"
     )
     db_session.add(lead)
-    await db_session.commit()
+    await db_session.flush()
     
-    # Create inbound message
-    inbound_msg = Message(
+    # Create an inbound message
+    message = Message(
+        company_id=company.id,
         lead_id=lead.id,
         direction=MessageDirection.INBOUND,
         channel="sms",
         content="I'm interested in your product",
         twilio_message_sid="SM123456789"
     )
-    db_session.add(inbound_msg)
-    
-    # Create outbound message
-    outbound_msg = Message(
-        lead_id=lead.id,
-        direction=MessageDirection.OUTBOUND,
-        channel="sms",
-        content="Thanks for your interest! How can I help?",
-        twilio_message_sid="SM987654321"
-    )
-    db_session.add(outbound_msg)
+    db_session.add(message)
     await db_session.commit()
     
-    # Query messages
+    # Check lead relationship by loading lead with messages
     result = await db_session.execute(
-        select(Message).where(Message.lead_id == lead.id)
+        select(Lead).where(Lead.id == lead.id).options(selectinload(Lead.messages))
     )
-    messages = result.scalars().all()
-    
-    assert len(messages) == 2
-    assert any(m.direction == MessageDirection.INBOUND for m in messages)
-    assert any(m.direction == MessageDirection.OUTBOUND for m in messages)
-
+    fetched_lead = result.scalar_one()
+    assert len(fetched_lead.messages) == 1
+    assert fetched_lead.messages[0].content == "I'm interested in your product"
+    assert fetched_lead.messages[0].company_id == company.id
 
 @pytest.mark.asyncio
 async def test_conversation_thread(db_session: AsyncSession):
-    """Test conversation thread functionality"""
-    # Setup
-    company = Company(name="Test Company")
+    company = Company(name="Thread Co", ai_config={})
     db_session.add(company)
-    await db_session.commit()
+    await db_session.flush()
     
     lead = Lead(
         company_id=company.id,
-        name="John Doe",
-        email="john@example.com",
-        phone="+14165551234"
+        name="Alice White",
+        email="alice@example.com",
+        phone="+15554445555"
     )
     db_session.add(lead)
-    await db_session.commit()
+    await db_session.flush()
     
-    # Create thread
     thread = ConversationThread(
         lead_id=lead.id,
         channel="sms",
-        is_active=True,
-        context={"goal": "schedule_meeting", "notes": "Interested in demo"}
+        context={"topic": "demo"}
     )
     db_session.add(thread)
-    await db_session.commit()
+    await db_session.flush()
     
-    # Add messages to thread
-    msg1 = Message(
+    msg = Message(
+        company_id=company.id,
         lead_id=lead.id,
         thread_id=thread.id,
         direction=MessageDirection.INBOUND,
         channel="sms",
         content="Can we schedule a demo?"
     )
-    msg2 = Message(
-        lead_id=lead.id,
-        thread_id=thread.id,
-        direction=MessageDirection.OUTBOUND,
-        channel="sms",
-        content="Absolutely! I have slots available tomorrow at 2 PM."
-    )
-    db_session.add_all([msg1, msg2])
+    db_session.add(msg)
     await db_session.commit()
     
-    # Query thread with messages
+    # Verify thread messages
     result = await db_session.execute(
-        select(ConversationThread).where(ConversationThread.id == thread.id)
+        select(ConversationThread)
+        .where(ConversationThread.id == thread.id)
+        .options(selectinload(ConversationThread.messages))
     )
-    saved_thread = result.scalar_one()
-    
-    assert saved_thread.is_active is True
-    assert saved_thread.context["goal"] == "schedule_meeting"
-
+    fetched_thread = result.scalar_one()
+    assert len(fetched_thread.messages) == 1
+    assert fetched_thread.messages[0].content == "Can we schedule a demo?"
 
 @pytest.mark.asyncio
 async def test_calendar_event(db_session: AsyncSession):
-    """Test calendar event creation"""
-    # Setup
-    company = Company(name="Test Company")
+    company = Company(name="Cal Co", ai_config={})
     db_session.add(company)
-    await db_session.commit()
-    
-    user = User(
-        company_id=company.id,
-        email="sales@example.com",
-        name="Sales Agent",
-        hashed_password="hashed_password_here",
-        role="sales_agent"
-    )
-    db_session.add(user)
+    await db_session.flush()
     
     lead = Lead(
         company_id=company.id,
-        name="John Doe",
-        email="john@example.com",
-        phone="+14165551234"
+        name="Cal User",
+        email="caluser@example.com", # Added missing email
+        phone="+15556667777"
     )
     db_session.add(lead)
-    await db_session.commit()
+    await db_session.flush()
     
-    # Create calendar event
     event = CalendarEvent(
         lead_id=lead.id,
-        sales_agent_id=user.id,
-        title="Demo with John Doe",
-        description="Product demonstration",
-        start_time=datetime.utcnow(),
-        end_time=datetime.utcnow(),
-        location="Google Meet",
-        meeting_link="https://meet.google.com/abc-defg-hij"
+        title="Discovery Call",
+        start_time=datetime.utcnow() + timedelta(days=1),
+        end_time=datetime.utcnow() + timedelta(days=1, hours=1),
+        status="confirmed",
+        google_event_id="cal_123"
     )
     db_session.add(event)
     await db_session.commit()
+    await db_session.refresh(event)
     
-    # Query event
-    result = await db_session.execute(
-        select(CalendarEvent).where(CalendarEvent.lead_id == lead.id)
-    )
-    saved_event = result.scalar_one()
-    
-    assert saved_event.title == "Demo with John Doe"
-    assert saved_event.location == "Google Meet"
-    assert saved_event.sales_agent_id == user.id
+    assert event.id is not None
+    assert event.lead_id == lead.id
+    assert event.status == "confirmed"

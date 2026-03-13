@@ -7,7 +7,7 @@ from uuid import UUID
 
 from app.core.database import get_db
 from app.api.auth import get_current_user
-from app.models import Company, User, Lead
+from app.models import Company, User, Lead, Message
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -147,11 +147,12 @@ async def get_platform_usage(
     
     # 3. Daily volume (Last 7 days)
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    day_col = func.date_trunc('day', Message.created_at)
     daily_volume = await db.execute(
-        select(func.date_trunc('day', Message.created_at), func.count(Message.id))
+        select(day_col, func.count(Message.id))
         .where(Message.created_at >= seven_days_ago)
-        .group_by(func.date_trunc('day', Message.created_at))
-        .order_by(func.date_trunc('day', Message.created_at))
+        .group_by(day_col)
+        .order_by(day_col)
     )
     volume_history = [{"date": str(dt.date()), "count": count} for dt, count in daily_volume.all()]
     

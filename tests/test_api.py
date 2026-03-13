@@ -158,12 +158,14 @@ class TestMessagesAPI:
         await db_session.commit()
         
         msg1 = Message(
+            company_id=test_user.company_id,
             lead_id=lead.id,
             direction=MessageDirection.INBOUND,
             channel="sms",
             content="Hello, I'm interested"
         )
         msg2 = Message(
+            company_id=test_user.company_id,
             lead_id=lead.id,
             direction=MessageDirection.OUTBOUND,
             channel="sms",
