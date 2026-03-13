@@ -2,7 +2,25 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { listCompanies, getPlatformUsage, type CompanyStats } from '@/lib/api'
-import { Building2, Users, Zap, Search, Plus, ExternalLink, ShieldCheck, TrendingUp, ArrowUpRight, BarChart3, Clock, Activity, Phone, MessageCircle } from 'lucide-react'
+import { 
+  Building2, 
+  Users, 
+  Zap, 
+  Search, 
+  Plus, 
+  ExternalLink, 
+  ShieldCheck, 
+  TrendingUp, 
+  ArrowUpRight, 
+  BarChart3, 
+  Clock, 
+  Activity, 
+  Phone, 
+  MessageCircle,
+  LayoutGrid,
+  Command,
+  ArrowRight
+} from 'lucide-react'
 import clsx from 'clsx'
 
 export default function PlatformAdminPage() {
@@ -34,112 +52,151 @@ export default function PlatformAdminPage() {
   const totalUsers = companies.reduce((sum, c) => sum + c.user_count, 0)
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 font-sans">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-            <ShieldCheck className="text-brand-600" size={32} />
-            Platform Admin
-          </h1>
-          <p className="text-gray-500 text-sm mt-1 font-medium italic">Manage tenants, users, and global platform performance.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex p-1 bg-gray-100 rounded-xl mr-2">
-            <button 
-              onClick={() => setTab('companies')}
-              className={clsx("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", tab === 'companies' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
-            >
-              Clients
-            </button>
-            <button 
-              onClick={() => setTab('usage')}
-              className={clsx("px-4 py-1.5 rounded-lg text-xs font-bold transition-all", tab === 'usage' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700")}
-            >
-              Usage & Billing
-            </button>
+    <div className="max-w-7xl mx-auto space-y-10 font-sans pb-20">
+      {/* Dynamic Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-white/5">
+            <Command size={12} className="text-brand-400" />
+            Platform Control
           </div>
-          <button className="btn-primary py-2 px-4 text-sm font-bold flex items-center gap-2 shadow-lg shadow-brand-100">
-            <Plus size={18} /> New Client
+          <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none">
+            Command Center
+          </h1>
+          <p className="text-slate-500 text-sm font-medium">Global oversight of multi-tenant SaaS architecture and throughput.</p>
+        </div>
+
+        <div className="flex items-center gap-3 p-1.5 bg-white rounded-[20px] shadow-xl shadow-slate-200/50 border border-slate-100">
+          <button 
+            onClick={() => setTab('companies')}
+            className={clsx(
+              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2", 
+              tab === 'companies' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            <LayoutGrid size={14} /> Clients
+          </button>
+          <button 
+            onClick={() => setTab('usage')}
+            className={clsx(
+              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2", 
+              tab === 'usage' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-slate-900"
+            )}
+          >
+            <Activity size={14} /> Analytics
           </button>
         </div>
       </div>
 
       {tab === 'companies' ? (
         <>
-          {/* Overview Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <StatCard title="Total Clients" value={companies.length} icon={Building2} trend="+2 this week" />
-            <StatCard title="Total Platform Users" value={totalUsers} icon={Users} trend="+12 this week" />
-            <StatCard title="Managed Leads" value={totalLeads} icon={Zap} trend="+1.2k this week" />
+          {/* Dashboard Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <StatCard 
+              title="Active Tenants" 
+              value={companies.length} 
+              icon={Building2} 
+              trend="+4.2%" 
+              color="from-brand-500 to-indigo-600"
+            />
+            <StatCard 
+              title="Global Users" 
+              value={totalUsers} 
+              icon={Users} 
+              trend="+12.5%" 
+              color="from-emerald-500 to-teal-600"
+            />
+            <StatCard 
+              title="Total Activity" 
+              value={totalLeads.toLocaleString()} 
+              icon={Zap} 
+              trend="+8.1%" 
+              color="from-amber-500 to-orange-600"
+            />
           </div>
 
-          {/* Companies List */}
-          <div className="card overflow-hidden border-gray-100 shadow-sm">
-            <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <input 
-                  type="text" 
-                  placeholder="Filter clients..." 
-                  className="bg-white border-gray-200 rounded-lg pl-9 py-1.5 text-xs font-bold focus:ring-brand-500"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
+          {/* Client Registry */}
+          <div className="card overflow-hidden border-none shadow-2xl shadow-slate-200/60 bg-white/80 backdrop-blur-xl">
+            <div className="px-8 py-6 border-b border-slate-50 bg-white/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-black text-slate-900 text-lg">Tenant Registry</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{filtered.length} Enterprise Clients</p>
               </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{filtered.length} total</span>
+              <div className="flex items-center gap-3">
+                <div className="relative group">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Filter by name or industry..." 
+                    className="bg-slate-100/50 border-transparent rounded-[18px] pl-11 pr-6 py-2.5 text-xs font-bold w-full md:w-72 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                </div>
+                <button className="bg-slate-900 text-white h-10 px-5 rounded-[18px] text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-brand-600 hover:shadow-xl hover:shadow-brand-200 transition-all active:scale-95">
+                  <Plus size={16} strokeWidth={3} /> Register
+                </button>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              {loading ? <div className="p-12 text-center text-gray-400 font-bold text-sm">Loading tenants…</div> : (
-                <table className="w-full text-left">
+
+            <div className="overflow-x-auto custom-scrollbar">
+              {loading ? (
+                <div className="p-20 text-center space-y-4">
+                  <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Querying Cloud Data…</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                      <th className="px-6 py-4">Company</th>
-                      <th className="px-6 py-4">Industry</th>
-                      <th className="px-6 py-4 text-center">Users</th>
-                      <th className="px-6 py-4 text-center">Leads</th>
-                      <th className="px-6 py-4">Joined</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50">
+                      <th className="px-8 py-5">Corporate Identity</th>
+                      <th className="px-8 py-5">Industry Sector</th>
+                      <th className="px-8 py-5 text-center">Personnel</th>
+                      <th className="px-8 py-5 text-center">Activity</th>
+                      <th className="px-8 py-5">Onboarded</th>
+                      <th className="px-8 py-5 text-right">Access</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-slate-50">
                     {filtered.map(company => (
-                      <tr key={company.id} className="hover:bg-gray-50/50 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 font-black text-sm shadow-sm">
+                      <tr key={company.id} className="hover:bg-slate-50/50 transition-all group cursor-default">
+                        <td className="px-8 py-6">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 font-black text-lg shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
                               {company.name.charAt(0)}
                             </div>
-                            <div>
-                              <p className="font-bold text-gray-900 text-sm">{company.name}</p>
-                              <p className="text-[10px] text-gray-400 font-mono">{company.id.substring(0, 8)}</p>
+                            <div className="space-y-0.5">
+                              <p className="font-black text-slate-900 text-[15px] group-hover:text-brand-600 transition-colors">{company.name}</p>
+                              <p className="text-[10px] text-slate-400 font-mono tracking-tight uppercase">{company.id.substring(0, 8)}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="px-3 py-1 rounded-full bg-white border border-gray-100 text-[10px] font-bold text-gray-600 uppercase tracking-tight shadow-sm">
+                        <td className="px-8 py-6">
+                          <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black text-slate-600 uppercase tracking-wider border border-slate-200/50">
                             {company.industry || 'General'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="font-bold text-gray-900">{company.user_count}</span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="inline-flex items-center gap-1.5 font-bold text-gray-900">
-                            <Zap size={12} className="text-amber-500 fill-amber-500" />
-                            {company.lead_count.toLocaleString()}
+                        <td className="px-8 py-6 text-center">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-black border border-emerald-100">
+                            <Users size={12} /> {company.user_count}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <p className="text-[11px] font-bold text-gray-500">
-                            {new Date(company.created_at).toLocaleDateString()}
+                        <td className="px-8 py-6 text-center">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-black border border-amber-100">
+                            <Zap size={12} className="fill-amber-500" /> {company.lead_count.toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                            {new Date(company.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           </p>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-8 py-6 text-right">
                           <Link 
                             href={`/dashboard/platform/companies/${company.id}`}
-                            className="inline-flex items-center gap-1 text-brand-600 font-bold text-xs hover:underline"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-brand-600 font-black text-[11px] uppercase tracking-widest hover:bg-brand-50 transition-all active:scale-95"
                           >
-                            Manage <ArrowUpRight size={14} />
+                            Manage <ArrowRight size={14} strokeWidth={3} />
                           </Link>
                         </td>
                       </tr>
@@ -151,60 +208,90 @@ export default function PlatformAdminPage() {
           </div>
         </>
       ) : (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Channel Usage */}
-            <div className="card p-6">
-              <h3 className="text-sm font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Activity size={18} className="text-brand-600" /> Volume by Channel
-              </h3>
-              <div className="space-y-4">
-                <UsageRow label="SMS (Twilio)" value={usage?.channels?.sms || 0} icon={MessageCircle} color="bg-blue-500" />
-                <UsageRow label="Voice (VAPI)" value={usage?.channels?.voice || 0} icon={Phone} color="bg-brand-500" />
-                <UsageRow label="AI API Calls" value={(usage?.channels?.sms || 0) + (usage?.channels?.voice || 0)} icon={Zap} color="bg-amber-500" />
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {/* Channel Metrics */}
+            <div className="card p-8 border-none shadow-2xl">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-3 uppercase tracking-widest">
+                  <Activity size={20} className="text-brand-500" /> Channel Volume
+                </h3>
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                  <BarChart3 size={14} />
+                </div>
+              </div>
+              <div className="space-y-6">
+                <UsageMetric label="SMS Outreach" value={usage?.channels?.sms || 0} icon={MessageCircle} color="bg-blue-500" sub="Twilio API" />
+                <UsageMetric label="AI Voice Calls" value={usage?.channels?.voice || 0} icon={Phone} color="bg-brand-500" sub="VAPI Hub" />
+                <UsageMetric label="OpenAI Computes" value={(usage?.channels?.sms || 0) + (usage?.channels?.voice || 0)} icon={Zap} color="bg-amber-500" sub="GPT-4 Inference" />
               </div>
             </div>
 
-            {/* Top Companies */}
-            <div className="card p-6">
-              <h3 className="text-sm font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <TrendingUp size={18} className="text-brand-600" /> Top Active Tenants
-              </h3>
-              <div className="space-y-4">
+            {/* High Capacity Tenants */}
+            <div className="card p-8 border-none shadow-2xl">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-3 uppercase tracking-widest">
+                  <TrendingUp size={20} className="text-emerald-500" /> High Activity
+                </h3>
+                <Link href="#" className="text-[10px] font-black text-brand-600 uppercase tracking-widest hover:underline">View All</Link>
+              </div>
+              <div className="space-y-5">
                 {usage?.top_ten_companies?.map((c: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-black text-gray-300">#{i+1}</span>
-                      <span className="text-sm font-bold text-gray-700">{c.name}</span>
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:shadow-md transition-all group">
+                    <div className="flex items-center gap-4">
+                      <span className="text-[10px] font-black text-slate-300">#{i+1}</span>
+                      <span className="text-sm font-black text-slate-700 group-hover:text-brand-600 transition-colors">{c.name}</span>
                     </div>
-                    <span className="text-xs font-black text-gray-900">{c.count} msgs</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900">{c.count.toLocaleString()}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Units</span>
+                    </div>
                   </div>
                 ))}
-                {!usage?.top_ten_companies?.length && <p className="text-xs text-gray-400 italic">No usage data yet.</p>}
+                {!usage?.top_ten_companies?.length && <p className="text-xs text-slate-400 italic text-center py-10">Initializing platform metrics…</p>}
               </div>
             </div>
           </div>
 
-          {/* Daily Volume (Simple Bar Chart) */}
-          <div className="card p-6">
-            <h3 className="text-sm font-bold text-gray-900 mb-8 flex items-center gap-2">
-              <BarChart3 size={18} className="text-brand-600" /> Platform Throughput (Last 7 Days)
-            </h3>
-            <div className="flex items-end justify-between h-48 gap-2">
+          {/* Activity Chart */}
+          <div className="card p-10 border-none shadow-2xl">
+            <div className="flex items-center justify-between mb-12">
+              <div className="space-y-1">
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-3 uppercase tracking-widest">
+                  <Activity size={20} className="text-brand-500" /> Platform Throughput
+                </h3>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-8">Rolling 7-day volume history</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-brand-500 shadow-[0_0_8px_rgba(124,58,237,0.6)]" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Compute Units</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-end justify-between h-64 gap-4 px-4">
               {usage?.volume_history?.map((day: any, i: number) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div 
-                    className="w-full bg-brand-100 group-hover:bg-brand-500 transition-colors rounded-t-lg relative"
-                    style={{ height: `${Math.max((day.count / (usage.volume_history.reduce((m:any, d:any) => Math.max(m, d.count), 1))) * 100, 5)}%` }}
-                  >
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      {day.count} msgs
-                    </div>
+                <div key={i} className="flex-1 flex flex-col items-center gap-4 group h-full justify-end">
+                  <div className="w-full flex flex-col items-center gap-2 opacity-40 group-hover:opacity-100 transition-all duration-500">
+                    <span className="text-[10px] font-black text-slate-900 opacity-0 group-hover:opacity-100 transition-opacity transform -translate-y-2 group-hover:translate-y-0 duration-300">
+                      {day.count}
+                    </span>
+                    <div 
+                      className="w-full bg-gradient-to-t from-brand-600/80 to-brand-400 rounded-2xl relative shadow-[0_4px_20px_rgba(124,58,237,0.1)] group-hover:shadow-[0_10px_30px_rgba(124,58,237,0.3)] group-hover:-translate-y-1 transition-all duration-500"
+                      style={{ height: `${Math.max((day.count / (usage.volume_history.reduce((m:any, d:any) => Math.max(m, d.count), 1))) * 180, 8)}px` }}
+                    />
                   </div>
-                  <span className="text-[10px] font-bold text-gray-400 rotate-45 sm:rotate-0 mt-2">{day.date.split('-').slice(1).join('/')}</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                      {new Date(day.date).toLocaleDateString(undefined, { weekday: 'short' })}
+                    </span>
+                    <span className="text-[9px] font-bold text-slate-300">
+                      {day.date.split('-').slice(1).join('/')}
+                    </span>
+                  </div>
                 </div>
               ))}
-              {!usage?.volume_history?.length && <div className="w-full text-center text-gray-400 font-bold">No history available</div>}
+              {!usage?.volume_history?.length && <div className="w-full text-center text-slate-300 font-black uppercase text-[10px] tracking-widest py-20">Awaiting usage data streams…</div>}
             </div>
           </div>
         </div>
@@ -213,33 +300,42 @@ export default function PlatformAdminPage() {
   )
 }
 
-function StatCard({ title, value, icon: Icon, trend }: { title: string; value: any; icon: any; trend: string }) {
+function StatCard({ title, value, icon: Icon, trend, color }: { title: string; value: any; icon: any; trend: string; color: string }) {
   return (
-    <div className="card p-6 shadow-sm border-gray-100 hover:shadow-md transition-shadow group">
-      <div className="flex justify-between items-start mb-4">
-        <div className="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 group-hover:scale-110 transition-transform">
-          <Icon size={24} />
+    <div className="card p-8 border-none shadow-2xl relative overflow-hidden group hover:-translate-y-2 duration-500 bg-white">
+      <div className={clsx("absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity bg-gradient-to-br", color)} />
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-6">
+          <div className={clsx("w-14 h-14 rounded-3xl flex items-center justify-center text-white shadow-xl transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110 bg-gradient-to-br shadow-slate-200", color)}>
+            <Icon size={28} strokeWidth={2.5} />
+          </div>
+          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 border border-emerald-100 shadow-sm">
+            <TrendingUp size={12} strokeWidth={3} /> {trend}
+          </span>
         </div>
-        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg flex items-center gap-1">
-          <TrendingUp size={10} /> {trend}
-        </span>
+        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{title}</p>
+        <h3 className="text-4xl font-black text-slate-900 tracking-tight">{value}</h3>
       </div>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{title}</p>
-      <h3 className="text-3xl font-black text-gray-900 mt-1 tracking-tight">{value}</h3>
     </div>
   )
 }
 
-function UsageRow({ label, value, icon: Icon, color }: { label: string; value: number; icon: any; color: string }) {
+function UsageMetric({ label, value, icon: Icon, color, sub }: { label: string; value: number; icon: any; color: string; sub: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className={clsx("w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-sm", color)}>
-          <Icon size={16} />
+    <div className="flex items-center justify-between p-5 rounded-3xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group">
+      <div className="flex items-center gap-5">
+        <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-500", color)}>
+          <Icon size={20} strokeWidth={2.5} />
         </div>
-        <span className="text-sm font-bold text-gray-700">{label}</span>
+        <div>
+          <span className="text-[13px] font-black text-slate-900 tracking-tight">{label}</span>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{sub}</p>
+        </div>
       </div>
-      <span className="text-sm font-black text-gray-900">{value.toLocaleString()}</span>
+      <div className="text-right">
+        <span className="text-lg font-black text-slate-900">{value.toLocaleString()}</span>
+        <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Requests</p>
+      </div>
     </div>
   )
 }

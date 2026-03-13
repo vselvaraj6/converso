@@ -10,7 +10,9 @@ import {
   Settings, 
   LogOut, 
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Command,
+  Sparkles
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
@@ -25,16 +27,15 @@ export default function Sidebar() {
   }, [pathname])
 
   const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { name: 'Leads', icon: Users, path: '/dashboard/leads' },
-    { name: 'Conversations', icon: MessageSquare, path: '/dashboard/conversations' },
-    { name: 'Meetings', icon: Calendar, path: '/dashboard/meetings' },
+    { name: 'Overview', icon: LayoutDashboard, path: '/dashboard' },
+    { name: 'Lead Pipeline', icon: Users, path: '/dashboard/leads' },
+    { name: 'Messages', icon: MessageSquare, path: '/dashboard/conversations' },
+    { name: 'Calendar', icon: Calendar, path: '/dashboard/meetings' },
     { name: 'Settings', icon: Settings, path: '/dashboard/settings' },
   ]
 
-  // Add Platform Admin link only for superusers
   if (user?.is_superuser) {
-    menuItems.push({ name: 'Platform Admin', icon: ShieldCheck, path: '/dashboard/platform' })
+    menuItems.push({ name: 'Command Center', icon: ShieldCheck, path: '/dashboard/platform' })
   }
 
   const handleLogout = () => {
@@ -43,17 +44,25 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen sticky top-0">
-      <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-200 transition-transform group-hover:scale-110">
-            <img src="/logo.svg" alt="C" className="w-5 h-5 brightness-0 invert" />
+    <aside className="w-72 bg-slate-950 text-white flex flex-col h-screen sticky top-0 z-50 shadow-[20px_0_80px_rgba(0,0,0,0.1)]">
+      {/* Brand Header */}
+      <div className="p-8 pb-10">
+        <Link href="/dashboard" className="flex items-center gap-3 group">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110">
+            <Command size={22} className="text-white" />
           </div>
-          <span className="font-black text-xl tracking-tight text-gray-900">Converso</span>
+          <div className="flex flex-col">
+            <span className="font-black text-xl tracking-tight leading-none group-hover:text-brand-400 transition-colors">Converso</span>
+            <span className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-500 mt-1">Enterprise AI</span>
+          </div>
         </Link>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1 mt-4">
+      {/* Nav Section */}
+      <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+        <div className="px-4 mb-4">
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Main Hub</p>
+        </div>
         {menuItems.map((item) => {
           const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`)
           return (
@@ -61,34 +70,54 @@ export default function Sidebar() {
               key={item.name}
               href={item.path}
               className={clsx(
-                'flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group',
+                'flex items-center justify-between px-4 py-3.5 rounded-2xl text-[13px] font-bold transition-all duration-300 group relative overflow-hidden',
                 isActive 
-                  ? 'bg-brand-50 text-brand-700 shadow-sm' 
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-white/10 text-white border border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.2)]' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
               )}
             >
-              <div className="flex items-center gap-3">
-                <item.icon size={18} className={clsx(isActive ? 'text-brand-600' : 'text-gray-400 group-hover:text-gray-600')} />
-                {item.name}
+              {isActive && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-brand-500 rounded-r-full shadow-[0_0_15px_rgba(139,92,246,0.8)]" />
+              )}
+              <div className="flex items-center gap-3.5">
+                <item.icon size={18} className={clsx(
+                  'transition-colors duration-300',
+                  isActive ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'
+                )} />
+                <span className="tracking-tight">{item.name}</span>
               </div>
-              {isActive && <ChevronRight size={14} className="text-brand-400" />}
+              <ChevronRight size={14} className={clsx(
+                'transition-all duration-300 transform',
+                isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0'
+              )} />
             </Link>
           )
         })}
       </nav>
 
-      <div className="p-4 border-t border-gray-50">
-        <div className="px-4 py-4 mb-2 bg-gray-50/50 rounded-2xl border border-gray-50">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Signed in as</p>
-          <p className="text-xs font-bold text-gray-900 truncate">{user?.name || 'Loading...'}</p>
-          <p className="text-[9px] font-medium text-gray-500 truncate mt-0.5">{user?.email}</p>
+      {/* Footer Profile */}
+      <div className="p-6 mt-auto">
+        <div className="bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/5 p-4 mb-4 group hover:bg-slate-900 transition-colors duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-slate-300 font-bold border border-white/10 group-hover:scale-105 transition-transform">
+              {user?.name?.charAt(0) || 'U'}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">{user?.name || 'Loading...'}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{user?.role || 'User'}</p>
+              </div>
+            </div>
+          </div>
         </div>
+        
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[13px] font-bold text-slate-400 hover:text-red-400 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all duration-300"
         >
-          <LogOut size={18} />
-          Logout
+          <LogOut size={16} />
+          Sign Out
         </button>
       </div>
     </aside>
