@@ -222,9 +222,42 @@ export interface User {
   name: string
   role: string
   company_id: string
+  is_superuser: boolean
   calendar_connected: boolean
   manual_calendar_url: string | null
   calcom_event_id: number | null
+}
+...
+// ── Platform Admin ──────────────────────────────────────────────────────────
+
+export interface CompanyStats {
+  id: string
+  name: string
+  industry: string | null
+  user_count: int
+  lead_count: int
+  created_at: string
+}
+
+export async function listCompanies() {
+  return request<CompanyStats[]>('/platform/companies')
+}
+
+export async function getCompanyDetails(id: string) {
+  return request<{ company: Company; users: any[] }>(`/platform/companies/${id}`)
+}
+
+export async function updateCompanyAsAdmin(id: string, data: any) {
+  return request<Company>(`/platform/companies/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteCompany(id: string) {
+  return request<{ status: string }>(`/platform/companies/${id}`, {
+    method: 'DELETE',
+  })
 }
 
 export interface Lead {
