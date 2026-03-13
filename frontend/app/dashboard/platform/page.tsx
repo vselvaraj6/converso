@@ -243,5 +243,3 @@ function UsageRow({ label, value, icon: Icon, color }: { label: string; value: n
     </div>
   )
 }
-
-import { MessageCircle } from 'lucide-react'
