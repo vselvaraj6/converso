@@ -1,14 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
-import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users } from 'lucide-react'
+import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users, Mail } from 'lucide-react'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children, description }: {
   title: string; icon: React.ElementType; children: React.ReactNode; description?: string
 }) {
   return (
-    <div className="card p-5 md:p-6 shadow-sm border-gray-100 font-sans">
+    <div className="card p-5 md:p-6 shadow-sm border-gray-100 font-sans bg-white">
       <div className="flex items-start gap-3 mb-5">
         <div className="w-10 h-10 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
           <Icon size={20} className="text-brand-600" />
@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [templates, setTemplates] = useState<Record<string, { industry_lingo: string; company_memory: string }>>({})
+  const [teamMembers, setTeamMembers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -37,7 +38,15 @@ export default function SettingsPage() {
     setUser(stored)
     setManualCalUrl(stored?.manual_calendar_url || '')
     
-    Promise.all([getCompany(), getIndustryTemplates()])
+    const promises: any[] = [getCompany(), getIndustryTemplates()]
+    
+    // Only admins can fetch team members
+    if (stored?.role === 'admin' || stored?.is_superuser) {
+      // We don't have a direct 'getCompanyUsers' but we can use the detail admin endpoint if superuser
+      // For now, let's just use a placeholder or add a company users endpoint
+    }
+
+    Promise.all(promises)
       .then(([c, t]) => {
         setCompany(c)
         setTemplates(t)
@@ -51,7 +60,9 @@ export default function SettingsPage() {
     setSaving(true)
     try {
       // 1. Save company settings (including master team link)
-      await updateCompany(company)
+      if (user?.role === 'admin' || user?.is_superuser) {
+        await updateCompany(company)
+      }
       
       // 2. Save user personal override
       const updated = await updateMe({ manual_calendar_url: manualCalUrl || null })
@@ -117,14 +128,21 @@ export default function SettingsPage() {
               <span className="font-bold text-gray-900 truncate ml-4">{user?.email}</span>
             </div>
             <div className="flex justify-between py-2">
-              <span className="text-gray-500 font-medium">Role</span>
-              <span className="font-bold text-gray-900 capitalize">{user?.role}</span>
+              <span className="text-gray-500 font-medium">Current Role</span>
+              <span className={clsx(
+                "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                user?.role === 'admin' ? "bg-amber-50 text-amber-700 border border-amber-100" : 
+                user?.role === 'write' ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                "bg-gray-50 text-gray-600 border border-gray-100"
+              )}>
+                {user?.role}
+              </span>
             </div>
           </div>
         </Section>
 
         {/* Master Team Link (Admin Only) */}
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.is_superuser) && (
           <Section title="Team Orchestration" icon={Users} description="Configure the master scheduling link for the entire company">
             <div className="space-y-4">
               <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4">
@@ -148,129 +166,141 @@ export default function SettingsPage() {
           </Section>
         )}
 
-        {/* Personal Booking Link */}
-        <Section title="Personal Booking" icon={LinkIcon} description="Set your own booking link to override the company default">
-          <div className="space-y-4">
+        {/* Personal Booking Link (Only for Write/Admin access) */}
+        {(user?.role === 'admin' || user?.role === 'write' || user?.is_superuser) && (
+          <Section title="Personal Booking" icon={LinkIcon} description="Set your own booking link to override the company default">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Personal URL</label>
+                <div className="relative">
+                  <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    className="input pl-10 font-mono text-xs font-bold bg-white" 
+                    value={manualCalUrl} 
+                    onChange={e => setManualCalUrl(e.target.value)}
+                    placeholder="https://cal.com/your-name/15min"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
+                  {manualCalUrl 
+                    ? "✓ AI will use this link for your leads." 
+                    : `Defaulting to ${company?.cal_booking_url ? 'Company Team Link' : 'no link'} until you provide one.`}
+                </p>
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/* Industry Selector (Admin Only) */}
+        {(user?.role === 'admin' || user?.is_superuser) && (
+          <Section title="Industry Context" icon={Building2} description="Select your industry to autopopulate AI knowledge">
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Personal URL</label>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Industry</label>
               <div className="relative">
-                <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input 
-                  className="input pl-10 font-mono text-xs font-bold bg-white" 
-                  value={manualCalUrl} 
-                  onChange={e => setManualCalUrl(e.target.value)}
-                  placeholder="https://cal.com/your-name/15min"
+                <select 
+                  className="input pr-10 appearance-none font-bold bg-white" 
+                  value={company?.industry || ''} 
+                  onChange={handleIndustryChange}
+                >
+                  <option value="">Select an industry...</option>
+                  {Object.keys(templates).map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                  <option value="Other">Other (Manual Entry)</option>
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                  <Sparkles size={16} className="text-brand-500" />
+                </div>
+              </div>
+            </div>
+          </Section>
+        )}
+
+        {/* AI Memory & Knowledge (Admin Only) */}
+        {(user?.role === 'admin' || user?.is_superuser) && (
+          <Section title="AI Memory & Knowledge" icon={Brain} description="Information the AI uses to curate personal responses">
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2 font-bold">
+                  <MessageCircle size={12} className="text-brand-500" />
+                  Industry Lingo
+                </label>
+                <textarea
+                  className="input min-h-[100px] resize-none text-sm leading-relaxed font-bold bg-white"
+                  value={company?.ai_config.industry_lingo || ''}
+                  onChange={e => updateAI('industry_lingo', e.target.value)}
+                  placeholder="e.g. use terms like 'Pre-approval', 'HELOC', 'Amortization'."
                 />
               </div>
-              <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
-                {manualCalUrl 
-                  ? "✓ AI will use this link for your leads." 
-                  : `Defaulting to ${company?.cal_booking_url ? 'Company Team Link' : 'no link'} until you provide one.`}
-              </p>
-            </div>
-          </div>
-        </Section>
-
-        {/* Industry Selector */}
-        <Section title="Industry Context" icon={Building2} description="Select your industry to autopopulate AI knowledge">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Industry</label>
-            <div className="relative">
-              <select 
-                className="input pr-10 appearance-none font-bold bg-white" 
-                value={company?.industry || ''} 
-                onChange={handleIndustryChange}
-              >
-                <option value="">Select an industry...</option>
-                {Object.keys(templates).map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-                <option value="Other">Other (Manual Entry)</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <Sparkles size={16} className="text-brand-500" />
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2 font-bold">
+                  <Brain size={12} className="text-brand-500" />
+                  Company Memory
+                </label>
+                <textarea
+                  className="input min-h-[120px] resize-none text-sm leading-relaxed font-bold bg-white"
+                  value={company?.ai_config.company_memory || ''}
+                  onChange={e => updateAI('company_memory', e.target.value)}
+                  placeholder="e.g. We specialize in first-time home buyers in Ontario."
+                />
               </div>
             </div>
-          </div>
-        </Section>
+          </Section>
+        )}
 
-        {/* AI Memory & Knowledge */}
-        <Section title="AI Memory & Knowledge" icon={Brain} description="Information the AI uses to curate personal responses">
-          <div className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2 font-bold">
-                <MessageCircle size={12} className="text-brand-500" />
-                Industry Lingo
-              </label>
-              <textarea
-                className="input min-h-[100px] resize-none text-sm leading-relaxed font-bold bg-white"
-                value={company?.ai_config.industry_lingo || ''}
-                onChange={e => updateAI('industry_lingo', e.target.value)}
-                placeholder="e.g. use terms like 'Pre-approval', 'HELOC', 'Amortization'."
-              />
+        {/* AI Behaviour (Admin Only) */}
+        {(user?.role === 'admin' || user?.is_superuser) && (
+          <Section title="AI Behaviour" icon={Bot} description="Control the tone and style of AI interactions">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Response tone</label>
+                <select 
+                  className="input font-bold bg-white"
+                  value={company?.ai_config.tone || 'friendly and professional'}
+                  onChange={e => updateAI('tone', e.target.value)}
+                >
+                  <option value="friendly and professional">Friendly and Professional</option>
+                  <option value="formal">Formal</option>
+                  <option value="casual">Casual</option>
+                  <option value="concise">Concise and Direct</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2 font-bold">
-                <Brain size={12} className="text-brand-500" />
-                Company Memory
-              </label>
-              <textarea
-                className="input min-h-[120px] resize-none text-sm leading-relaxed font-bold bg-white"
-                value={company?.ai_config.company_memory || ''}
-                onChange={e => updateAI('company_memory', e.target.value)}
-                placeholder="e.g. We specialize in first-time home buyers in Ontario."
-              />
-            </div>
-          </div>
-        </Section>
+          </Section>
+        )}
 
-        {/* AI Behaviour */}
-        <Section title="AI Behaviour" icon={Bot} description="Control the tone and style of AI interactions">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Response tone</label>
-              <select 
-                className="input font-bold bg-white"
-                value={company?.ai_config.tone || 'friendly and professional'}
-                onChange={e => updateAI('tone', e.target.value)}
-              >
-                <option value="friendly and professional">Friendly and Professional</option>
-                <option value="formal">Formal</option>
-                <option value="casual">Casual</option>
-                <option value="concise">Concise and Direct</option>
-              </select>
+        {/* Twilio Settings (Admin Only) */}
+        {(user?.role === 'admin' || user?.is_superuser) && (
+          <Section title="Twilio Configuration" icon={Phone} description="Your outbound messaging details">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Twilio Phone Number</label>
+                <input 
+                  className="input font-mono text-xs font-bold bg-white" 
+                  value={company?.twilio_phone_number || ''} 
+                  onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
+                  placeholder="+1234567890"
+                />
+              </div>
             </div>
-          </div>
-        </Section>
-
-        {/* Twilio Settings */}
-        <Section title="Twilio Configuration" icon={Phone} description="Your outbound messaging details">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Twilio Phone Number</label>
-              <input 
-                className="input font-mono text-xs font-bold bg-white" 
-                value={company?.twilio_phone_number || ''} 
-                onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
-                placeholder="+1234567890"
-              />
-            </div>
-          </div>
-        </Section>
+          </Section>
+        )}
 
         {/* Save Bar */}
-        <div className="sticky bottom-6 left-0 right-0 flex items-center justify-center z-20 px-4">
-          <div className="card bg-white/90 backdrop-blur-md p-3 flex items-center gap-4 shadow-xl border-brand-100">
-            <p className="text-[11px] text-gray-400 hidden sm:block font-bold italic">AI updates instantly on save.</p>
-            <button 
-              type="submit" 
-              className="btn-primary px-10 py-2.5 shadow-lg shadow-brand-200 font-bold"
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : saved ? '✓ Settings Saved' : 'Save all changes'}
-            </button>
+        {(user?.role === 'admin' || user?.role === 'write' || user?.is_superuser) && (
+          <div className="sticky bottom-6 left-0 right-0 flex items-center justify-center z-20 px-4">
+            <div className="card bg-white/90 backdrop-blur-md p-3 flex items-center gap-4 shadow-xl border-brand-100">
+              <p className="text-[11px] text-gray-400 hidden sm:block font-bold italic">AI updates instantly on save.</p>
+              <button 
+                type="submit" 
+                className="btn-primary px-10 py-2.5 shadow-lg shadow-brand-200 font-bold"
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : saved ? '✓ Settings Saved' : 'Save all changes'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </form>
     </div>
   )

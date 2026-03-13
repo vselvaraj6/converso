@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_read_access
 from app.core.database import get_db
 from app.models import Message, MessageDirection, ConversationThread, User
 
@@ -45,7 +45,7 @@ async def get_lead_messages(
     limit: int = Query(50, ge=1, le=100, description="Maximum messages to return"),
     channel: Optional[str] = Query(None, description="Filter by channel (sms/voice/email)"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_read_access), # REQUIRE READ
 ) -> MessageListResponse:
     """
     Get conversation history for a specific lead.
@@ -121,7 +121,7 @@ async def get_lead_messages(
 async def get_thread_messages(
     thread_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_read_access), # REQUIRE READ
 ) -> MessageListResponse:
     """
     Get all messages in a conversation thread.

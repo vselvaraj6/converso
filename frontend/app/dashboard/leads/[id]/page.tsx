@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getLead, getLeadMessages, updateLead, deleteLead, type LeadDetail, type Message } from '@/lib/api'
+import { getLead, getLeadMessages, updateLead, deleteLead, getStoredUser, type LeadDetail, type Message } from '@/lib/api'
 import { ArrowLeft, Phone, Mail, Building2, MessageSquare, Calendar, Tag, Edit2, Trash2, X, AlertCircle, Clock } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -119,6 +119,7 @@ function Activity({ lead }: { lead: LeadDetail }) {
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const [user, setUser] = useState<any>(null)
   const [lead, setLead] = useState<LeadDetail | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
@@ -126,6 +127,7 @@ export default function LeadDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false)
 
   async function load() {
+    setUser(getStoredUser())
     setLoading(true)
     try {
       const [l, m] = await Promise.all([getLead(id), getLeadMessages(id)])
@@ -140,8 +142,10 @@ export default function LeadDetailPage() {
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
 
+  const canWrite = user?.role === 'admin' || user?.role === 'write' || user?.is_superuser
+
   async function handleStatusChange(newStatus: string) {
-    if (!lead || updating) return
+    if (!lead || updating || !canWrite) return
     setUpdating(true)
     try {
       await updateLead(id, { status: newStatus })
@@ -154,6 +158,7 @@ export default function LeadDetailPage() {
   }
 
   async function handleDelete() {
+    if (!canWrite) return
     if (!confirm('Are you sure you want to delete this lead? This will also remove all conversation history.')) return
     try {
       await deleteLead(id)
@@ -163,36 +168,40 @@ export default function LeadDetailPage() {
     }
   }
 
-  if (loading) return <div className="text-gray-400 text-sm p-8">Loading…</div>
-  if (!lead) return <div className="text-red-500 text-sm p-8">Lead not found.</div>
+  if (loading) return <div className="text-gray-400 text-sm p-8 font-bold">Loading…</div>
+  if (!lead) return <div className="text-red-500 text-sm p-8 font-bold">Lead not found.</div>
 
   return (
-    <div className="max-w-6xl mx-auto pb-12">
+    <div className="max-w-6xl mx-auto pb-12 font-sans">
       {/* Header / Nav */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Link href="/dashboard/leads" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 font-bold">
+        <Link href="/dashboard/leads" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 font-bold transition-colors">
           <ArrowLeft size={14} /> Back to leads
         </Link>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowEditModal(true)}
-            className="btn-secondary py-1.5 px-3 text-xs font-bold"
-          >
-            <Edit2 size={14} /> Edit
-          </button>
-          <button 
-            onClick={handleDelete}
-            className="btn-secondary py-1.5 px-3 text-xs font-bold text-red-600 hover:bg-red-50 border-red-100"
-          >
-            <Trash2 size={14} /> Delete
-          </button>
+          {canWrite && (
+            <>
+              <button 
+                onClick={() => setShowEditModal(true)}
+                className="btn-secondary py-1.5 px-3 text-xs font-bold"
+              >
+                <Edit2 size={14} /> Edit
+              </button>
+              <button 
+                onClick={handleDelete}
+                className="btn-secondary py-1.5 px-3 text-xs font-bold text-red-600 hover:bg-red-50 border-red-100"
+              >
+                <Trash2 size={14} /> Delete
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lead info */}
         <div className="lg:col-span-1 space-y-4 order-1">
-          <div className="card p-5 md:p-6 shadow-sm border-gray-100">
+          <div className="card p-5 md:p-6 shadow-sm border-gray-100 bg-white">
             <div className="mb-5">
               <div className="flex items-start justify-between mb-4">
                 <div className="min-w-0">
@@ -205,10 +214,11 @@ export default function LeadDetailPage() {
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</label>
                 <select 
                   value={lead.status}
-                  disabled={updating}
+                  disabled={updating || !canWrite}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   className={clsx(
                     'block w-full rounded-xl border-none text-sm font-bold py-2.5 px-4 shadow-sm focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer',
+                    !canWrite && 'opacity-70 cursor-not-allowed',
                     STATUS_COLORS[lead.status] ?? 'bg-gray-100 text-gray-600'
                   )}
                 >
@@ -237,7 +247,7 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Conversation */}
-        <div className="lg:col-span-2 card flex flex-col h-[500px] lg:h-full lg:min-h-[600px] order-2 shadow-sm border-gray-100 overflow-hidden">
+        <div className="lg:col-span-2 card flex flex-col h-[500px] lg:h-full lg:min-h-[600px] order-2 shadow-sm border-gray-100 overflow-hidden bg-white">
           <div className="px-5 md:px-6 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600">
@@ -348,7 +358,7 @@ function EditLeadModal({ lead, onClose, onUpdated }: {
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="card w-full max-w-lg p-6 my-auto shadow-2xl border-none">
+      <div className="card w-full max-w-lg p-6 my-auto shadow-2xl border-none bg-white">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Edit Lead</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -364,35 +374,35 @@ function EditLeadModal({ lead, onClose, onUpdated }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Full name</label>
-              <input className="input font-bold" value={form.name} onChange={set('name')} required />
+              <input className="input font-bold bg-white" value={form.name} onChange={set('name')} required />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</label>
-              <input type="email" className="input font-bold" value={form.email} onChange={set('email')} required />
+              <input type="email" className="input font-bold bg-white" value={form.email} onChange={set('email')} required />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Phone</label>
-              <input className="input font-bold" value={form.phone} onChange={set('phone')} required />
+              <input className="input font-bold bg-white" value={form.phone} onChange={set('phone')} required />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Company</label>
-              <input className="input font-bold" value={form.company} onChange={set('company')} />
+              <input className="input font-bold bg-white" value={form.company} onChange={set('company')} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Title</label>
-              <input className="input font-bold" value={form.title} onChange={set('title')} />
+              <input className="input font-bold bg-white" value={form.title} onChange={set('title')} />
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Industry</label>
-              <input className="input font-bold" value={form.industry} onChange={set('industry')} />
+              <input className="input font-bold bg-white" value={form.industry} onChange={set('industry')} />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Interest / notes</label>
-              <textarea className="input min-h-[80px] resize-none font-bold text-sm" value={form.interest} onChange={set('interest')} />
+              <textarea className="input min-h-[80px] resize-none font-bold text-sm bg-white" value={form.interest} onChange={set('interest')} />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="text-[10px] font-bold text-brand-600 uppercase tracking-wider">Nudge Interval (Days)</label>
-              <input type="number" className="input font-bold text-brand-600" min="1" max="30" value={form.nudge_interval_days} onChange={set('nudge_interval_days')} />
+              <input type="number" className="input font-bold text-brand-600 bg-white" min="1" max="30" value={form.nudge_interval_days} onChange={set('nudge_interval_days')} />
               <p className="text-[10px] text-gray-400 italic font-medium">Number of days to wait before automatic follow-up.</p>
             </div>
           </div>

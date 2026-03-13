@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import create_access_token, decode_token, get_password_hash, verify_password
-from app.models import Company, User
+from app.models import Company, User, UserRole
 
 router = APIRouter()
 
@@ -65,6 +65,7 @@ class TokenResponse(BaseModel):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    role: Optional[UserRole] = None
     calendar_connected: Optional[bool] = None
     manual_calendar_url: Optional[str] = None
     calcom_api_key: Optional[str] = None
@@ -86,7 +87,7 @@ class CompanyUpdate(BaseModel):
     vapi_assistant_id: Optional[str] = None
 
 
-# ── Dependency ────────────────────────────────────────────────────────────────
+# ── Dependencies ─────────────────────────────────────────────────────────────
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -108,6 +109,26 @@ async def get_current_user(
     if not user or not user.is_active:
         raise exc
     return user
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requires Admin role"
+        )
+    return current_user
+
+async def require_write_access(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in [UserRole.ADMIN, UserRole.WRITE] and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requires Write access"
+        )
+    return current_user
+
+async def require_read_access(current_user: User = Depends(get_current_user)) -> User:
+    # All active users have at least read access to their company's data
+    return current_user
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -169,7 +190,7 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
         email=data.email,
         name=data.name,
         hashed_password=get_password_hash(data.password),
-        role="admin",
+        role=UserRole.ADMIN, # First user is admin
         is_active=True,
     )
     db.add(user)
@@ -218,6 +239,11 @@ async def update_me(
         current_user.name = data.name
     if data.email is not None:
         current_user.email = data.email
+    if data.role is not None:
+        # Only admins or superusers can change roles
+        if current_user.role != UserRole.ADMIN and not current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="Only admins can change roles")
+        current_user.role = data.role
     if data.calendar_connected is not None:
         current_user.calendar_connected = data.calendar_connected
     if data.manual_calendar_url is not None:
@@ -304,7 +330,7 @@ async def get_company(
 @router.patch("/company")
 async def update_company(
     data: CompanyUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin), # REQUIRES ADMIN
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Company).where(Company.id == current_user.company_id))

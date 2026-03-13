@@ -16,7 +16,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/15")
 from app.main import app
 from app.core.database import Base, get_db
 from app.core.config import settings
-from app.models import Company, User, Lead, Message, CalendarEvent
+from app.models import Company, User, Lead, Message, CalendarEvent, UserRole
 from app.core.security import get_password_hash, create_access_token
 
 # Use the URL from environment/settings
@@ -91,7 +91,7 @@ async def superuser(db_session: AsyncSession, test_company: Company) -> User:
         email="super@converso.app",
         name="Super Admin",
         hashed_password=get_password_hash("password123"),
-        role="admin",
+        role=UserRole.ADMIN,
         is_active=True,
         is_superuser=True
     )
@@ -109,14 +109,14 @@ async def superuser_token_headers(superuser: User) -> dict:
 
 
 @pytest.fixture(scope="function")
-async def test_user(db_session: AsyncSession, test_company: Company) -> User:
-    """Create a test user and company"""
+async def admin_user(db_session: AsyncSession, test_company: Company) -> User:
+    """Fixture for a company admin"""
     user = User(
         company_id=test_company.id,
-        email="test@example.com",
-        name="Test User",
+        email="admin@example.com",
+        name="Admin User",
         hashed_password=get_password_hash("password123"),
-        role="admin",
+        role=UserRole.ADMIN,
         is_active=True,
         is_superuser=False
     )
@@ -124,6 +124,63 @@ async def test_user(db_session: AsyncSession, test_company: Company) -> User:
     await db_session.commit()
     await db_session.refresh(user)
     return user
+
+@pytest.fixture(scope="function")
+async def admin_token_headers(admin_user: User) -> dict:
+    """Token headers for an admin user"""
+    token = create_access_token({"sub": str(admin_user.id)}, expires_delta=timedelta(days=1))
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(scope="function")
+async def write_user(db_session: AsyncSession, test_company: Company) -> User:
+    """Fixture for a user with write access"""
+    user = User(
+        company_id=test_company.id,
+        email="write@example.com",
+        name="Write User",
+        hashed_password=get_password_hash("password123"),
+        role=UserRole.WRITE,
+        is_active=True,
+        is_superuser=False
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+@pytest.fixture(scope="function")
+async def write_token_headers(write_user: User) -> dict:
+    """Token headers for a write user"""
+    token = create_access_token({"sub": str(write_user.id)}, expires_delta=timedelta(days=1))
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(scope="function")
+async def read_user(db_session: AsyncSession, test_company: Company) -> User:
+    """Fixture for a user with read-only access"""
+    user = User(
+        company_id=test_company.id,
+        email="read@example.com",
+        name="Read User",
+        hashed_password=get_password_hash("password123"),
+        role=UserRole.READ,
+        is_active=True,
+        is_superuser=False
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+@pytest.fixture(scope="function")
+async def read_token_headers(read_user: User) -> dict:
+    """Token headers for a read user"""
+    token = create_access_token({"sub": str(read_user.id)}, expires_delta=timedelta(days=1))
+    return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture(scope="function")
+async def test_user(admin_user: User) -> User:
+    """Legacy test user fixture (uses admin for compatibility)"""
+    return admin_user
 
 
 @pytest.fixture(scope="function")

@@ -3,7 +3,7 @@ from .lead import Lead, LeadStatus
 from .message import Message, MessageDirection
 from .conversation import ConversationThread
 from .calendar_event import CalendarEvent
-from .user import User
+from .user import User, UserRole
 
 __all__ = [
     "Company",
@@ -13,5 +13,6 @@ __all__ = [
     "MessageDirection",
     "ConversationThread",
     "CalendarEvent",
-    "User"
+    "User",
+    "UserRole"
 ]

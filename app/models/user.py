@@ -1,10 +1,15 @@
 from datetime import datetime
+from enum import Enum
 from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 from app.core.database import Base
 
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    WRITE = "write"
+    READ = "read"
 
 class User(Base):
     __tablename__ = "users"
@@ -25,7 +30,7 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     
     # Role
-    role = Column(String, default="sales_agent")  # "admin", "sales_agent", "manager"
+    role = Column(String, default=UserRole.WRITE)
     
     # OAuth tokens (for calendar integration)
     oauth_tokens = Column(JSON, default=dict)

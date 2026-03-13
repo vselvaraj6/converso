@@ -15,7 +15,7 @@ from sqlalchemy import select, func
 from pydantic import BaseModel, EmailStr
 import pandas as pd
 
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_write_access
 from app.core.database import get_db
 from app.models import Lead, LeadStatus, Company, User
 
@@ -70,7 +70,7 @@ class LeadResponse(BaseModel):
 @router.get("/export")
 async def export_leads(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access), # REQUIRES WRITE
 ):
     """
     Export all leads for the current user's company to CSV.
@@ -117,7 +117,7 @@ async def list_leads(
     limit: int = Query(50, ge=1, le=100, description="Maximum records to return"),
     status: Optional[LeadStatus] = Query(None, description="Filter by lead status"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user), # ANY ROLE
 ) -> LeadListResponse:
     """
     List leads with pagination and optional filtering.
@@ -168,7 +168,7 @@ async def list_leads(
 async def get_lead(
     lead_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user), # ANY ROLE
 ) -> Dict[str, Any]:
     """
     Get detailed information for a specific lead.
@@ -214,7 +214,7 @@ async def get_lead(
 async def import_leads(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access), # REQUIRES WRITE
 ):
     """
     Import leads from an Excel or CSV file.
@@ -299,7 +299,7 @@ async def update_lead(
     lead_id: UUID,
     data: UpdateLeadRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access), # REQUIRES WRITE
 ) -> LeadResponse:
     """
     Update an existing lead.
@@ -346,7 +346,7 @@ async def update_lead(
 async def delete_lead(
     lead_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access), # REQUIRES WRITE
 ):
     """
     Delete a lead.
@@ -369,7 +369,7 @@ async def delete_lead(
 async def create_lead(
     lead_data: CreateLeadRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_write_access), # REQUIRES WRITE
 ) -> LeadResponse:
     """
     Create a new lead.

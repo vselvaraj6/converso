@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { getLeads, createLead, importLeads, exportLeads, type Lead } from '@/lib/api'
+import { getLeads, createLead, importLeads, exportLeads, getStoredUser, type Lead } from '@/lib/api'
 import { Plus, Search, ChevronLeft, ChevronRight, MoreHorizontal, Phone, Mail, Building2, Upload, Download, FileText, AlertCircle, CheckCircle2, X, Clock } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -39,6 +39,7 @@ const formatDateTime = (dateStr: string | null) => {
 const PAGE_SIZE = 25
 
 export default function LeadsPage() {
+  const [user, setUser] = useState<any>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -66,7 +67,12 @@ export default function LeadsPage() {
     }
   }
 
-  useEffect(() => { load() }, [page, status]) // eslint-disable-line
+  useEffect(() => { 
+    setUser(getStoredUser())
+    load() 
+  }, [page, status]) // eslint-disable-line
+
+  const canWrite = user?.role === 'admin' || user?.role === 'write' || user?.is_superuser
 
   const filtered = search
     ? leads.filter(l =>
@@ -79,7 +85,7 @@ export default function LeadsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -87,30 +93,34 @@ export default function LeadsPage() {
           <p className="text-gray-500 text-sm mt-1 font-medium">{total} total leads in pipeline</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button 
-            className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
-            onClick={async () => {
-              try {
-                await exportLeads()
-              } catch (e) {
-                alert('Export failed')
-              }
-            }}
-          >
-            <Download size={14} /> Export
-          </button>
-          <button 
-            className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
-            onClick={() => setShowImportModal(true)}
-          >
-            <Upload size={14} /> Import
-          </button>
-          <button 
-            className="btn-primary w-full sm:w-auto shadow-md shadow-brand-100 font-bold text-xs" 
-            onClick={() => setShowModal(true)}
-          >
-            <Plus size={14} /> Add lead
-          </button>
+          {canWrite && (
+            <>
+              <button 
+                className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
+                onClick={async () => {
+                  try {
+                    await exportLeads()
+                  } catch (e) {
+                    alert('Export failed')
+                  }
+                }}
+              >
+                <Download size={14} /> Export
+              </button>
+              <button 
+                className="btn-secondary w-full sm:w-auto shadow-sm font-bold text-xs" 
+                onClick={() => setShowImportModal(true)}
+              >
+                <Upload size={14} /> Import
+              </button>
+              <button 
+                className="btn-primary w-full sm:w-auto shadow-md shadow-brand-100 font-bold text-xs" 
+                onClick={() => setShowModal(true)}
+              >
+                <Plus size={14} /> Add lead
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -119,7 +129,7 @@ export default function LeadsPage() {
         <div className="relative flex-1 lg:max-w-md">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
-            className="input pl-10 shadow-sm font-medium"
+            className="input pl-10 shadow-sm font-medium bg-white"
             placeholder="Search by name, email, company…"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -220,7 +230,7 @@ export default function LeadsPage() {
                 <Link 
                   key={lead.id} 
                   href={`/dashboard/leads/${lead.id}`}
-                  className="card p-4 active:scale-[0.98] transition-transform space-y-3 shadow-sm border-gray-100"
+                  className="card p-4 active:scale-[0.98] transition-transform space-y-3 shadow-sm border-gray-100 bg-white"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -325,7 +335,7 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 overflow-y-auto">
-      <div className="card w-full max-w-lg p-6 my-auto shadow-2xl border-none">
+      <div className="card w-full max-w-lg p-6 my-auto shadow-2xl border-none bg-white">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Add new lead</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -341,35 +351,35 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Full name *</label>
-              <input className="input font-medium" placeholder="e.g. Sarah Connor" value={form.name} onChange={set('name')} required />
+              <input className="input font-medium bg-white" placeholder="e.g. Sarah Connor" value={form.name} onChange={set('name')} required />
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Email *</label>
-              <input type="email" className="input font-medium" placeholder="sarah@example.com" value={form.email} onChange={set('email')} required />
+              <input type="email" className="input font-medium bg-white" placeholder="sarah@example.com" value={form.email} onChange={set('email')} required />
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Phone *</label>
-              <input className="input font-medium" placeholder="+1234567890" value={form.phone} onChange={set('phone')} required />
+              <input className="input font-medium bg-white" placeholder="+1234567890" value={form.phone} onChange={set('phone')} required />
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Company</label>
-              <input className="input font-medium" placeholder="Acme Corp" value={form.company} onChange={set('company')} />
+              <input className="input font-medium bg-white" placeholder="Acme Corp" value={form.company} onChange={set('company')} />
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Title</label>
-              <input className="input font-medium" placeholder="VP of Sales" value={form.title} onChange={set('title')} />
+              <input className="input font-medium bg-white" placeholder="VP of Sales" value={form.title} onChange={set('title')} />
             </div>
             <div className="space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Industry</label>
-              <input className="input font-medium" placeholder="Mortgage" value={form.industry} onChange={set('industry')} />
+              <input className="input font-medium bg-white" placeholder="Mortgage" value={form.industry} onChange={set('industry')} />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Interest / notes</label>
-              <textarea className="input min-h-[80px] resize-none font-medium text-sm" placeholder="Details about their needs..." value={form.interest} onChange={set('interest')} />
+              <textarea className="input min-h-[80px] resize-none font-medium text-sm bg-white" placeholder="Details about their needs..." value={form.interest} onChange={set('interest')} />
             </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="block text-[10px] font-bold text-brand-600 uppercase tracking-wider">Nudge Interval (Days)</label>
-              <input type="number" className="input font-bold" min="1" max="30" value={form.nudge_interval_days} onChange={set('nudge_interval_days')} />
+              <input type="number" className="input font-bold bg-white" min="1" max="30" value={form.nudge_interval_days} onChange={set('nudge_interval_days')} />
               <p className="text-[10px] text-gray-400 italic font-medium">Wait this many days before automatically following up if they don't respond.</p>
             </div>
           </div>
@@ -413,7 +423,7 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
 
   return (
     <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 overflow-y-auto">
-      <div className="card w-full max-w-md p-6 my-auto shadow-2xl border-none">
+      <div className="card w-full max-w-md p-6 my-auto shadow-2xl border-none bg-white">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Import Leads</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
