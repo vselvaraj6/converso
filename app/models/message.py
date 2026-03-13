@@ -18,6 +18,7 @@ class Message(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
     # Foreign keys
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
     lead_id = Column(UUID(as_uuid=True), ForeignKey("leads.id"), nullable=False)
     thread_id = Column(UUID(as_uuid=True), ForeignKey("conversation_threads.id"), nullable=True)
     
@@ -51,5 +52,6 @@ class Message(Base):
     read_at = Column(DateTime, nullable=True)
     
     # Relationships
+    company = relationship("Company")
     lead = relationship("Lead", back_populates="messages")
     thread = relationship("ConversationThread", back_populates="messages")

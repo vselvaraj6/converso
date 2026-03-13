@@ -62,6 +62,7 @@ class WorkflowService:
             
             # 5. Store inbound message
             inbound_msg = Message(
+                company_id=lead.company_id,
                 lead_id=lead.id,
                 thread_id=thread.id,
                 direction=MessageDirection.INBOUND,
@@ -122,6 +123,7 @@ class WorkflowService:
             # 11. Store outbound message
             if send_result["success"]:
                 outbound_msg = Message(
+                    company_id=lead.company_id,
                     lead_id=lead.id,
                     thread_id=thread.id,
                     direction=MessageDirection.OUTBOUND,
@@ -341,7 +343,14 @@ class WorkflowService:
                 lead.last_call_attempt = datetime.utcnow()
                 lead.last_contacted = datetime.utcnow()
                 lead.last_contact_method = "voice"
-                self.db.add(Message(lead_id=lead.id, direction=MessageDirection.OUTBOUND, channel="voice", content=f"Call initiated by {agent_name}", vapi_call_id=call_result["call"]["id"]))
+                self.db.add(Message(
+                    company_id=lead.company_id,
+                    lead_id=lead.id, 
+                    direction=MessageDirection.OUTBOUND, 
+                    channel="voice", 
+                    content=f"Call initiated by {agent_name}", 
+                    vapi_call_id=call_result["call"]["id"]
+                ))
             return call_result
         except Exception as e:
             logger.error(f"Voice call error: {e}")
@@ -365,7 +374,15 @@ class WorkflowService:
             send_result = await self.twilio.send_sms(to=f"+1{lead.phone}", body=message_body, from_=company.twilio_phone_number or settings.twilio_phone_number)
             if send_result["success"]:
                 thread = await self._get_or_create_thread(lead.id, "sms")
-                self.db.add(Message(lead_id=lead.id, thread_id=thread.id, direction=MessageDirection.OUTBOUND, channel="sms", content=message_body, twilio_message_sid=send_result.get("message_sid")))
+                self.db.add(Message(
+                    company_id=lead.company_id,
+                    lead_id=lead.id, 
+                    thread_id=thread.id, 
+                    direction=MessageDirection.OUTBOUND, 
+                    channel="sms", 
+                    content=message_body, 
+                    twilio_message_sid=send_result.get("message_sid")
+                ))
                 lead.last_contacted = datetime.utcnow()
                 lead.last_contact_method = "sms"
                 if lead.status == LeadStatus.NEW: lead.status = LeadStatus.CONTACTED
@@ -383,7 +400,18 @@ class WorkflowService:
             lead = result.scalar_one_or_none()
             if not lead: return {"success": False, "error": "Lead not found"}
             
-            self.db.add(Message(lead_id=lead.id, direction=MessageDirection.INBOUND, channel="voice", content=f"Voice call: {transcript[:500]}...", transcript=transcript, recording_url=recording_url, duration_seconds=str(duration), vapi_call_id=call_id, status="completed"))
+            self.db.add(Message(
+                company_id=lead.company_id,
+                lead_id=lead.id, 
+                direction=MessageDirection.INBOUND, 
+                channel="voice", 
+                content=f"Voice call: {transcript[:500]}...", 
+                transcript=transcript, 
+                recording_url=recording_url, 
+                duration_seconds=str(duration), 
+                vapi_call_id=call_id, 
+                status="completed"
+            ))
             if transcript:
                 analysis = await self.openai.analyze_sentiment_and_intent(transcript, {"lead_name": lead.name, "call_duration": duration})
                 lead.sentiment_score = {**lead.sentiment_score, "latest": analysis.get("sentiment", "neutral"), "intent": analysis.get("intent", "other")}

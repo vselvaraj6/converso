@@ -243,6 +243,10 @@ export async function listCompanies() {
   return request<CompanyStats[]>('/platform/companies')
 }
 
+export async function getPlatformUsage() {
+  return request<any>('/platform/usage')
+}
+
 export async function getCompanyDetails(id: string) {
   return request<{ company: Company; users: any[] }>(`/platform/companies/${id}`)
 }

@@ -39,6 +39,14 @@ class TestPlatformAdmin:
         assert response.json()["name"] == new_name
         assert response.json()["industry"] == "Enterprise"
 
+    async def test_get_platform_usage(self, client: AsyncClient, superuser_token_headers):
+        response = await client.get("/api/platform/usage", headers=superuser_token_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "channels" in data
+        assert "top_ten_companies" in data
+        assert "volume_history" in data
+
     async def test_delete_company_as_admin(self, client: AsyncClient, superuser_token_headers, db_session):
         # Create a temporary company to delete
         new_co = Company(name="To Be Deleted", industry="Temporary")

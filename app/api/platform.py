@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -120,6 +121,45 @@ async def update_company_as_admin(
     await db.commit()
     await db.refresh(company)
     return company
+
+@router.get("/usage")
+async def get_platform_usage(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superuser)
+):
+    """Get aggregate usage stats across the platform (SaaS Oversight)"""
+    # 1. Total messages by channel
+    msg_stats = await db.execute(
+        select(Message.channel, func.count(Message.id))
+        .group_by(Message.channel)
+    )
+    channels = {channel: count for channel, count in msg_stats.all()}
+    
+    # 2. Total messages per company (Top 10)
+    company_usage = await db.execute(
+        select(Company.name, func.count(Message.id))
+        .join(Message, Company.id == Message.company_id)
+        .group_by(Company.name)
+        .order_by(func.count(Message.id).desc())
+        .limit(10)
+    )
+    top_companies = [{"name": name, "count": count} for name, count in company_usage.all()]
+    
+    # 3. Daily volume (Last 7 days)
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    daily_volume = await db.execute(
+        select(func.date_trunc('day', Message.created_at), func.count(Message.id))
+        .where(Message.created_at >= seven_days_ago)
+        .group_by(func.date_trunc('day', Message.created_at))
+        .order_by(func.date_trunc('day', Message.created_at))
+    )
+    volume_history = [{"date": str(dt.date()), "count": count} for dt, count in daily_volume.all()]
+    
+    return {
+        "channels": channels,
+        "top_ten_companies": top_companies,
+        "volume_history": volume_history
+    }
 
 @router.delete("/companies/{company_id}")
 async def delete_company(
