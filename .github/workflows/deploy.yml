@@ -73,7 +73,8 @@ jobs:
           docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "CREATE DATABASE test_converso;"
           
           echo "→ Running pytest suite..."
-          docker compose exec -T \
+          # We use a fresh container for pytest to avoid shared engine state issues with the main app
+          docker compose run --rm \
             -e APP_ENV=testing \
             -e SECRET_KEY=8USgGnF2tyl/R6blYo/JLBZj5VhQTduBpdTCRdEQigM= \
             -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \

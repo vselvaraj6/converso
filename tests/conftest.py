@@ -10,7 +10,8 @@ import os
 
 # Set test environment
 os.environ["APP_ENV"] = "testing"
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://converso:password@localhost:5432/test_converso")
+DEFAULT_TEST_DB = "postgresql+asyncpg://converso:password@localhost:5432/test_converso"
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_TEST_DB)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/15")
 
 from app.main import app
@@ -47,7 +48,6 @@ def event_loop():
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test"""
     async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     
     async with TestSessionLocal() as session:
