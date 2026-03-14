@@ -12,10 +12,7 @@ jobs:
     timeout-minutes: 15
 
     env:
-      # Pin the Compose project name so Docker always refers to the same
-      # stack regardless of which directory the runner checks out into.
       COMPOSE_PROJECT_NAME: converso
-      # Suppress Node.js 20 deprecation warning by opting into Node 24
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
@@ -43,13 +40,11 @@ jobs:
       - name: Fix Docker networking
         run: |
           echo "→ Recreating missing Docker isolation chains (if missing)..."
-          # Only create and append if they don't exist to avoid noise/errors
           sudo iptables -L DOCKER-ISOLATION-STAGE-1 >/dev/null 2>&1 || {
             sudo iptables -N DOCKER-ISOLATION-STAGE-1
             sudo iptables -A FORWARD -j DOCKER-ISOLATION-STAGE-1
             sudo iptables -A DOCKER-ISOLATION-STAGE-1 -j RETURN
           }
-          
           sudo iptables -L DOCKER-ISOLATION-STAGE-2 >/dev/null 2>&1 || {
             sudo iptables -N DOCKER-ISOLATION-STAGE-2
             sudo iptables -A DOCKER-ISOLATION-STAGE-1 ! -i docker0 -o docker0 -j DOCKER-ISOLATION-STAGE-2
@@ -63,7 +58,6 @@ jobs:
           docker compose up -d
           
           echo "→ Waiting for services to be healthy..."
-          # Use docker compose wait if available, otherwise manual check
           for i in $(seq 1 30); do
             if docker compose exec -T postgres pg_isready -U converso; then
               echo "Database is ready."
@@ -83,8 +77,8 @@ jobs:
             -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
             -e REDIS_URL=redis://redis:6379/15 \
             app pytest || { 
-              echo "Tests failed. Dumping logs..."
-              docker compose logs --tail=100
+              echo "!!! TESTS FAILED !!!"
+              docker compose logs --tail=100 app
               exit 1
             }
 
@@ -93,17 +87,10 @@ jobs:
           echo "→ Rebuilding containers (clean build)..."
           docker compose build --no-cache
           docker compose up -d --remove-orphans
-          
-          echo "→ Refreshing Nginx to pick up new container IPs..."
           docker compose restart nginx
-
           echo "→ Waiting for database..."
           sleep 20
-
-          echo "→ Running database migrations..."
           docker compose exec -T app alembic upgrade head
-
-          echo "→ Removing dangling images..."
           docker image prune -f
 
       - name: Health check
@@ -114,7 +101,6 @@ jobs:
               echo "Health check passed."
               exit 0
             fi
-            echo "  attempt $i/12 — retrying in 5s..."
             sleep 5
           done
           echo "Health check failed after 60s!" >&2
