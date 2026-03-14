@@ -77,7 +77,8 @@ jobs:
             -e APP_ENV=testing \
             -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
             -e REDIS_URL=redis://redis:6379/15 \
-            app pytest
+            app pytest > pytest_results.log 2>&1 || { cat pytest_results.log; exit 1; }
+          cat pytest_results.log
 
       - name: Rebuild and restart containers
         run: |
