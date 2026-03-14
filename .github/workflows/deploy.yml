@@ -62,13 +62,16 @@ jobs:
           docker compose build
           docker compose up -d
           
-          echo "→ Waiting for stack to stabilize..."
-          sleep 20
+          echo "→ Waiting for stack to stabilize (40s)..."
+          sleep 40
           
           echo "→ Initializing test database..."
           docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'test_converso'" | grep -q 1 || \
           docker compose exec -T -e PGPASSWORD=password postgres createdb -U converso test_converso
           
+          echo "→ Short wait for test DB stabilization..."
+          sleep 10
+
           echo "→ Running pytest suite..."
           docker compose exec -T \
             -e APP_ENV=testing \
