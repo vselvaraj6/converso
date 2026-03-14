@@ -50,7 +50,7 @@ export default function ConversationsPage() {
             <Activity size={12} />
             Transmission Center
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tight leading-none">
+          <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
             Messages
           </h1>
           <p className="text-slate-500 text-sm font-medium">Real-time oversight of all AI and manual lead interactions.</p>
@@ -59,7 +59,8 @@ export default function ConversationsPage() {
         <div className="relative group w-full md:w-72">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-brand-400 transition-colors" />
           <input
-            className="w-full bg-slate-900/50 backdrop-blur-xl border border-white/5 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none transition-all focus:bg-slate-900 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500"
+            className="w-full backdrop-blur-xl border rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500"
+          style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--foreground)' }}
             placeholder="Filter transmissions..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -68,12 +69,12 @@ export default function ConversationsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card p-20 text-center space-y-4 border-dashed border-2 border-slate-800 bg-transparent shadow-none">
+        <div className="card p-20 text-center space-y-4 border-dashed border-2 bg-transparent shadow-none" style={{ borderColor: 'var(--divider)' }}>
           <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-700">
             <MessageSquare size={32} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-white uppercase tracking-widest">Quiet Channels</h3>
+            <h3 className="text-lg font-black text-[var(--text-primary)] uppercase tracking-widest">Quiet Channels</h3>
             <p className="text-slate-500 text-sm font-medium">No active conversations found matching your filter.</p>
           </div>
         </div>
@@ -92,17 +93,17 @@ function ConversationRow({ lead }: { lead: Lead }) {
   return (
     <Link 
       href={`/dashboard/leads/${lead.id}`}
-      className="card group p-6 bg-slate-900/40 border-none shadow-2xl hover:-translate-y-1 hover:bg-slate-900/60 duration-500 relative overflow-hidden"
+      className="card group p-6 border-none shadow-2xl hover:-translate-y-1 duration-500 relative overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-24 h-24 bg-brand-500 blur-[60px] opacity-5 group-hover:opacity-10 transition-opacity" />
       
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-5">
-          <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center text-slate-300 font-black text-xl shadow-inner group-hover:scale-110 duration-500">
+          <div className="w-14 h-14 rounded-2xl border flex items-center justify-center font-black text-xl shadow-inner group-hover:scale-110 duration-500" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)', color: 'var(--text-secondary)' }}>
             {lead.name.charAt(0)}
           </div>
           <div className="space-y-1">
-            <h3 className="text-base font-black text-white leading-tight group-hover:text-brand-400 transition-colors">{lead.name}</h3>
+            <h3 className="text-base font-black text-[var(--text-primary)] leading-tight group-hover:text-brand-400 transition-colors">{lead.name}</h3>
             <div className="flex items-center gap-3">
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{lead.company || 'Private'}</p>
               <div className="w-1 h-1 rounded-full bg-slate-700" />
@@ -117,7 +118,7 @@ function ConversationRow({ lead }: { lead: Lead }) {
         </div>
 
         <div className="flex flex-1 md:justify-center">
-          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-950/50 border border-white/5">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
             <Zap size={14} className="text-amber-500 fill-amber-500" />
             <p className="text-xs font-bold text-slate-400 line-clamp-1 max-w-[300px]">
               AI: "Perfect! I've booked that for you for..."

@@ -25,13 +25,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
-const STATUS_COLORS: Record<string, string> = {
-  new:       'bg-blue-50 text-blue-600 border-blue-100',
-  contacted: 'bg-amber-50 text-amber-600 border-amber-100',
-  qualified: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-  converted: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-  lost:      'bg-slate-50 text-slate-500 border-slate-200',
-}
+const getStatusClass = (status: string) => `badge-status-${status}`
 
 const SENTIMENT_STYLE: Record<string, { emoji: string, color: string }> = {
   positive: { emoji: '✨', color: 'text-emerald-600' },
@@ -92,11 +86,11 @@ export default function LeadsPage() {
       {/* Dynamic Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-white/5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
             <TrendingUp size={12} className="text-emerald-400" />
             Lead Pipeline
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none">
+          <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
             Your Prospects
           </h1>
           <p className="text-slate-500 text-sm font-medium">Nurture and manage your active leads with AI-driven insights.</p>
@@ -129,11 +123,12 @@ export default function LeadsPage() {
       </div>
 
       {/* Advanced Filters */}
-      <div className="flex flex-col lg:flex-row gap-4 p-2 bg-white rounded-[24px] shadow-xl shadow-slate-200/50 border border-slate-100">
+      <div className="flex flex-col lg:flex-row gap-4 p-2 rounded-[24px] shadow-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
         <div className="relative flex-1 group">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
           <input
-            className="w-full bg-slate-50/50 border-none rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold outline-none transition-all focus:bg-white"
+            className="w-full border-none rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold outline-none transition-all focus:ring-2 focus:ring-brand-500/10"
+          style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--foreground)' }}
             placeholder="Search by name, email, or company..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -148,7 +143,7 @@ export default function LeadsPage() {
                 'px-6 py-2.5 rounded-[18px] text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap',
                 status === s
                   ? 'bg-slate-900 text-white shadow-lg'
-                  : 'text-slate-500 hover:bg-slate-50'
+                  : 'text-slate-500 hover:bg-[var(--surface-subtle)]'
               )}
             >
               {s}
@@ -161,16 +156,16 @@ export default function LeadsPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="card h-64 animate-pulse bg-slate-50 border-none" />
+            <div key={i} className="card h-64 animate-pulse border-none" style={{ backgroundColor: 'var(--surface-subtle)' }} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card p-20 text-center space-y-4 border-dashed border-2 border-slate-200 bg-transparent shadow-none">
+        <div className="card p-20 text-center space-y-4 border-dashed border-2 bg-transparent shadow-none" style={{ borderColor: 'var(--divider)' }}>
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-300">
             <Zap size={32} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900">Zero Prospects Found</h3>
+            <h3 className="text-lg font-black text-[var(--text-primary)]">Zero Prospects Found</h3>
             <p className="text-slate-400 text-sm font-medium">Try adjusting your filters or search query.</p>
           </div>
         </div>
@@ -186,17 +181,19 @@ export default function LeadsPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 py-10">
           <button
-            className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-xl flex items-center justify-center text-slate-400 hover:text-brand-600 transition-all disabled:opacity-30 active:scale-90"
+            className="w-12 h-12 rounded-2xl border shadow-xl flex items-center justify-center text-slate-400 hover:text-brand-600 transition-all disabled:opacity-30 active:scale-90"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}
             disabled={page === 1}
             onClick={() => { setPage(p => p - 1); window.scrollTo({top: 0, behavior: 'smooth'}); }}
           >
             <ChevronLeft size={20} strokeWidth={3} />
           </button>
-          <div className="px-6 py-3 rounded-2xl bg-white border border-slate-100 shadow-xl font-black text-xs text-slate-900 uppercase tracking-widest">
+          <div className="px-6 py-3 rounded-2xl border shadow-xl font-black text-xs uppercase tracking-widest" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)', color: 'var(--text-primary)' }}>
             Page {page} <span className="text-slate-300 mx-2">/</span> {totalPages}
           </div>
           <button
-            className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-xl flex items-center justify-center text-slate-400 hover:text-brand-600 transition-all disabled:opacity-30 active:scale-90"
+            className="w-12 h-12 rounded-2xl border shadow-xl flex items-center justify-center text-slate-400 hover:text-brand-600 transition-all disabled:opacity-30 active:scale-90"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}
             disabled={page === totalPages}
             onClick={() => { setPage(p => p + 1); window.scrollTo({top: 0, behavior: 'smooth'}); }}
           >
@@ -218,17 +215,18 @@ function LeadCard({ lead }: { lead: Lead }) {
   return (
     <Link 
       href={`/dashboard/leads/${lead.id}`}
-      className="card group p-6 bg-white border-none shadow-2xl shadow-slate-200/40 hover:-translate-y-2 hover:shadow-slate-300/50 duration-500 relative overflow-hidden"
+      className="card group p-6 border shadow-2xl hover:-translate-y-2 duration-500 relative overflow-hidden"
+      style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}
     >
       <div className={clsx("absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-10 bg-gradient-to-br from-brand-500 to-indigo-600")} />
       
       <div className="flex items-start justify-between relative z-10 mb-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 font-black text-xl shadow-inner group-hover:scale-110 duration-500">
+          <div className="w-14 h-14 rounded-2xl border flex items-center justify-center font-black text-xl shadow-inner group-hover:scale-110 duration-500" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)', color: 'var(--text-primary)' }}>
             {lead.name.charAt(0)}
           </div>
           <div>
-            <h3 className="font-black text-slate-900 text-base leading-tight group-hover:text-brand-600 transition-colors">{lead.name}</h3>
+            <h3 className="font-black text-[var(--text-primary)] text-base leading-tight group-hover:text-brand-600 transition-colors">{lead.name}</h3>
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1">{(lead as any).company || 'Private Sector'}</p>
           </div>
         </div>
@@ -237,16 +235,16 @@ function LeadCard({ lead }: { lead: Lead }) {
 
       <div className="space-y-4 relative z-10">
         <div className="flex items-center justify-between">
-          <span className={clsx("badge border-none px-3.5 py-1 text-[10px] font-black", STATUS_COLORS[lead.status])}>
+          <span className={clsx("badge px-3.5 py-1 text-[10px] font-black", getStatusClass(lead.status))}>
             {lead.status}
           </span>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-50 border border-slate-100">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
             <Clock size={12} className="text-slate-400" />
             <span className="text-[10px] font-black text-slate-600">{(lead as any).nudge_interval_days}d cycle</span>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-50 grid grid-cols-2 gap-4">
+        <div className="pt-4 border-t grid grid-cols-2 gap-4" style={{ borderColor: 'var(--divider)' }}>
           <div className="space-y-1">
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Sentiment</p>
             <div className="flex items-center gap-1.5">
@@ -258,7 +256,7 @@ function LeadCard({ lead }: { lead: Lead }) {
           </div>
           <div className="space-y-1 text-right">
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Last Intel</p>
-            <p className="text-[10px] font-black text-slate-900">
+            <p className="text-[10px] font-black text-[var(--text-primary)]">
               {lead.last_contacted ? new Date(lead.last_contacted).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Never'}
             </p>
           </div>
@@ -303,19 +301,19 @@ function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xl flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[32px] w-full max-w-lg p-8 shadow-[0_20px_80px_rgba(0,0,0,0.3)] border border-slate-100 animate-in zoom-in duration-300">
+      <div className="rounded-[32px] w-full max-w-lg p-8 shadow-[0_20px_80px_rgba(0,0,0,0.3)] border animate-in zoom-in duration-300" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
         <div className="flex items-center justify-between mb-8">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black text-slate-900">Add Prospect</h2>
+            <h2 className="text-2xl font-black text-[var(--text-primary)]">Add Prospect</h2>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Initiate new lead journey</p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-[var(--text-primary)] transition-colors" style={{ backgroundColor: 'var(--surface-subtle)' }}>
             <X size={20} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 rounded-2xl px-5 py-3 text-xs font-black flex items-center gap-2">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl px-5 py-3 text-xs font-black flex items-center gap-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}
@@ -384,13 +382,13 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xl flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-      <div className="bg-white rounded-[32px] w-full max-w-md p-8 shadow-[0_20px_80px_rgba(0,0,0,0.3)] border border-slate-100 animate-in zoom-in duration-300">
+      <div className="rounded-[32px] w-full max-w-md p-8 shadow-[0_20px_80px_rgba(0,0,0,0.3)] border animate-in zoom-in duration-300" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
         <div className="flex items-center justify-between mb-8">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black text-slate-900">Bulk Import</h2>
+            <h2 className="text-2xl font-black text-[var(--text-primary)]">Bulk Import</h2>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Onboard Leads at Scale</p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-[var(--text-primary)] transition-colors" style={{ backgroundColor: 'var(--surface-subtle)' }}>
             <X size={20} />
           </button>
         </div>
@@ -405,12 +403,12 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
               )}
             >
               <input type="file" ref={fileInputRef} className="hidden" accept=".csv,.xlsx,.xls" onChange={handleFileChange} />
-              <div className="w-16 h-16 rounded-3xl bg-white shadow-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 duration-500">
+              <div className="w-16 h-16 rounded-3xl border shadow-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 duration-500" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
                 <Upload size={24} className={file ? "text-brand-600" : "text-slate-400"} />
               </div>
               {file ? (
                 <div>
-                  <p className="text-sm font-black text-slate-900 truncate px-4">{file.name}</p>
+                  <p className="text-sm font-black text-[var(--text-primary)] truncate px-4">{file.name}</p>
                   <p className="text-[10px] text-brand-600 font-black uppercase tracking-widest mt-1">{(file.size / 1024).toFixed(1)} KB Ready</p>
                 </div>
               ) : (
@@ -435,7 +433,7 @@ function ImportLeadsModal({ onClose, onImported }: { onClose: () => void; onImpo
               <CheckCircle2 size={40} className="text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-900 uppercase">Success</h3>
+              <h3 className="text-xl font-black text-[var(--text-primary)] uppercase">Success</h3>
               <p className="text-sm text-slate-500 font-medium mt-2">
                 Successfully onboarded <span className="font-black text-emerald-600">{result.success_count}</span> units.
               </p>

@@ -28,9 +28,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 font-sans selection:bg-brand-500/30">
+    <div className="min-h-screen flex flex-col md:flex-row font-sans selection:bg-brand-500/30" style={{ backgroundColor: 'var(--background)' }}>
       {/* Left Column: Visionary Branding */}
-      <div className="hidden lg:flex flex-col justify-between w-[45%] p-16 xl:p-24 relative overflow-hidden bg-slate-900">
+      <div className="hidden lg:flex flex-col justify-between w-[45%] p-16 xl:p-24 relative overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
         {/* Background Mesh Gradient */}
         <div className="absolute inset-0 z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-600/20 blur-[120px] rounded-full" />
@@ -48,11 +48,11 @@ export default function LoginPage() {
             <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.4)] transition-all group-hover:scale-110 group-hover:rotate-3">
               <Command size={24} className="text-white" />
             </div>
-            <span className="text-3xl font-black text-white tracking-tighter">Converso</span>
+            <span className="text-3xl font-black text-[var(--text-primary)] tracking-tighter">Converso</span>
           </Link>
 
           <div className="space-y-10 max-w-lg">
-            <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight">
+            <h1 className="text-5xl xl:text-6xl font-black text-[var(--text-primary)] leading-[1.05] tracking-tight">
               Master your pipeline with <br/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-blue-400">Autonomous AI.</span>
             </h1>
@@ -81,18 +81,18 @@ export default function LoginPage() {
       </div>
 
       {/* Right Column: Secure Authentication */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40 bg-slate-950 relative">
+      <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40 relative" style={{ backgroundColor: 'var(--background)' }}>
         {/* Mobile Logo */}
         <div className="lg:hidden flex items-center gap-3 mb-12">
           <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
             <Command size={20} className="text-white" />
           </div>
-          <span className="text-2xl font-black text-white tracking-tight">Converso</span>
+          <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">Converso</span>
         </div>
 
         <div className="max-w-md w-full mx-auto space-y-12">
           <div className="space-y-2">
-            <h2 className="text-4xl font-black text-white tracking-tight">Welcome back</h2>
+            <h2 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">Welcome back</h2>
             <p className="text-slate-500 font-medium text-sm">Secure biometric or credential login required.</p>
           </div>
 
@@ -108,7 +108,7 @@ export default function LoginPage() {
                 <label className="label-text">Identity / Email</label>
                 <input
                   type="email"
-                  className="input py-4 bg-slate-900/50 border-white/5 focus:bg-slate-900 focus:border-brand-500"
+                  className="input py-4 focus:border-brand-500"
                   placeholder="agent@company.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -129,7 +129,7 @@ export default function LoginPage() {
                 </div>
                 <input
                   type="password"
-                  className="input py-4 bg-slate-900/50 border-white/5 focus:bg-slate-900 focus:border-brand-500"
+                  className="input py-4 focus:border-brand-500"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -181,7 +181,7 @@ function FeatureItem({ icon: Icon, title, desc }: { icon: any; title: string; de
         </div>
       </div>
       <div>
-        <h3 className="font-black text-white text-sm uppercase tracking-widest mb-1">{title}</h3>
+        <h3 className="font-black text-[var(--text-primary)] text-sm uppercase tracking-widest mb-1">{title}</h3>
         <p className="text-[13px] text-slate-400 font-medium leading-relaxed">{desc}</p>
       </div>
     </div>

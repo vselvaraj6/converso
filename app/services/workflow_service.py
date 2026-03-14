@@ -99,9 +99,26 @@ class WorkflowService:
             else:
                 reply_text = reply_data["reply"]
             
-            # 9. Check for calendar booking intent
+            # 9. Check for call or booking intent
+            is_requesting_call = analysis.get("intent") == "request_call"
             is_scheduling = analysis.get("intent") == "schedule_meeting"
-            if not is_scheduling and reply_data["success"]:
+            
+            if is_requesting_call:
+                # Generate summary for Vapi
+                summary = await self.openai.summarize_conversation(messages + [inbound_msg])
+                
+                # Initiate voice call
+                call_result = await self._initiate_voice_call(
+                    lead, 
+                    overrides={"variableValues": {"sms_context": summary}}
+                )
+                
+                if call_result["success"]:
+                    reply_text = f"Absolutely, {lead.name.split()[0]}! I'm calling you now to discuss this further."
+                else:
+                    reply_text = "I'd love to jump on a call. Let me have someone reach out to you shortly, or feel free to suggest a time that works for you!"
+
+            elif not is_scheduling and reply_data["success"]:
                 reply_lower = reply_text.lower()
                 if any(kw in reply_lower for kw in ["invite", "meeting", "call", "schedule", "calendar"]):
                     is_scheduling = True
@@ -367,7 +384,7 @@ class WorkflowService:
         result = await self.db.execute(select(Message).where(and_(Message.lead_id == lead.id, Message.direction == MessageDirection.INBOUND)).limit(1))
         return result.scalar_one_or_none() is None and lead.call_attempts < 3
     
-    async def _initiate_voice_call(self, lead: Lead) -> Dict:
+    async def _initiate_voice_call(self, lead: Lead, overrides: Optional[Dict] = None) -> Dict:
         try:
             company = await self.db.get(Company, lead.company_id)
             agent_name = "your representative"
@@ -392,6 +409,8 @@ class WorkflowService:
             call_result = await self.vapi.create_phone_call(
                 phone_number=f"+1{lead.phone}",
                 assistant_id=assistant_id,
+                phone_number_id=settings.vapi_phone_number_id or None,
+                variables=overrides.get("variableValues") if overrides else None,
                 webhook_url=f"{settings.app_url}/api/webhooks/vapi/inbound"
             )
             if call_result["success"]:

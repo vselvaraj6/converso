@@ -44,7 +44,7 @@ export default function DashboardPage() {
           <Activity size={12} />
           Systems Online
         </div>
-        <h1 className="text-4xl font-black text-white tracking-tight leading-none">
+        <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
           Welcome back, {user?.name?.split(' ')[0]}
         </h1>
         <p className="text-slate-500 text-sm font-medium">Your AI agents have processed <span className="text-brand-400 font-bold">12 new leads</span> since your last login.</p>
@@ -62,23 +62,23 @@ export default function DashboardPage() {
         {/* Recent Pipeline */}
         <div className="lg:col-span-2 space-y-6">
           <div className="card overflow-hidden border-none shadow-2xl">
-            <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between">
-              <h2 className="font-black text-white text-base uppercase tracking-widest flex items-center gap-2">
+            <div className="px-8 py-6 border-b border-[var(--divider-subtle)] bg-[var(--surface-muted)] flex items-center justify-between">
+              <h2 className="font-black text-[var(--text-primary)] text-base uppercase tracking-widest flex items-center gap-2">
                 <Users size={18} className="text-brand-400" /> Recent Activity
               </h2>
               <Link href="/dashboard/leads" className="text-[10px] font-black text-brand-400 uppercase tracking-widest hover:text-brand-300 transition-colors flex items-center gap-1">
                 View Pipeline <ArrowRight size={12} />
               </Link>
             </div>
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-[var(--divider-subtle)]">
               {leads.map(lead => (
                 <Link key={lead.id} href={`/dashboard/leads/${lead.id}`} className="flex items-center justify-between p-6 hover:bg-white/5 transition-all group">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center text-slate-300 font-black group-hover:scale-110 duration-300">
+                    <div className="w-12 h-12 rounded-2xl border flex items-center justify-center text-slate-400 font-black group-hover:scale-110 duration-300" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
                       {lead.name.charAt(0)}
                     </div>
                     <div>
-                      <p className="font-bold text-white text-sm">{lead.name}</p>
+                      <p className="font-bold text-[var(--text-primary)] text-sm">{lead.name}</p>
                       <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{lead.company || 'Private'}</p>
                     </div>
                   </div>
@@ -98,15 +98,15 @@ export default function DashboardPage() {
         {/* Upcoming Meetings */}
         <div className="space-y-6">
           <div className="card overflow-hidden border-none shadow-2xl bg-brand-600/5">
-            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between">
-              <h2 className="font-black text-white text-base uppercase tracking-widest">Agenda</h2>
+            <div className="px-8 py-6 border-b border-[var(--divider-subtle)] flex items-center justify-between">
+              <h2 className="font-black text-[var(--text-primary)] text-base uppercase tracking-widest">Agenda</h2>
               <CalendarIcon size={18} className="text-brand-400" />
             </div>
             <div className="p-6 space-y-4">
               {meetings.map(m => (
-                <div key={m.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+                <div key={m.id} className="p-4 rounded-2xl border space-y-2" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider-subtle)' }}>
                   <div className="flex justify-between items-start">
-                    <p className="text-xs font-black text-white leading-tight">{m.title}</p>
+                    <p className="text-xs font-black text-[var(--text-primary)] leading-tight">{m.title}</p>
                     <span className="text-[10px] font-black text-brand-400">
                       {new Date(m.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -120,9 +120,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="card p-8 bg-slate-900 border-none relative overflow-hidden group">
+          <div className="card p-8 border-none relative overflow-hidden group" style={{ backgroundColor: 'var(--surface)' }}>
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500 blur-[60px] opacity-20" />
-            <h3 className="text-white font-black text-xs uppercase tracking-widest mb-2">Platform Health</h3>
+            <h3 className="text-[var(--text-primary)] font-black text-xs uppercase tracking-widest mb-2">Platform Health</h3>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" />
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">All services operational</p>
@@ -136,7 +136,7 @@ export default function DashboardPage() {
 
 function StatCard({ title, value, icon: Icon, color, trend }: { title: string; value: any; icon: any; color: string; trend: string }) {
   return (
-    <div className="card p-8 border-none shadow-2xl relative overflow-hidden group hover:-translate-y-1 duration-500 bg-slate-900/40">
+    <div className="card p-8 border-none shadow-2xl relative overflow-hidden group hover:-translate-y-1 duration-500">
       <div className={clsx("absolute top-0 right-0 w-24 h-24 blur-[60px] opacity-10 group-hover:opacity-20 transition-opacity bg-gradient-to-br", color)} />
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-6">
@@ -148,7 +148,7 @@ function StatCard({ title, value, icon: Icon, color, trend }: { title: string; v
           </span>
         </div>
         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">{title}</p>
-        <h3 className="text-3xl font-black text-white tracking-tight">{value}</h3>
+        <h3 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">{value}</h3>
       </div>
     </div>
   )

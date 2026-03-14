@@ -35,9 +35,9 @@ export default function RegisterPage() {
     setForm(f => ({ ...f, [field]: e.target.value }))
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 font-sans selection:bg-brand-500/30 text-slate-200">
+    <div className="min-h-screen flex flex-col md:flex-row font-sans selection:bg-brand-500/30" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
       {/* Left Column: Visionary Branding */}
-      <div className="hidden lg:flex flex-col justify-between w-[45%] p-16 xl:p-24 relative overflow-hidden bg-slate-900 border-r border-white/5">
+      <div className="hidden lg:flex flex-col justify-between w-[45%] p-16 xl:p-24 relative overflow-hidden border-r border-[var(--divider)]" style={{ backgroundColor: 'var(--surface)' }}>
         <div className="absolute inset-0 z-0">
           <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-600/20 blur-[120px] rounded-full" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[100px] rounded-full" />
@@ -54,11 +54,11 @@ export default function RegisterPage() {
             <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.4)] transition-all group-hover:scale-110">
               <Command size={24} className="text-white" />
             </div>
-            <span className="text-3xl font-black text-white tracking-tighter uppercase">Converso</span>
+            <span className="text-3xl font-black text-[var(--text-primary)] tracking-tighter uppercase">Converso</span>
           </Link>
 
           <div className="space-y-10 max-w-lg">
-            <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight">
+            <h1 className="text-5xl xl:text-6xl font-black text-[var(--text-primary)] leading-[1.05] tracking-tight">
               Scale your team with <br/>
               <span className="text-brand-400">Digital Clones.</span>
             </h1>
@@ -76,10 +76,10 @@ export default function RegisterPage() {
       </div>
 
       {/* Right Column: Registration Form */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40 bg-slate-950">
+      <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40" style={{ backgroundColor: 'var(--background)' }}>
         <div className="max-w-md w-full mx-auto space-y-10">
           <div className="space-y-2">
-            <h2 className="text-4xl font-black text-white tracking-tight">Initialize Account</h2>
+            <h2 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">Initialize Account</h2>
             <p className="text-slate-500 font-medium text-sm italic">Define your corporate identity and credentials.</p>
           </div>
 
@@ -149,7 +149,7 @@ function FeatureItem({ icon: Icon, title, desc }: { icon: any; title: string; de
         </div>
       </div>
       <div>
-        <h3 className="font-black text-white text-sm uppercase tracking-widest mb-1">{title}</h3>
+        <h3 className="font-black text-[var(--text-primary)] text-sm uppercase tracking-widest mb-1">{title}</h3>
         <p className="text-[13px] text-slate-400 font-medium leading-relaxed">{desc}</p>
       </div>
     </div>

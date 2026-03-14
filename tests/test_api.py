@@ -65,6 +65,60 @@ class TestWebhookAPI:
         assert response.status_code == 200
         assert response.json() == {"status": "received"}
 
+    @pytest.mark.asyncio
+    async def test_calcom_webhook(self, client: AsyncClient, db_session: AsyncSession):
+        """Test Cal.com booking created webhook"""
+        # Create lead
+        company = Company(name="Cal Co")
+        db_session.add(company)
+        await db_session.flush()
+        
+        lead = Lead(
+            company_id=company.id,
+            name="Cal User",
+            email="cal@example.com",
+            phone="4165551212",
+            status=LeadStatus.NEW
+        )
+        db_session.add(lead)
+        await db_session.commit()
+        
+        cal_data = {
+            "triggerEvent": "BOOKING_CREATED",
+            "payload": {
+                "uid": "cal_123",
+                "title": "Strategy Call",
+                "startTime": "2025-01-20T10:00:00Z",
+                "endTime": "2025-01-20T11:00:00Z",
+                "attendees": [
+                    {"email": "cal@example.com", "name": "Cal User"}
+                ]
+            }
+        }
+        
+        with patch('app.api.webhooks.CalComService.verify_webhook', return_value=True):
+            response = await client.post(
+                "/api/webhooks/calcom",
+                json=cal_data,
+                headers={"X-Cal-Signature-256": "fake"}
+            )
+            
+            assert response.status_code == 200
+            
+            # Verify lead was qualified
+            await db_session.refresh(lead)
+            assert lead.status == LeadStatus.QUALIFIED
+            
+            # Verify calendar event recorded
+            from sqlalchemy import select
+            from app.models import CalendarEvent
+            evt_result = await db_session.execute(
+                select(CalendarEvent).where(CalendarEvent.google_event_id == "cal_123")
+            )
+            evt = evt_result.scalar_one_or_none()
+            assert evt is not None
+            assert evt.title == "Strategy Call"
+
 
 class TestLeadsAPI:
     """Test leads endpoints"""

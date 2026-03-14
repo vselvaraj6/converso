@@ -325,3 +325,213 @@ class TestWorkflowService:
             assert lead.sentiment_score["latest"] == "positive"
             assert lead.sentiment_score["intent"] == "schedule_meeting"
             assert lead.status == LeadStatus.QUALIFIED
+
+    @pytest.mark.asyncio
+    async def test_sms_to_voice_transition(self, db_session: AsyncSession):
+        """Test transitioning from SMS to Voice when lead requests a call"""
+        # Setup
+        company = Company(name="Test Company", vapi_assistant_id="asst_123")
+        db_session.add(company)
+        await db_session.flush()
+        
+        lead = Lead(
+            company_id=company.id,
+            name="Call Me",
+            email="callme@example.com",
+            phone="4165550000",
+            status=LeadStatus.CONTACTED
+        )
+        db_session.add(lead)
+        await db_session.commit()
+        
+        with patch('app.services.workflow_service.OpenAIService') as mock_openai, \
+             patch('app.services.workflow_service.TwilioService') as mock_twilio, \
+             patch('app.services.workflow_service.VAPIService') as mock_vapi:
+            
+            # Mock intent to request_call
+            mock_openai.return_value.analyze_sentiment_and_intent = AsyncMock(return_value={
+                "success": True,
+                "sentiment": "positive",
+                "intent": "request_call",
+                "urgency": "high"
+            })
+            
+            # Mock summary generation
+            mock_openai.return_value.summarize_conversation = AsyncMock(
+                return_value="Lead is interested and wants a call now."
+            )
+
+            # Mock smart reply
+            mock_openai.return_value.generate_smart_reply = AsyncMock(return_value={
+                "success": True,
+                "reply": "Calling you now!"
+            })
+            
+            # Mock Vapi call
+            mock_vapi.return_value.create_phone_call = AsyncMock(return_value={
+                "success": True,
+                "call": {"id": "vapi_call_123"}
+            })
+            
+            # Mock Twilio SMS
+            mock_twilio.return_value.send_sms = AsyncMock(return_value={
+                "success": True,
+                "message_sid": "SM_CONFIRM"
+            })
+            
+            service = WorkflowService(db_session)
+            webhook_data = {
+                "from": "+14165550000",
+                "body": "Can you call me now?",
+                "message_sid": "SM_INBOUND"
+            }
+            
+            result = await service.process_inbound_message(webhook_data)
+            
+            assert result["success"] is True
+            assert "calling you now" in result["reply_sent"].lower()
+            
+            # Verify Vapi was called with context
+            mock_vapi.return_value.create_phone_call.assert_called_once()
+            args, kwargs = mock_vapi.return_value.create_phone_call.call_args
+            assert kwargs["variables"]["sms_context"] == "Lead is interested and wants a call now."
+            
+            # Verify message was recorded
+            from sqlalchemy import select
+            msg_result = await db_session.execute(
+                select(Message).where(Message.vapi_call_id == "vapi_call_123")
+            )
+            msg = msg_result.scalar_one_or_none()
+            assert msg is not None
+            assert msg.channel == "voice"
+
+    @pytest.mark.asyncio
+    async def test_process_voice_call_ended(self, db_session: AsyncSession):
+        """Test processing the end of a voice call with transcript"""
+        # Setup
+        company = Company(name="Test Company")
+        db_session.add(company)
+        await db_session.flush()
+        
+        lead = Lead(
+            company_id=company.id,
+            name="Voice Lead",
+            email="voice@example.com",
+            phone="4165559999",
+            status=LeadStatus.CONTACTED
+        )
+        db_session.add(lead)
+        await db_session.commit()
+        
+        with patch('app.services.workflow_service.OpenAIService') as mock_openai:
+            mock_openai.return_value.analyze_sentiment_and_intent = AsyncMock(return_value={
+                "success": True,
+                "sentiment": "positive",
+                "intent": "schedule_meeting"
+            })
+            
+            service = WorkflowService(db_session)
+            await service.process_voice_call_ended(
+                phone="+14165559999",
+                call_id="call_999",
+                duration=120,
+                transcript="I would like to book a meeting for next week."
+            )
+            
+            # Verify message recorded
+            from sqlalchemy import select
+            msg_result = await db_session.execute(
+                select(Message).where(Message.vapi_call_id == "call_999")
+            )
+            msg = msg_result.scalar_one_or_none()
+            assert msg is not None
+            assert msg.transcript == "I would like to book a meeting for next week."
+            
+            # Verify lead updated
+            await db_session.refresh(lead)
+            assert lead.status == LeadStatus.QUALIFIED
+            assert lead.last_contact_method == "voice"
+
+    @pytest.mark.asyncio
+    async def test_handle_calendar_booking_logic(self, db_session: AsyncSession):
+        """Test internal _handle_calendar_booking logic"""
+        company = Company(
+            name="Test Company", 
+            cal_booking_url="https://cal.com/test",
+            cal_event_type_id=123
+        )
+        db_session.add(company)
+        await db_session.flush()
+        
+        lead = Lead(
+            company_id=company.id,
+            name="Booking Lead",
+            email="book@example.com",
+            phone="4165551111"
+        )
+        db_session.add(lead)
+        await db_session.commit()
+        
+        with patch('app.services.workflow_service.CalComService') as mock_calendar:
+            # Mock slot fetching
+            mock_calendar.return_value.get_available_slots = AsyncMock(return_value=[
+                {"time": "2025-01-20T10:00:00Z"},
+                {"time": "2025-01-20T11:00:00Z"}
+            ])
+            
+            # Mock successful booking
+            mock_calendar.return_value.create_booking = AsyncMock(return_value={
+                "success": True,
+                "booking": {"id": "book_123"}
+            })
+            
+            service = WorkflowService(db_session)
+            
+            # Case 1: No time provided, should suggest slots
+            result = await service._handle_calendar_booking(lead, company)
+            assert result["booked"] is False
+            assert "Monday, Jan 20 at 10:00 AM" in result["confirmation_message"]
+            
+            # Case 2: Time provided, should book
+            requested_time = "2025-01-20T10:00:00Z"
+            result = await service._handle_calendar_booking(lead, company, requested_time=requested_time)
+            assert result["booked"] is True
+            assert "booked that for you" in result["confirmation_message"]
+            mock_calendar.return_value.create_booking.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_manual_sms(self, db_session: AsyncSession):
+        """Test sending a manual SMS via WorkflowService"""
+        company = Company(name="Test Company")
+        db_session.add(company)
+        await db_session.flush()
+        
+        lead = Lead(
+            company_id=company.id,
+            name="Manual Lead",
+            email="manual@example.com",
+            phone="4165551234"
+        )
+        db_session.add(lead)
+        await db_session.commit()
+        
+        with patch('app.services.workflow_service.TwilioService') as mock_twilio:
+            mock_twilio.return_value.send_sms = AsyncMock(return_value={
+                "success": True,
+                "message_sid": "SM_MANUAL"
+            })
+            
+            service = WorkflowService(db_session)
+            result = await service.send_manual_sms(lead.id, "Hello from admin")
+            
+            assert result["success"] is True
+            
+            # Verify message recorded
+            from sqlalchemy import select
+            msg_result = await db_session.execute(
+                select(Message).where(Message.twilio_message_sid == "SM_MANUAL")
+            )
+            msg = msg_result.scalar_one_or_none()
+            assert msg is not None
+            assert msg.content == "Hello from admin"
+            assert msg.direction == MessageDirection.OUTBOUND

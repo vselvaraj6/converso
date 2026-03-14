@@ -8,14 +8,14 @@ function Section({ title, icon: Icon, children, description }: {
   title: string; icon: React.ElementType; children: React.ReactNode; description?: string
 }) {
   return (
-    <div className="card p-8 bg-slate-900/40 border-none shadow-2xl font-sans relative overflow-hidden group">
+    <div className="card p-8 border-none shadow-2xl font-sans relative overflow-hidden group">
       <div className="absolute top-0 right-0 w-24 h-24 bg-brand-600 blur-[100px] opacity-0 group-hover:opacity-10 transition-opacity" />
       <div className="flex items-start gap-5 mb-8 relative z-10">
-        <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center shadow-inner text-brand-400 group-hover:scale-110 duration-500">
+        <div className="w-12 h-12 rounded-2xl border flex items-center justify-center shadow-inner text-brand-400 group-hover:scale-110 duration-500" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
           <Icon size={22} strokeWidth={2.5} />
         </div>
         <div>
-          <h2 className="font-black text-white text-lg uppercase tracking-widest">{title}</h2>
+          <h2 className="font-black text-[var(--text-primary)] text-lg uppercase tracking-widest">{title}</h2>
           {description && <p className="text-[10px] text-slate-500 mt-1 font-black uppercase tracking-[0.2em]">{description}</p>}
         </div>
       </div>
@@ -99,11 +99,11 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-10 pb-20 font-sans">
       <div className="space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-white/5">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
           <Settings2 size={12} className="text-brand-400" />
           Configuration Center
         </div>
-        <h1 className="text-4xl font-black text-white tracking-tight leading-none">
+        <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
           System Parameters
         </h1>
         <p className="text-slate-500 text-sm font-medium">Fine-tune your personal profile and global AI orchestration logic.</p>
@@ -115,11 +115,11 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-1">
               <span className="label-text">Identity</span>
-              <p className="text-sm font-black text-white px-4 py-3 bg-slate-950/50 rounded-2xl border border-white/5">{user?.name}</p>
+              <p className="text-sm font-black px-4 py-3 rounded-2xl border" style={{ color: 'var(--text-primary)', backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>{user?.name}</p>
             </div>
             <div className="space-y-1">
               <span className="label-text">Registry</span>
-              <p className="text-sm font-black text-white px-4 py-3 bg-slate-950/50 rounded-2xl border border-white/5 truncate">{user?.email}</p>
+              <p className="text-sm font-black px-4 py-3 rounded-2xl border truncate" style={{ color: 'var(--text-primary)', backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>{user?.email}</p>
             </div>
             <div className="space-y-1">
               <span className="label-text">Clearance</span>
@@ -149,7 +149,7 @@ export default function SettingsPage() {
                 <div className="relative">
                   <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                   <input 
-                    className="input pl-12 bg-slate-950/80" 
+                    className="input pl-12 bg-[var(--input-bg)]" 
                     value={company?.cal_booking_url || ''} 
                     onChange={e => setCompany(c => c ? {...c, cal_booking_url: e.target.value} : null)}
                     placeholder="https://cal.com/team/corp/sales"
@@ -168,7 +168,7 @@ export default function SettingsPage() {
               <div className="relative group">
                 <LinkIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-brand-400 transition-colors" />
                 <input 
-                  className="input pl-12 bg-slate-950/80" 
+                  className="input pl-12 bg-[var(--input-bg)]" 
                   value={manualCalUrl} 
                   onChange={e => setManualCalUrl(e.target.value)}
                   placeholder="https://cal.com/your-alias/demo"
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                     <MessageCircle size={12} className="text-brand-400" /> Industry Matrix
                   </label>
                   <textarea
-                    className="input min-h-[120px] bg-slate-950/80 resize-none text-xs leading-relaxed"
+                    className="input min-h-[120px] bg-[var(--input-bg)] resize-none text-xs leading-relaxed"
                     value={company?.ai_config.industry_lingo || ''}
                     onChange={e => updateAI('industry_lingo', e.target.value)}
                     placeholder="Load industry keywords here..."
@@ -207,7 +207,7 @@ export default function SettingsPage() {
                     <Zap size={12} className="text-brand-400" /> Core Memory
                   </label>
                   <textarea
-                    className="input min-h-[120px] bg-slate-950/80 resize-none text-xs leading-relaxed"
+                    className="input min-h-[120px] bg-[var(--input-bg)] resize-none text-xs leading-relaxed"
                     value={company?.ai_config.company_memory || ''}
                     onChange={e => updateAI('company_memory', e.target.value)}
                     placeholder="Load corporate identity here..."
@@ -221,7 +221,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <label className="label-text">Output Frequency</label>
                   <select 
-                    className="input font-black text-[11px] uppercase tracking-widest bg-slate-950/80 appearance-none"
+                    className="input font-black text-[11px] uppercase tracking-widest bg-[var(--input-bg)] appearance-none"
                     value={company?.ai_config.tone || 'friendly and professional'}
                     onChange={e => updateAI('tone', e.target.value)}
                   >
@@ -237,7 +237,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <label className="label-text">Master Phone Node</label>
                   <input 
-                    className="input font-mono text-xs font-black bg-slate-950/80 text-brand-400 tracking-widest" 
+                    className="input font-mono text-xs font-black bg-[var(--input-bg)] text-brand-400 tracking-widest" 
                     value={company?.twilio_phone_number || ''} 
                     onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
                     placeholder="+1.000.000.0000"
@@ -251,12 +251,12 @@ export default function SettingsPage() {
         {/* Save Console */}
         {(user?.role === 'admin' || user?.role === 'write' || user?.is_superuser) && (
           <div className="sticky bottom-8 left-0 right-0 flex items-center justify-center z-50">
-            <div className="bg-slate-900/80 backdrop-blur-2xl p-2 rounded-[24px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-6 pr-6 pl-2">
+            <div className="backdrop-blur-2xl p-2 rounded-[24px] border shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-6 pr-6 pl-2" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
               <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
                 <Activity size={24} className={clsx(saving && "animate-pulse")} />
               </div>
               <div>
-                <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Ready for Sync</p>
+                <p className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">Ready for Sync</p>
                 <p className="text-[9px] text-slate-500 font-bold uppercase">All parameters verified</p>
               </div>
               <button 

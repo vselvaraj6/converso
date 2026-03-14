@@ -24,6 +24,14 @@
   --sidebar-bg: #0f172a; /* Keep sidebar dark always for premium feel */
   --text-muted: #64748b;
   --glass-effect: blur(16px);
+  --surface: #ffffff;
+  --surface-subtle: #f8fafc;
+  --surface-muted: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --divider: #e2e8f0;
+  --divider-subtle: #f1f5f9;
+  --page-bg: #f8fafc;
 }
 
 [data-theme='dark'] {
@@ -34,6 +42,14 @@
   --input-bg: rgba(2, 6, 23, 0.5);
   --input-border: rgba(30, 41, 59, 1);
   --text-muted: #94a3b8;
+  --surface: rgba(15, 23, 42, 0.85);
+  --surface-subtle: rgba(2, 6, 23, 0.5);
+  --surface-muted: rgba(30, 41, 59, 0.4);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --divider: rgba(30, 41, 59, 1);
+  --divider-subtle: rgba(30, 41, 59, 0.5);
+  --page-bg: #020617;
 }
 
 @layer base {
@@ -95,6 +111,23 @@
     @apply block text-[10px] font-black uppercase tracking-widest mb-2 ml-1;
     color: var(--text-muted);
   }
+
+  .badge-status-new       { @apply bg-blue-50 text-blue-600 border-blue-100; }
+  .badge-status-contacted { @apply bg-amber-50 text-amber-600 border-amber-100; }
+  .badge-status-qualified { @apply bg-emerald-50 text-emerald-600 border-emerald-100; }
+  .badge-status-converted { @apply bg-indigo-50 text-indigo-600 border-indigo-100; }
+  .badge-status-lost      { @apply bg-slate-50 text-slate-500 border-slate-200; }
+
+  [data-theme='dark'] .badge-status-new       { @apply bg-blue-500/10 text-blue-400 border-blue-500/20; }
+  [data-theme='dark'] .badge-status-contacted { @apply bg-amber-500/10 text-amber-400 border-amber-500/20; }
+  [data-theme='dark'] .badge-status-qualified { @apply bg-emerald-500/10 text-emerald-400 border-emerald-500/20; }
+  [data-theme='dark'] .badge-status-converted { @apply bg-indigo-500/10 text-indigo-400 border-indigo-500/20; }
+  [data-theme='dark'] .badge-status-lost      { @apply bg-slate-800 text-slate-400 border-slate-700; }
+
+  .page-title     { color: var(--text-primary); }
+  .surface        { background-color: var(--surface); border-color: var(--divider); }
+  .surface-subtle { background-color: var(--surface-subtle); }
+  .divider        { border-color: var(--divider); }
 }
 
 /* Scrollbar overrides */

@@ -27,13 +27,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
-const STATUS_COLORS: Record<string, string> = {
-  new:       'bg-blue-100 text-blue-700',
-  contacted: 'bg-yellow-100 text-yellow-700',
-  qualified: 'bg-purple-100 text-purple-700',
-  converted: 'bg-green-100 text-green-700',
-  lost:      'bg-gray-100 text-gray-600',
-}
+const getStatusClass = (status: string) => `badge-status-${status}`
 
 const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'converted', 'lost']
 
@@ -65,7 +59,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
       <Icon size={15} className="text-slate-400 mt-0.5 shrink-0" />
       <div>
         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="text-sm text-slate-800 font-bold">{value}</p>
+        <p className="text-sm font-bold text-[var(--text-primary)]">{value}</p>
       </div>
     </div>
   )
@@ -174,14 +168,15 @@ export default function LeadDetailPage() {
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.back()}
-            className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all active:scale-90"
+            className="w-10 h-10 rounded-xl border shadow-sm flex items-center justify-center text-slate-400 hover:text-[var(--text-primary)] transition-all active:scale-90"
+            style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}
           >
             <ArrowLeft size={18} />
           </button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">{lead.name}</h1>
-              <span className={clsx('badge border-none px-3 py-1 rounded-lg text-[10px] font-black', STATUS_COLORS[lead.status] ?? 'bg-slate-100 text-slate-600')}>
+              <h1 className="text-3xl font-black text-[var(--text-primary)] tracking-tight">{lead.name}</h1>
+              <span className={clsx('badge px-3 py-1 rounded-lg text-[10px] font-black', getStatusClass(lead.status))}>
                 {lead.status}
               </span>
             </div>
@@ -220,8 +215,8 @@ export default function LeadDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Sidebar Info */}
         <div className="lg:col-span-1 space-y-6 order-1">
-          <div className="card p-8 bg-white border-none shadow-2xl shadow-slate-200/50">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 border-b border-slate-50 pb-4 flex items-center gap-2">
+          <div className="card p-8 border-none shadow-2xl" style={{ backgroundColor: 'var(--surface)' }}>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 border-b pb-4 flex items-center gap-2" style={{ borderColor: 'var(--divider)' }}>
               <Zap size={14} className="text-brand-500" /> Profiling Data
             </h3>
             
@@ -234,7 +229,7 @@ export default function LeadDetailPage() {
               <InfoRow icon={Clock}     label="Cycle"    value={lead.nudge_interval_days ? `${lead.nudge_interval_days} days` : 'Not set'} />
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-50">
+            <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--divider)' }}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 block">Update Pipeline</label>
               <select 
                 value={lead.status}
@@ -286,14 +281,14 @@ export default function LeadDetailPage() {
         </div>
 
         {/* Conversation Feed */}
-        <div className="lg:col-span-2 card flex flex-col h-[600px] lg:h-full lg:min-h-[750px] order-2 border-none shadow-2xl shadow-slate-200/50 bg-white/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-8 py-6 border-b border-slate-50 bg-white/50 flex items-center justify-between">
+        <div className="lg:col-span-2 card flex flex-col h-[600px] lg:h-full lg:min-h-[750px] order-2 border-none shadow-2xl backdrop-blur-xl overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
+          <div className="px-8 py-6 border-b flex items-center justify-between" style={{ borderColor: 'var(--divider)', backgroundColor: 'var(--surface-subtle)' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-inner">
                 <MessageSquare size={20} />
               </div>
               <div>
-                <h2 className="font-black text-slate-900 text-lg">Communication Hub</h2>
+                <h2 className="font-black text-[var(--text-primary)] text-lg">Communication Hub</h2>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{messages.length} Live Interactions</p>
               </div>
             </div>
@@ -304,13 +299,13 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 bg-slate-50/30 custom-scrollbar">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 custom-scrollbar" style={{ backgroundColor: 'var(--surface-subtle)' }}>
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-12 opacity-40">
                 <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-6">
                   <Zap size={32} className="text-slate-300" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Awaiting Engagement</h3>
+                <h3 className="text-sm font-black text-[var(--text-primary)] uppercase tracking-widest">Awaiting Engagement</h3>
                 <p className="text-xs text-slate-500 mt-2 max-w-[200px] font-medium leading-relaxed">The AI will initiate outreach automatically based on your pipeline rules.</p>
               </div>
             ) : (
@@ -344,7 +339,7 @@ export default function LeadDetailPage() {
                       <div className="flex items-center justify-between relative z-10 pt-2 border-t border-white/5">
                         <div className="flex gap-3">
                           {msg.recording_url && (
-                            <a href={msg.recording_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-brand-400 transition-all">
+                            <a href={msg.recording_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-400 hover:text-white transition-all" style={{ backgroundColor: 'var(--surface)', color: 'var(--text-primary)' }}>
                               <Play size={12} fill="currentColor" /> Play Audio
                             </a>
                           )}
@@ -361,13 +356,13 @@ export default function LeadDetailPage() {
                         'max-w-[85%] lg:max-w-md rounded-[24px] px-6 py-4 shadow-2xl relative transition-all duration-300',
                         msg.direction === 'outbound'
                           ? 'bg-slate-900 text-white rounded-br-none shadow-slate-300/20'
-                          : 'bg-white border border-slate-100 text-slate-900 rounded-bl-none shadow-slate-200/40',
+                          : 'bg-[var(--surface)] border border-[var(--divider)] text-[var(--text-primary)] rounded-bl-none',
                       )}
                     >
                       <p className="text-[13px] font-medium leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       <div className={clsx(
                         'flex items-center justify-between mt-4 pt-3 border-t',
-                        msg.direction === 'outbound' ? 'border-white/10' : 'border-slate-50'
+                        msg.direction === 'outbound' ? 'border-white/10' : 'border-[var(--divider)]'
                       )}>
                         <span className={clsx(
                           'text-[9px] font-black uppercase tracking-[0.2em]',
@@ -388,10 +383,11 @@ export default function LeadDetailPage() {
 
           {/* Interaction Input */}
           {canWrite && (
-            <div className="p-6 bg-white border-t border-slate-50">
+            <div className="p-6 border-t" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
               <form onSubmit={handleSendSms} className="relative group">
                 <textarea
-                  className="w-full bg-slate-50 border-none rounded-[24px] pl-6 pr-16 py-4 text-sm font-bold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-brand-500/5 min-h-[60px] max-h-32 custom-scrollbar resize-none"
+                  className="w-full border-none rounded-[24px] pl-6 pr-16 py-4 text-sm font-bold outline-none transition-all focus:ring-4 focus:ring-brand-500/5 min-h-[60px] max-h-32 custom-scrollbar resize-none"
+                  style={{ backgroundColor: 'var(--surface-subtle)', color: 'var(--foreground)' }}
                   placeholder="Type a manual SMS message..."
                   value={smsContent}
                   onChange={e => setSmsContent(e.target.value)}
@@ -472,19 +468,19 @@ function EditLeadModal({ lead, onClose, onUpdated }: {
 
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xl flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300 overflow-y-auto">
-      <div className="bg-white rounded-[32px] w-full max-w-lg p-8 shadow-[0_20px_80px_rgba(0,0,0,0.3)] border border-slate-100 animate-in zoom-in duration-300 my-auto">
+      <div className="rounded-[32px] w-full max-w-lg p-8 shadow-[0_20px_80px_rgba(0,0,0,0.3)] border animate-in zoom-in duration-300 my-auto" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
         <div className="flex items-center justify-between mb-8">
           <div className="space-y-1">
-            <h2 className="text-2xl font-black text-slate-900">Edit Intelligence</h2>
+            <h2 className="text-2xl font-black text-[var(--text-primary)]">Edit Intelligence</h2>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Update lead parameters</p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-[var(--text-primary)] transition-colors" style={{ backgroundColor: 'var(--surface-subtle)' }}>
             <X size={20} />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-100 text-red-600 rounded-2xl px-5 py-3 text-xs font-black flex items-center gap-2">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl px-5 py-3 text-xs font-black flex items-center gap-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}

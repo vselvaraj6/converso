@@ -4,7 +4,7 @@ import { CheckCircle2, MessageSquare, Calendar, Zap, ShieldCheck, Brain, Phone, 
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-brand-500/30">
+    <div className="min-h-screen font-sans selection:bg-brand-500/30" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
       {/* Dynamic Background Mesh */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-600/10 blur-[120px] rounded-full" />
@@ -12,14 +12,14 @@ export default function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="border-b border-white/5 sticky top-0 bg-slate-950/50 backdrop-blur-xl z-50">
+      <nav className="border-b border-[var(--divider)] sticky top-0 backdrop-blur-xl z-50" style={{ backgroundColor: 'var(--background)' }}>
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
           <div className="flex justify-between h-20 items-center">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.3)] transition-all group-hover:scale-110 group-hover:rotate-3">
                 <Command size={22} className="text-white" />
               </div>
-              <span className="font-black text-2xl tracking-tighter text-white">Converso</span>
+              <span className="font-black text-2xl tracking-tighter text-[var(--text-primary)]">Converso</span>
             </Link>
             <div className="flex items-center gap-6">
               <Link href="/login" className="text-sm font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">
@@ -40,7 +40,7 @@ export default function LandingPage() {
             <Sparkles size={14} className="animate-pulse" />
             <span>Multi-Tenant Enterprise Architecture</span>
           </div>
-          <h1 className="text-6xl md:text-8xl font-black text-white leading-[0.95] tracking-tighter mb-10">
+          <h1 className="text-6xl md:text-8xl font-black text-[var(--text-primary)] leading-[0.95] tracking-tighter mb-10">
             Automate sales <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 via-indigo-400 to-blue-400">at machine speed.</span>
           </h1>
@@ -72,10 +72,10 @@ export default function LandingPage() {
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="py-32 relative z-10 border-y border-white/5 bg-slate-900/20">
+      <section id="how-it-works" className="py-32 relative z-10 border-y border-[var(--divider)] bg-[var(--surface-muted)]">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
           <div className="text-center mb-24">
-            <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight mb-4">Autonomous Pipeline Logic</h2>
+            <h2 className="text-4xl md:text-5xl font-black text-[var(--text-primary)] tracking-tight mb-4">Autonomous Pipeline Logic</h2>
             <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Proprietary lead journey orchestration</p>
           </div>
 
@@ -108,7 +108,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
             <div className="space-y-10">
               <div className="space-y-4">
-                <h2 className="text-5xl font-black text-white leading-none tracking-tighter">
+                <h2 className="text-5xl font-black text-[var(--text-primary)] leading-none tracking-tighter">
                   Architected for <br/>
                   <span className="text-brand-500">Maximum Velocity.</span>
                 </h2>
@@ -142,10 +142,10 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section className="py-32 px-6 relative z-10">
-        <div className="max-w-5xl mx-auto rounded-[3rem] bg-slate-900 border border-white/5 p-16 md:p-24 text-center relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] group">
+        <div className="max-w-5xl mx-auto rounded-[3rem] border p-16 md:p-24 text-center relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)] group" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
           <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600 blur-[150px] opacity-10 group-hover:opacity-20 transition-opacity" />
           <div className="relative z-10 space-y-10">
-            <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-none tracking-tighter">
+            <h2 className="text-4xl md:text-6xl font-black text-[var(--text-primary)] mb-6 leading-none tracking-tighter">
               Ready to automate <br/> your future?
             </h2>
             <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto font-medium italic">
@@ -163,7 +163,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-3 opacity-40 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-500">
             <Command size={20} className="text-brand-500" />
-            <span className="font-black text-xl tracking-tighter text-white">Converso</span>
+            <span className="font-black text-xl tracking-tighter text-[var(--text-primary)]">Converso</span>
           </div>
           <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">© 2026 Converso Platform. All rights reserved.</p>
           <div className="flex gap-10 text-[10px] text-slate-500 font-black uppercase tracking-widest">
@@ -180,12 +180,12 @@ export default function LandingPage() {
 function Step({ num, title, desc, icon: Icon }: { num: string; title: string; desc: string; icon: any }) {
   return (
     <div className="flex flex-col items-center text-center relative z-10 group">
-      <div className="w-20 h-20 rounded-3xl bg-slate-900 border border-white/5 shadow-2xl flex items-center justify-center mb-8 text-brand-400 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 relative">
+      <div className="w-20 h-20 rounded-3xl border shadow-2xl flex items-center justify-center mb-8 text-brand-400 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 relative" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
         <div className="absolute inset-0 bg-brand-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
         <Icon size={36} strokeWidth={2.5} className="relative z-10" />
       </div>
       <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.3em] mb-3">{num} / Step</span>
-      <h3 className="text-xl font-black text-white mb-3 tracking-tight">{title}</h3>
+      <h3 className="text-xl font-black text-[var(--text-primary)] mb-3 tracking-tight">{title}</h3>
       <p className="text-sm text-slate-500 font-medium leading-relaxed max-w-[250px]">{desc}</p>
     </div>
   )
@@ -194,11 +194,11 @@ function Step({ num, title, desc, icon: Icon }: { num: string; title: string; de
 function Feature({ title, desc, icon: Icon }: { title: string; desc: string; icon: any }) {
   return (
     <div className="space-y-4 group">
-      <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center text-brand-400 shadow-xl group-hover:bg-brand-600 group-hover:text-white transition-all duration-500">
+      <div className="w-12 h-12 rounded-2xl border flex items-center justify-center text-brand-400 shadow-xl group-hover:bg-brand-600 group-hover:text-white transition-all duration-500" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
         <Icon size={24} strokeWidth={2.5} />
       </div>
       <div className="space-y-1">
-        <h3 className="font-black text-white text-xs uppercase tracking-widest">{title}</h3>
+        <h3 className="font-black text-[var(--text-primary)] text-xs uppercase tracking-widest">{title}</h3>
         <p className="text-xs text-slate-500 font-medium leading-relaxed">{desc}</p>
       </div>
     </div>

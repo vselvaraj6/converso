@@ -56,22 +56,22 @@ export default function PlatformAdminPage() {
       {/* Dynamic Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative">
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-white/5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
             <Command size={12} className="text-brand-400" />
             Platform Control
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none">
+          <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
             Command Center
           </h1>
           <p className="text-slate-500 text-sm font-medium">Global oversight of multi-tenant SaaS architecture and throughput.</p>
         </div>
 
-        <div className="flex items-center gap-3 p-1.5 bg-white rounded-[20px] shadow-xl shadow-slate-200/50 border border-slate-100">
+        <div className="flex items-center gap-3 p-1.5 rounded-[20px] shadow-xl border" style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--divider)' }}>
           <button 
             onClick={() => setTab('companies')}
             className={clsx(
               "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2", 
-              tab === 'companies' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-slate-900"
+              tab === 'companies' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-[var(--text-primary)]"
             )}
           >
             <LayoutGrid size={14} /> Clients
@@ -80,7 +80,7 @@ export default function PlatformAdminPage() {
             onClick={() => setTab('usage')}
             className={clsx(
               "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2", 
-              tab === 'usage' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-slate-900"
+              tab === 'usage' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-[var(--text-primary)]"
             )}
           >
             <Activity size={14} /> Analytics
@@ -116,19 +116,20 @@ export default function PlatformAdminPage() {
           </div>
 
           {/* Client Registry */}
-          <div className="card overflow-hidden border-none shadow-2xl shadow-slate-200/60 bg-white/80 backdrop-blur-xl">
-            <div className="px-8 py-6 border-b border-slate-50 bg-white/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="card overflow-hidden border-none shadow-2xl backdrop-blur-xl" style={{ backgroundColor: 'var(--surface)' }}>
+            <div className="px-8 py-6 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderColor: 'var(--divider)', backgroundColor: 'var(--surface-subtle)' }}>
               <div>
-                <h2 className="font-black text-slate-900 text-lg">Tenant Registry</h2>
+                <h2 className="font-black text-[var(--text-primary)] text-lg">Tenant Registry</h2>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{filtered.length} Enterprise Clients</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative group">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" size={16} />
-                  <input 
-                    type="text" 
-                    placeholder="Filter by name or industry..." 
-                    className="bg-slate-100/50 border-transparent rounded-[18px] pl-11 pr-6 py-2.5 text-xs font-bold w-full md:w-72 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                  <input
+                    type="text"
+                    placeholder="Filter by name or industry..."
+                    className="border rounded-[18px] pl-11 pr-6 py-2.5 text-xs font-bold w-full md:w-72 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                    style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)', color: 'var(--foreground)' }}
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                   />
@@ -148,7 +149,7 @@ export default function PlatformAdminPage() {
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50">
+                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b" style={{ borderColor: 'var(--divider)' }}>
                       <th className="px-8 py-5">Corporate Identity</th>
                       <th className="px-8 py-5">Industry Sector</th>
                       <th className="px-8 py-5 text-center">Personnel</th>
@@ -157,22 +158,22 @@ export default function PlatformAdminPage() {
                       <th className="px-8 py-5 text-right">Access</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-[var(--divider)]">
                     {filtered.map(company => (
-                      <tr key={company.id} className="hover:bg-slate-50/50 transition-all group cursor-default">
+                      <tr key={company.id} className="hover:bg-[var(--surface-subtle)] transition-all group cursor-default">
                         <td className="px-8 py-6">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-900 font-black text-lg shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                            <div className="w-12 h-12 rounded-2xl border flex items-center justify-center font-black text-lg shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)', color: 'var(--text-primary)' }}>
                               {company.name.charAt(0)}
                             </div>
                             <div className="space-y-0.5">
-                              <p className="font-black text-slate-900 text-[15px] group-hover:text-brand-600 transition-colors">{company.name}</p>
+                              <p className="font-black text-[var(--text-primary)] text-[15px] group-hover:text-brand-600 transition-colors">{company.name}</p>
                               <p className="text-[10px] text-slate-400 font-mono tracking-tight uppercase">{company.id.substring(0, 8)}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-8 py-6">
-                          <span className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black text-slate-600 uppercase tracking-wider border border-slate-200/50">
+                          <span className="px-3.5 py-1.5 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-wider border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
                             {company.industry || 'General'}
                           </span>
                         </td>
@@ -213,7 +214,7 @@ export default function PlatformAdminPage() {
             {/* Channel Metrics */}
             <div className="card p-8 border-none shadow-2xl">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-3 uppercase tracking-widest">
+                <h3 className="text-base font-black text-[var(--text-primary)] flex items-center gap-3 uppercase tracking-widest">
                   <Activity size={20} className="text-brand-500" /> Channel Volume
                 </h3>
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
@@ -230,20 +231,20 @@ export default function PlatformAdminPage() {
             {/* High Capacity Tenants */}
             <div className="card p-8 border-none shadow-2xl">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-3 uppercase tracking-widest">
+                <h3 className="text-base font-black text-[var(--text-primary)] flex items-center gap-3 uppercase tracking-widest">
                   <TrendingUp size={20} className="text-emerald-500" /> High Activity
                 </h3>
                 <Link href="#" className="text-[10px] font-black text-brand-600 uppercase tracking-widest hover:underline">View All</Link>
               </div>
               <div className="space-y-5">
                 {usage?.top_ten_companies?.map((c: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:shadow-md transition-all group">
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl border hover:shadow-md transition-all group" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
                     <div className="flex items-center gap-4">
                       <span className="text-[10px] font-black text-slate-300">#{i+1}</span>
-                      <span className="text-sm font-black text-slate-700 group-hover:text-brand-600 transition-colors">{c.name}</span>
+                      <span className="text-sm font-black text-[var(--text-primary)] group-hover:text-brand-600 transition-colors">{c.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-900">{c.count.toLocaleString()}</span>
+                      <span className="text-xs font-black text-[var(--text-primary)]">{c.count.toLocaleString()}</span>
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Units</span>
                     </div>
                   </div>
@@ -257,7 +258,7 @@ export default function PlatformAdminPage() {
           <div className="card p-10 border-none shadow-2xl">
             <div className="flex items-center justify-between mb-12">
               <div className="space-y-1">
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-3 uppercase tracking-widest">
+                <h3 className="text-base font-black text-[var(--text-primary)] flex items-center gap-3 uppercase tracking-widest">
                   <Activity size={20} className="text-brand-500" /> Platform Throughput
                 </h3>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-8">Rolling 7-day volume history</p>
@@ -273,7 +274,7 @@ export default function PlatformAdminPage() {
               {usage?.volume_history?.map((day: any, i: number) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-4 group h-full justify-end">
                   <div className="w-full flex flex-col items-center gap-2 opacity-40 group-hover:opacity-100 transition-all duration-500">
-                    <span className="text-[10px] font-black text-slate-900 opacity-0 group-hover:opacity-100 transition-opacity transform -translate-y-2 group-hover:translate-y-0 duration-300">
+                    <span className="text-[10px] font-black text-[var(--text-primary)] opacity-0 group-hover:opacity-100 transition-opacity transform -translate-y-2 group-hover:translate-y-0 duration-300">
                       {day.count}
                     </span>
                     <div 
@@ -302,7 +303,7 @@ export default function PlatformAdminPage() {
 
 function StatCard({ title, value, icon: Icon, trend, color }: { title: string; value: any; icon: any; trend: string; color: string }) {
   return (
-    <div className="card p-8 border-none shadow-2xl relative overflow-hidden group hover:-translate-y-2 duration-500 bg-white">
+    <div className="card p-8 border-none shadow-2xl relative overflow-hidden group hover:-translate-y-2 duration-500">
       <div className={clsx("absolute top-0 right-0 w-32 h-32 blur-[80px] opacity-10 group-hover:opacity-20 transition-opacity bg-gradient-to-br", color)} />
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-6">
@@ -314,7 +315,7 @@ function StatCard({ title, value, icon: Icon, trend, color }: { title: string; v
           </span>
         </div>
         <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{title}</p>
-        <h3 className="text-4xl font-black text-slate-900 tracking-tight">{value}</h3>
+        <h3 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">{value}</h3>
       </div>
     </div>
   )
@@ -322,18 +323,18 @@ function StatCard({ title, value, icon: Icon, trend, color }: { title: string; v
 
 function UsageMetric({ label, value, icon: Icon, color, sub }: { label: string; value: number; icon: any; color: string; sub: string }) {
   return (
-    <div className="flex items-center justify-between p-5 rounded-3xl bg-slate-50/50 border border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300 group">
+    <div className="flex items-center justify-between p-5 rounded-3xl border transition-all duration-300 group hover:shadow-xl" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
       <div className="flex items-center gap-5">
         <div className={clsx("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-500", color)}>
           <Icon size={20} strokeWidth={2.5} />
         </div>
         <div>
-          <span className="text-[13px] font-black text-slate-900 tracking-tight">{label}</span>
+          <span className="text-[13px] font-black text-[var(--text-primary)] tracking-tight">{label}</span>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{sub}</p>
         </div>
       </div>
       <div className="text-right">
-        <span className="text-lg font-black text-slate-900">{value.toLocaleString()}</span>
+        <span className="text-lg font-black text-[var(--text-primary)]">{value.toLocaleString()}</span>
         <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em]">Requests</p>
       </div>
     </div>

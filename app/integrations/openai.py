@@ -93,7 +93,10 @@ Current Date: {current_date}
 
             Extract:
 1. Sentiment (positive/neutral/negative)
-2. Intent (schedule_meeting/ask_question/not_interested/request_info/other). 
+2. Intent (schedule_meeting/ask_question/not_interested/request_info/request_call/other). 
+   Set to 'request_call' IF:
+   - The lead expresses interest in talking on the phone, calling, or switching from SMS to voice.
+   - The lead asks "can you call me?" or similar phrases.
    Set to 'schedule_meeting' IF:
    - The lead expresses interest in talking, meeting, or calling.
    - The lead mentions their availability (e.g., 'I am free tomorrow').

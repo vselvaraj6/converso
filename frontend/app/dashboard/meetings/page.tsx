@@ -50,13 +50,13 @@ export default function MeetingsPage() {
             <Activity size={12} />
             Live Schedule
           </div>
-          <h1 className="text-4xl font-black text-white tracking-tight leading-none">
+          <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
             Your Agenda
           </h1>
           <p className="text-slate-500 text-sm font-medium">Manage your confirmed appointments and virtual discovery sessions.</p>
         </div>
 
-        <div className="flex items-center gap-3 p-1.5 bg-slate-900/50 backdrop-blur-xl rounded-[20px] border border-white/5">
+        <div className="flex items-center gap-3 p-1.5 backdrop-blur-xl rounded-[20px] border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
           <button 
             onClick={() => setShowAll(false)}
             className={clsx(
@@ -79,12 +79,12 @@ export default function MeetingsPage() {
       </div>
 
       {meetings.length === 0 ? (
-        <div className="card p-20 text-center space-y-4 border-dashed border-2 border-slate-800 bg-transparent shadow-none">
+        <div className="card p-20 text-center space-y-4 border-dashed border-2 bg-transparent shadow-none" style={{ borderColor: 'var(--divider)' }}>
           <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-700">
             <Calendar size={32} />
           </div>
           <div>
-            <h3 className="text-lg font-black text-white uppercase tracking-widest">Clear Horizons</h3>
+            <h3 className="text-lg font-black text-[var(--text-primary)] uppercase tracking-widest">Clear Horizons</h3>
             <p className="text-slate-500 text-sm font-medium">No meetings found. AI is working to fill your calendar.</p>
           </div>
         </div>
@@ -132,22 +132,22 @@ function MeetingCard({ meeting, highlight }: { meeting: Meeting; highlight?: boo
   return (
     <div className={clsx(
       "card group p-6 border-none shadow-2xl relative overflow-hidden transition-all duration-500 hover:-translate-y-1",
-      highlight ? "bg-slate-900 shadow-brand-500/5 border-l-4 border-l-brand-500" : "bg-slate-900/40"
+      highlight ? "shadow-brand-500/5 border-l-4 border-l-brand-500" : ""
     )}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500 blur-[100px] opacity-5 group-hover:opacity-10 transition-opacity" />
       
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
         <div className="flex items-center gap-6">
           {/* Time Display */}
-          <div className="flex flex-col items-center justify-center w-20 h-20 rounded-[20px] bg-slate-950 border border-white/5 shadow-inner">
+          <div className="flex flex-col items-center justify-center w-20 h-20 rounded-[20px] border shadow-inner" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
             <span className="text-[10px] font-black text-slate-500 uppercase">{formatDate(meeting.start_time).split(',')[0]}</span>
-            <span className="text-xl font-black text-white leading-tight">{new Date(meeting.start_time).getDate()}</span>
+            <span className="text-xl font-black text-[var(--text-primary)] leading-tight">{new Date(meeting.start_time).getDate()}</span>
             <span className="text-[10px] font-black text-brand-400 uppercase">{formatDate(meeting.start_time).split(' ')[1]}</span>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-black text-white tracking-tight">{meeting.title}</h3>
+              <h3 className="text-lg font-black text-[var(--text-primary)] tracking-tight">{meeting.title}</h3>
               <span className={clsx("px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest", 
                 meeting.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500')}>
                 {meeting.status}
@@ -181,13 +181,14 @@ function MeetingCard({ meeting, highlight }: { meeting: Meeting; highlight?: boo
               <Video size={16} fill="currentColor" /> Join Session
             </a>
           ) : (
-            <div className="h-11 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5">
+            <div className="h-11 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 text-slate-500 cursor-not-allowed border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
               <VideoOff size={16} /> Link Pending
             </div>
           )}
           <Link 
             href={`/dashboard/leads/${meeting.lead.id}`}
-            className="w-11 h-11 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+            className="w-11 h-11 rounded-2xl border flex items-center justify-center text-slate-400 hover:text-[var(--text-primary)] transition-all"
+            style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}
           >
             <ArrowRight size={18} />
           </Link>

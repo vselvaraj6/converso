@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     # VAPI
     vapi_api_key: str = Field(default="", env="VAPI_API_KEY")
     vapi_base_url: str = Field(default="https://api.vapi.ai", env="VAPI_BASE_URL")
+    vapi_phone_number_id: str = Field(default="", env="VAPI_PHONE_NUMBER_ID")
     
     # Celery
     celery_broker_url: str = Field(default="redis://localhost:6379/1", env="CELERY_BROKER_URL")

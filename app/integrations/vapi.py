@@ -23,6 +23,7 @@ class VAPIService:
         self,
         phone_number: str,
         assistant_id: str,
+        phone_number_id: Optional[str] = None,
         variables: Optional[Dict] = None,
         webhook_url: Optional[str] = None
     ) -> Dict:
@@ -30,21 +31,27 @@ class VAPIService:
         try:
             async with httpx.AsyncClient() as client:
                 payload = {
-                    "assistant_id": assistant_id,
-                    "phone_number": phone_number,
-                    "type": "outbound"
+                    "assistantId": assistant_id,
+                    "customer": {"number": phone_number},
                 }
-                
+
+                if phone_number_id:
+                    payload["phoneNumberId"] = phone_number_id
+
                 if variables:
-                    payload["variables"] = variables
-                
+                    payload["assistantOverrides"] = {"variableValues": variables}
+
                 if webhook_url:
-                    payload["webhook_url"] = webhook_url
-                
+                    payload["assistantOverrides"] = {
+                        **payload.get("assistantOverrides", {}),
+                        "serverUrl": webhook_url,
+                    }
+
                 response = await client.post(
-                    f"{self.base_url}/calls",
+                    f"{self.base_url}/call",
                     json=payload,
-                    headers=self.headers
+                    headers=self.headers,
+                    timeout=30.0,
                 )
                 
                 if response.status_code == 201:
@@ -123,7 +130,7 @@ class VAPIService:
         name: str,
         system_prompt: str,
         voice: str = "jennifer",
-        model: str = "gpt-3.5-turbo",
+        model: str = "gpt-4o-mini",
         first_message: Optional[str] = None
     ) -> Dict:
         """Create a new VAPI assistant"""
@@ -131,22 +138,29 @@ class VAPIService:
             async with httpx.AsyncClient() as client:
                 payload = {
                     "name": name,
-                    "system_prompt": system_prompt,
-                    "voice": voice,
-                    "model": model,
-                    "temperature": 0.7
+                    "model": {
+                        "provider": "openai",
+                        "model": model,
+                        "temperature": 0.7,
+                        "systemPrompt": system_prompt,
+                    },
+                    "voice": {
+                        "provider": "playht",
+                        "voiceId": voice,
+                    },
                 }
-                
+
                 if first_message:
-                    payload["first_message"] = first_message
-                
+                    payload["firstMessage"] = first_message
+
                 response = await client.post(
-                    f"{self.base_url}/assistants",
+                    f"{self.base_url}/assistant",
                     json=payload,
-                    headers=self.headers
+                    headers=self.headers,
+                    timeout=30.0,
                 )
                 
-                if response.status_code == 201:
+                if response.status_code in (200, 201):
                     return {
                         "success": True,
                         "assistant": response.json()
@@ -225,6 +239,10 @@ class VAPIService:
         
 You are calling {lead_data.get('name', 'a potential customer')} from {lead_data.get('company', 'their company')}.
 They are in the {lead_data.get('industry', 'business')} industry and have shown interest in {lead_data.get('interest', 'our services')}.
+
+TRANSITION CONTEXT FROM SMS:
+You may have existing context from a previous SMS conversation: {{sms_context}}
+If there is SMS context, use it to pick up the conversation exactly where it left off. Don't re-introduce yourself if you've already been chatting on SMS.
 
 Your goals:
 1. Introduce yourself briefly
