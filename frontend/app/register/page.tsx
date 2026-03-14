@@ -23,7 +23,7 @@ export default function RegisterPage() {
     setError('')
     setLoading(true)
     try {
-      await register(form.email, form.password, form.name, form.company_name, form.industry)
+      await register(form)
       router.push('/dashboard')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed')

@@ -148,7 +148,7 @@ export default function MeetingsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getMeetings(!showAll).then(d => setMeetings(d.meetings)).finally(() => setLoading(false))
+    getMeetings({ upcoming_only: !showAll }).then(d => setMeetings(d.meetings)).finally(() => setLoading(false))
   }, [showAll])
 
   const todayMeetings = meetings.filter(m => isToday(m.start_time))

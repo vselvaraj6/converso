@@ -4,8 +4,6 @@
  * Centralized API client for all backend communication.
  */
 
-import { getStoredToken } from './auth'
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api'
 
 /**
@@ -315,6 +313,31 @@ export async function sendManualSms(leadId: string, content: string) {
     method: 'POST',
     body: JSON.stringify({ content })
   })
+}
+
+// ── Meetings ─────────────────────────────────────────────────────────────────
+
+export interface Meeting {
+  id: string
+  title: string
+  description: string | null
+  start_time: string
+  end_time: string
+  location: string | null
+  meeting_link: string | null
+  status: string
+  lead: {
+    id: string
+    name: string
+    email: string
+    phone: string
+    company: string | null
+  }
+}
+
+export async function getMeetings(params: { upcoming_only?: boolean; limit?: number } = {}) {
+  const query = new URLSearchParams(params as any).toString()
+  return request<{ meetings: Meeting[]; total: number }>(`/meetings/?${query}`)
 }
 
 // ── Messages ─────────────────────────────────────────────────────────────────
