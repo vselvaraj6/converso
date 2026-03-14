@@ -51,39 +51,38 @@ jobs:
             sudo iptables -A DOCKER-ISOLATION-STAGE-2 -j RETURN
           }
 
-#      - name: Run Tests
-#        run: |
-#          echo "→ Starting stack for testing..."
-#          docker compose build
-#          docker compose up -d
-#          
-#          echo "→ Waiting for app to be ready (internal wait-for-db is running)..."
-#          for i in $(seq 1 30); do
-#            # Check if app container is running and start.sh has reached migrations
-#            if docker compose logs app | grep -q "Database is up!"; then
-#              echo "App stack is ready."
-#              break
-#            fi
-#            echo "  waiting for app stack... $i/30"
-#            sleep 3
-#          done
-#
-#          echo "→ Resetting test database..."
-#          docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "DROP DATABASE IF EXISTS test_converso;"
-#          docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "CREATE DATABASE test_converso;"
-#          
-#          echo "→ Running pytest suite..."
-#          # We use a fresh container for pytest to avoid shared engine state issues with the main app
-#          docker compose run --rm \
-#            -e APP_ENV=testing \
-#            -e SECRET_KEY=8USgGnF2tyl/R6blYo/JLBZj5VhQTduBpdTCRdEQigM= \
-#            -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
-#            -e REDIS_URL=redis://redis:6379/15 \
-#            app pytest || { 
-#              echo "!!! TESTS FAILED !!!"
-#              docker compose logs --tail=100 app
-#              exit 1
-#            }
+      - name: Run Tests
+        run: |
+          echo "→ Starting stack for testing..."
+          docker compose build
+          docker compose up -d
+          
+          echo "→ Waiting for postgres to be ready..."
+          for i in $(seq 1 30); do
+            if docker compose exec -T postgres pg_isready -U converso; then
+              echo "Postgres is ready."
+              break
+            fi
+            echo "  waiting for postgres... $i/30"
+            sleep 2
+          done
+
+          echo "→ Resetting test database..."
+          docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "DROP DATABASE IF EXISTS test_converso;"
+          docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "CREATE DATABASE test_converso;"
+          
+          echo "→ Running pytest suite..."
+          # We use a fresh container for pytest to avoid shared engine state issues with the main app
+          docker compose run --rm \
+            -e APP_ENV=testing \
+            -e SECRET_KEY=8USgGnF2tyl/R6blYo/JLBZj5VhQTduBpdTCRdEQigM= \
+            -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
+            -e REDIS_URL=redis://redis:6379/15 \
+            app pytest || { 
+              echo "!!! TESTS FAILED !!!"
+              docker compose logs --tail=100 app
+              exit 1
+            }
 
       - name: Rebuild and restart containers
         run: |
