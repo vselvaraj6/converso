@@ -3,20 +3,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { register } from '@/lib/api'
-import { MessageSquare, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react'
-import clsx from 'clsx'
-
-const INDUSTRIES = ["Mortgage", "Real Estate", "Insurance", "SaaS / Software", "Solar Energy"]
+import { AlertCircle, Command, Zap, ShieldCheck } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [form, setForm] = useState({ name: '', email: '', password: '', company_name: '', industry: 'Mortgage' })
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    name: '',
+    company_name: '',
+    industry: 'Mortgage'
+  })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  function set(field: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm(f => ({ ...f, [field]: e.target.value }))
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -32,157 +31,126 @@ export default function RegisterPage() {
     }
   }
 
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => 
+    setForm(f => ({ ...f, [field]: e.target.value }))
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-white">
-      {/* Left Column: Branding & Value Prop */}
-      <div className="hidden lg:flex flex-col justify-between w-[40%] bg-[#f8faff] p-12 xl:p-20 border-r border-gray-100">
-        <div>
-          <Link href="/" className="flex items-center gap-2 mb-16">
-            <img src="/logo.svg" alt="Converso Logo" className="w-10 h-10 rounded-xl shadow-lg shadow-brand-100" />
-            <span className="text-2xl font-black text-gray-900 tracking-tight">Converso</span>
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 font-sans selection:bg-brand-500/30 text-slate-200">
+      {/* Left Column: Visionary Branding */}
+      <div className="hidden lg:flex flex-col justify-between w-[45%] p-16 xl:p-24 relative overflow-hidden bg-slate-900 border-r border-white/5">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-600/20 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[100px] rounded-full" />
+        </div>
+        
+        <img 
+          src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1600" 
+          alt="Modern Architecture" 
+          className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale"
+        />
+
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-3 mb-24 group">
+            <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.4)] transition-all group-hover:scale-110">
+              <Command size={24} className="text-white" />
+            </div>
+            <span className="text-3xl font-black text-white tracking-tighter uppercase">Converso</span>
           </Link>
 
-          <div className="space-y-10">
-            <h1 className="text-4xl xl:text-5xl font-extrabold text-gray-900 leading-[1.1]">
-              The only platform you need to <span className="text-brand-600">nurture leads.</span>
+          <div className="space-y-10 max-w-lg">
+            <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight">
+              Scale your team with <br/>
+              <span className="text-brand-400">Digital Clones.</span>
             </h1>
             
-            <div className="space-y-6">
-              <FeatureItem title="Automated SMS Outreach" desc="AI-powered follow-ups that sound human and book meetings 24/7." />
-              <FeatureItem title="Industry-Specific Memory" desc="Curate your AI with your own lingo and company knowledge." />
-              <FeatureItem title="Cal.com Integration" desc="Sync your calendar and let the AI handle the scheduling back-and-forth." />
+            <div className="space-y-8">
+              <FeatureItem icon={Zap} title="Instant Deployment" desc="Activate your AI agents in under 60 seconds." />
+              <FeatureItem icon={ShieldCheck} title="Neural Security" desc="Isolated tenant kernels protect your corporate data." />
             </div>
           </div>
         </div>
 
-        <div className="text-sm text-gray-400 font-medium">
-          © 2026 Converso Inc. All rights reserved.
+        <div className="relative z-10">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">System v4.0.2 / Status: Ready</p>
         </div>
       </div>
 
-      {/* Right Column: Sign Up Form */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-6 sm:px-12 lg:px-20 xl:px-32">
-        <div className="max-w-md w-full mx-auto">
-          <div className="flex justify-end mb-12">
-            <p className="text-sm text-gray-500 font-medium">
-              Already have an account?{' '}
-              <Link href="/login" className="text-brand-600 font-bold hover:underline">
-                Sign In
-              </Link>
-            </p>
+      {/* Right Column: Registration Form */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40 bg-slate-950">
+        <div className="max-w-md w-full mx-auto space-y-10">
+          <div className="space-y-2">
+            <h2 className="text-4xl font-black text-white tracking-tight">Initialize Account</h2>
+            <p className="text-slate-500 font-medium text-sm italic">Define your corporate identity and credentials.</p>
           </div>
 
-          <div className="mb-10 lg:hidden">
-             <div className="flex items-center gap-2 mb-6">
-              <img src="/logo.svg" alt="Converso Logo" className="w-8 h-8 rounded-lg" />
-              <span className="text-xl font-bold">Converso</span>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900">Start your free trial</h2>
-          </div>
-
-          <div className="mb-8 hidden lg:block">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Get started for free</h2>
-            <p className="text-gray-500 font-medium">Join 1,000+ sales teams using Converso.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2 animate-shake">
-                <AlertCircle size={16} /> {error}
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl px-5 py-4 text-xs font-black flex items-center gap-3">
+                <AlertCircle size={18} /> {error}
               </div>
             )}
 
-            <div className="space-y-4">
-              <div>
-                <input
-                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-medium"
-                  placeholder="Full Name"
-                  value={form.name}
-                  onChange={set('name')}
-                  required
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="label-text">Full Name</label>
+                <input className="input" placeholder="Elon" value={form.name} onChange={set('name')} required />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input
-                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-medium"
-                  placeholder="Company Name"
-                  value={form.company_name}
-                  onChange={set('company_name')}
-                  required
-                />
-                <div className="relative">
-                  <select
-                    className="input py-3.5 pl-4 pr-10 bg-gray-50 border-gray-200 focus:bg-white font-bold appearance-none cursor-pointer"
-                    value={form.industry}
-                    onChange={set('industry')}
-                    required
-                  >
-                    {INDUSTRIES.map(ind => (
-                      <option key={ind} value={ind}>{ind}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+              <div className="space-y-2">
+                <label className="label-text">Email Address</label>
+                <input type="email" className="input" placeholder="elon@x.com" value={form.email} onChange={set('email')} required />
               </div>
-
-              <div>
-                <input
-                  type="email"
-                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-medium"
-                  placeholder="Email Address"
-                  value={form.email}
-                  onChange={set('email')}
-                  required
-                />
+              <div className="space-y-2">
+                <label className="label-text">Company Name</label>
+                <input className="input" placeholder="X Corp" value={form.company_name} onChange={set('company_name')} required />
               </div>
-
-              <div>
-                <input
-                  type="password"
-                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-medium"
-                  placeholder="Password (min 8 chars)"
-                  value={form.password}
-                  onChange={set('password')}
-                  required
-                  minLength={8}
-                />
+              <div className="space-y-2">
+                <label className="label-text">Industry</label>
+                <select className="input appearance-none font-black text-[11px] uppercase tracking-widest" value={form.industry} onChange={set('industry')}>
+                  <option value="Mortgage">Mortgage</option>
+                  <option value="Real Estate">Real Estate</option>
+                  <option value="SaaS">SaaS</option>
+                  <option value="Insurance">Insurance</option>
+                  <option value="Solar">Solar</option>
+                </select>
               </div>
-            </div>
-
-            <div className="py-2 text-[11px] text-gray-400 leading-relaxed font-medium">
-              By clicking "Create Account", you agree to Converso's <span className="text-brand-600 underline cursor-pointer">Terms of Service</span> and <span className="text-brand-600 underline cursor-pointer">Privacy Policy</span>.
+              <div className="sm:col-span-2 space-y-2">
+                <label className="label-text">System Password</label>
+                <input type="password" className="input" placeholder="••••••••" value={form.password} onChange={set('password')} required />
+              </div>
             </div>
 
             <button 
               type="submit" 
-              className="btn-primary w-full py-4 text-base shadow-xl shadow-brand-100 font-bold tracking-tight transition-all active:scale-[0.99]" 
+              className="btn-primary w-full py-4 text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand-500/20 active:scale-[0.98] mt-4" 
               disabled={loading}
             >
-              {loading ? 'Setting up your workspace…' : 'Create Account'}
+              {loading ? 'Initializing Stack…' : 'Finalize Registration'}
             </button>
           </form>
 
-          <div className="mt-10 pt-10 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center font-medium italic">
-              "The most intuitive lead engagement platform I've ever used."
-            </p>
-          </div>
+          <p className="text-center text-xs text-slate-500 font-medium">
+            Already registered?{' '}
+            <Link href="/login" className="text-brand-400 font-black hover:text-brand-300 transition-colors ml-1 uppercase tracking-widest">
+              Login to Terminal
+            </Link>
+          </p>
         </div>
       </div>
     </div>
   )
 }
 
-function FeatureItem({ title, desc }: { title: string; desc: string }) {
+function FeatureItem({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-5 group">
       <div className="mt-1">
-        <CheckCircle2 size={20} className="text-green-500" />
+        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-400">
+          <Icon size={20} />
+        </div>
       </div>
       <div>
-        <h3 className="font-bold text-gray-900 text-sm mb-1">{title}</h3>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">{desc}</p>
+        <h3 className="font-black text-white text-sm uppercase tracking-widest mb-1">{title}</h3>
+        <p className="text-[13px] text-slate-400 font-medium leading-relaxed">{desc}</p>
       </div>
     </div>
   )

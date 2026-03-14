@@ -1,24 +1,27 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
-import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users, Mail } from 'lucide-react'
+import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users, Mail, Command, Activity, Zap } from 'lucide-react'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children, description }: {
   title: string; icon: React.ElementType; children: React.ReactNode; description?: string
 }) {
   return (
-    <div className="card p-5 md:p-6 shadow-sm border-gray-100 font-sans bg-white">
-      <div className="flex items-start gap-3 mb-5">
-        <div className="w-10 h-10 rounded-lg bg-brand-50 flex items-center justify-center shrink-0">
-          <Icon size={20} className="text-brand-600" />
+    <div className="card p-8 bg-slate-900/40 border-none shadow-2xl font-sans relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-brand-600 blur-[100px] opacity-0 group-hover:opacity-10 transition-opacity" />
+      <div className="flex items-start gap-5 mb-8 relative z-10">
+        <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center shadow-inner text-brand-400 group-hover:scale-110 duration-500">
+          <Icon size={22} strokeWidth={2.5} />
         </div>
         <div>
-          <h2 className="font-bold text-gray-900">{title}</h2>
-          {description && <p className="text-xs text-gray-500 mt-0.5 font-medium">{description}</p>}
+          <h2 className="font-black text-white text-lg uppercase tracking-widest">{title}</h2>
+          {description && <p className="text-[10px] text-slate-500 mt-1 font-black uppercase tracking-[0.2em]">{description}</p>}
         </div>
       </div>
-      {children}
+      <div className="relative z-10">
+        {children}
+      </div>
     </div>
   )
 }
@@ -27,7 +30,6 @@ export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [templates, setTemplates] = useState<Record<string, { industry_lingo: string; company_memory: string }>>({})
-  const [teamMembers, setTeamMembers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -38,15 +40,7 @@ export default function SettingsPage() {
     setUser(stored)
     setManualCalUrl(stored?.manual_calendar_url || '')
     
-    const promises: any[] = [getCompany(), getIndustryTemplates()]
-    
-    // Only admins can fetch team members
-    if (stored?.role === 'admin' || stored?.is_superuser) {
-      // We don't have a direct 'getCompanyUsers' but we can use the detail admin endpoint if superuser
-      // For now, let's just use a placeholder or add a company users endpoint
-    }
-
-    Promise.all(promises)
+    Promise.all([getCompany(), getIndustryTemplates()])
       .then(([c, t]) => {
         setCompany(c)
         setTemplates(t)
@@ -59,18 +53,12 @@ export default function SettingsPage() {
     if (!company) return
     setSaving(true)
     try {
-      // 1. Save company settings (including master team link)
       if (user?.role === 'admin' || user?.is_superuser) {
         await updateCompany(company)
       }
-      
-      // 2. Save user personal override
       const updated = await updateMe({ manual_calendar_url: manualCalUrl || null })
-      
-      // 3. Update local state and storage
       setUser(updated)
       localStorage.setItem('user', JSON.stringify(updated))
-      
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -106,59 +94,65 @@ export default function SettingsPage() {
     })
   }
 
-  if (loading) return <div className="text-gray-400 text-sm p-8 font-bold font-sans">Loading settings…</div>
+  if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Accessing Terminal Logic…</div>
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 font-sans">
-      <div className="mb-6 px-1">
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Settings</h1>
-        <p className="text-gray-500 text-sm mt-1 font-medium italic">Configure your profile, AI memory, and communication channels.</p>
+    <div className="max-w-4xl mx-auto space-y-10 pb-20 font-sans">
+      <div className="space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-white/5">
+          <Settings2 size={12} className="text-brand-400" />
+          Configuration Center
+        </div>
+        <h1 className="text-4xl font-black text-white tracking-tight leading-none">
+          System Parameters
+        </h1>
+        <p className="text-slate-500 text-sm font-medium">Fine-tune your personal profile and global AI orchestration logic.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-8">
         {/* Account */}
-        <Section title="Account" icon={UserIcon} description="Your personal profile information">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-500 font-medium">Name</span>
-              <span className="font-bold text-gray-900">{user?.name}</span>
+        <Section title="Profile" icon={UserIcon} description="Personal Identity Matrix">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-1">
+              <span className="label-text">Identity</span>
+              <p className="text-sm font-black text-white px-4 py-3 bg-slate-950/50 rounded-2xl border border-white/5">{user?.name}</p>
             </div>
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-500 font-medium">Email</span>
-              <span className="font-bold text-gray-900 truncate ml-4">{user?.email}</span>
+            <div className="space-y-1">
+              <span className="label-text">Registry</span>
+              <p className="text-sm font-black text-white px-4 py-3 bg-slate-950/50 rounded-2xl border border-white/5 truncate">{user?.email}</p>
             </div>
-            <div className="flex justify-between py-2">
-              <span className="text-gray-500 font-medium">Current Role</span>
-              <span className={clsx(
-                "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest",
-                user?.role === 'admin' ? "bg-amber-50 text-amber-700 border border-amber-100" : 
-                user?.role === 'write' ? "bg-blue-50 text-blue-700 border border-blue-100" :
-                "bg-gray-50 text-gray-600 border border-gray-100"
+            <div className="space-y-1">
+              <span className="label-text">Clearance</span>
+              <div className={clsx(
+                "px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border",
+                user?.role === 'admin' ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : 
+                user?.role === 'write' ? "bg-blue-500/10 text-blue-400 border-blue-500/20" :
+                "bg-slate-800 text-slate-400 border-white/5"
               )}>
-                {user?.role}
-              </span>
+                <ShieldCheck size={14} /> {user?.role} Access
+              </div>
             </div>
           </div>
         </Section>
 
         {/* Master Team Link (Admin Only) */}
         {(user?.role === 'admin' || user?.is_superuser) && (
-          <Section title="Team Orchestration" icon={Users} description="Configure the master scheduling link for the entire company">
-            <div className="space-y-4">
-              <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4">
-                <p className="text-[11px] text-brand-700 font-bold leading-relaxed">
-                  Enter your master Cal.com Team Round Robin link. This will be the default link the AI sends to leads if an agent hasn't set their own override.
+          <Section title="Team Hub" icon={Users} description="Master Scheduling Protocol">
+            <div className="space-y-6">
+              <div className="bg-brand-500/5 border border-brand-500/10 rounded-[24px] p-6">
+                <p className="text-xs text-brand-400 font-bold leading-relaxed italic">
+                  Define the master Cal.com Round Robin endpoint. This directive will be used globally across all autonomous agents unless overridden by individual personnel.
                 </p>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Team Booking URL</label>
+              <div className="space-y-2">
+                <label className="label-text text-brand-400">Master Routing URL</label>
                 <div className="relative">
-                  <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                   <input 
-                    className="input pl-10 font-mono text-xs font-bold bg-white" 
+                    className="input pl-12 bg-slate-950/80" 
                     value={company?.cal_booking_url || ''} 
                     onChange={e => setCompany(c => c ? {...c, cal_booking_url: e.target.value} : null)}
-                    placeholder="https://cal.com/team/your-company/discovery"
+                    placeholder="https://cal.com/team/corp/sales"
                   />
                 </div>
               </div>
@@ -166,137 +160,111 @@ export default function SettingsPage() {
           </Section>
         )}
 
-        {/* Personal Booking Link (Only for Write/Admin access) */}
+        {/* Personal Booking Link */}
         {(user?.role === 'admin' || user?.role === 'write' || user?.is_superuser) && (
-          <Section title="Personal Booking" icon={LinkIcon} description="Set your own booking link to override the company default">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Personal URL</label>
-                <div className="relative">
-                  <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input 
-                    className="input pl-10 font-mono text-xs font-bold bg-white" 
-                    value={manualCalUrl} 
-                    onChange={e => setManualCalUrl(e.target.value)}
-                    placeholder="https://cal.com/your-name/15min"
-                  />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-2 italic font-medium leading-relaxed">
+          <Section title="Override" icon={LinkIcon} description="Direct Agent Booking Link">
+            <div className="space-y-2">
+              <label className="label-text">Personnel URL</label>
+              <div className="relative group">
+                <LinkIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-brand-400 transition-colors" />
+                <input 
+                  className="input pl-12 bg-slate-950/80" 
+                  value={manualCalUrl} 
+                  onChange={e => setManualCalUrl(e.target.value)}
+                  placeholder="https://cal.com/your-alias/demo"
+                />
+              </div>
+              <div className="flex items-center gap-2 mt-3 px-1">
+                <div className={clsx("w-1.5 h-1.5 rounded-full shadow-[0_0_8px]", manualCalUrl ? "bg-emerald-500 shadow-emerald-500/50" : "bg-slate-700")} />
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                   {manualCalUrl 
-                    ? "✓ AI will use this link for your leads." 
-                    : `Defaulting to ${company?.cal_booking_url ? 'Company Team Link' : 'no link'} until you provide one.`}
+                    ? "Protocol: Manual Link Active" 
+                    : "Protocol: Defaulting to Company Master"}
                 </p>
               </div>
             </div>
           </Section>
         )}
 
-        {/* Industry Selector (Admin Only) */}
+        {/* AI Memory & Behavior (Admin Only) */}
         {(user?.role === 'admin' || user?.is_superuser) && (
-          <Section title="Industry Context" icon={Building2} description="Select your industry to autopopulate AI knowledge">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Your Industry</label>
-              <div className="relative">
-                <select 
-                  className="input pr-10 appearance-none font-bold bg-white" 
-                  value={company?.industry || ''} 
-                  onChange={handleIndustryChange}
-                >
-                  <option value="">Select an industry...</option>
-                  {Object.keys(templates).map(name => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                  <option value="Other">Other (Manual Entry)</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  <Sparkles size={16} className="text-brand-500" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Section title="Cognition" icon={Brain} description="Neural Knowledge Base">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="label-text flex items-center gap-2">
+                    <MessageCircle size={12} className="text-brand-400" /> Industry Matrix
+                  </label>
+                  <textarea
+                    className="input min-h-[120px] bg-slate-950/80 resize-none text-xs leading-relaxed"
+                    value={company?.ai_config.industry_lingo || ''}
+                    onChange={e => updateAI('industry_lingo', e.target.value)}
+                    placeholder="Load industry keywords here..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="label-text flex items-center gap-2">
+                    <Zap size={12} className="text-brand-400" /> Core Memory
+                  </label>
+                  <textarea
+                    className="input min-h-[120px] bg-slate-950/80 resize-none text-xs leading-relaxed"
+                    value={company?.ai_config.company_memory || ''}
+                    onChange={e => updateAI('company_memory', e.target.value)}
+                    placeholder="Load corporate identity here..."
+                  />
                 </div>
               </div>
+            </Section>
+
+            <div className="space-y-8">
+              <Section title="Directives" icon={Bot} description="Tone & Personality">
+                <div className="space-y-2">
+                  <label className="label-text">Output Frequency</label>
+                  <select 
+                    className="input font-black text-[11px] uppercase tracking-widest bg-slate-950/80 appearance-none"
+                    value={company?.ai_config.tone || 'friendly and professional'}
+                    onChange={e => updateAI('tone', e.target.value)}
+                  >
+                    <option value="friendly and professional">Professional Hub</option>
+                    <option value="formal">Enterprise Rigid</option>
+                    <option value="casual">Casual Logic</option>
+                    <option value="concise">Binary / Direct</option>
+                  </select>
+                </div>
+              </Section>
+
+              <Section title="Gateway" icon={Phone} description="Communication Bridge">
+                <div className="space-y-2">
+                  <label className="label-text">Master Phone Node</label>
+                  <input 
+                    className="input font-mono text-xs font-black bg-slate-950/80 text-brand-400 tracking-widest" 
+                    value={company?.twilio_phone_number || ''} 
+                    onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
+                    placeholder="+1.000.000.0000"
+                  />
+                </div>
+              </Section>
             </div>
-          </Section>
+          </div>
         )}
 
-        {/* AI Memory & Knowledge (Admin Only) */}
-        {(user?.role === 'admin' || user?.is_superuser) && (
-          <Section title="AI Memory & Knowledge" icon={Brain} description="Information the AI uses to curate personal responses">
-            <div className="space-y-5">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2 font-bold">
-                  <MessageCircle size={12} className="text-brand-500" />
-                  Industry Lingo
-                </label>
-                <textarea
-                  className="input min-h-[100px] resize-none text-sm leading-relaxed font-bold bg-white"
-                  value={company?.ai_config.industry_lingo || ''}
-                  onChange={e => updateAI('industry_lingo', e.target.value)}
-                  placeholder="e.g. use terms like 'Pre-approval', 'HELOC', 'Amortization'."
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2 font-bold">
-                  <Brain size={12} className="text-brand-500" />
-                  Company Memory
-                </label>
-                <textarea
-                  className="input min-h-[120px] resize-none text-sm leading-relaxed font-bold bg-white"
-                  value={company?.ai_config.company_memory || ''}
-                  onChange={e => updateAI('company_memory', e.target.value)}
-                  placeholder="e.g. We specialize in first-time home buyers in Ontario."
-                />
-              </div>
-            </div>
-          </Section>
-        )}
-
-        {/* AI Behaviour (Admin Only) */}
-        {(user?.role === 'admin' || user?.is_superuser) && (
-          <Section title="AI Behaviour" icon={Bot} description="Control the tone and style of AI interactions">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Response tone</label>
-                <select 
-                  className="input font-bold bg-white"
-                  value={company?.ai_config.tone || 'friendly and professional'}
-                  onChange={e => updateAI('tone', e.target.value)}
-                >
-                  <option value="friendly and professional">Friendly and Professional</option>
-                  <option value="formal">Formal</option>
-                  <option value="casual">Casual</option>
-                  <option value="concise">Concise and Direct</option>
-                </select>
-              </div>
-            </div>
-          </Section>
-        )}
-
-        {/* Twilio Settings (Admin Only) */}
-        {(user?.role === 'admin' || user?.is_superuser) && (
-          <Section title="Twilio Configuration" icon={Phone} description="Your outbound messaging details">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-bold">Twilio Phone Number</label>
-                <input 
-                  className="input font-mono text-xs font-bold bg-white" 
-                  value={company?.twilio_phone_number || ''} 
-                  onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
-                  placeholder="+1234567890"
-                />
-              </div>
-            </div>
-          </Section>
-        )}
-
-        {/* Save Bar */}
+        {/* Save Console */}
         {(user?.role === 'admin' || user?.role === 'write' || user?.is_superuser) && (
-          <div className="sticky bottom-6 left-0 right-0 flex items-center justify-center z-20 px-4">
-            <div className="card bg-white/90 backdrop-blur-md p-3 flex items-center gap-4 shadow-xl border-brand-100">
-              <p className="text-[11px] text-gray-400 hidden sm:block font-bold italic">AI updates instantly on save.</p>
+          <div className="sticky bottom-8 left-0 right-0 flex items-center justify-center z-50">
+            <div className="bg-slate-900/80 backdrop-blur-2xl p-2 rounded-[24px] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-6 pr-6 pl-2">
+              <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+                <Activity size={24} className={clsx(saving && "animate-pulse")} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Ready for Sync</p>
+                <p className="text-[9px] text-slate-500 font-bold uppercase">All parameters verified</p>
+              </div>
               <button 
                 type="submit" 
-                className="btn-primary px-10 py-2.5 shadow-lg shadow-brand-200 font-bold"
+                className="btn-primary h-12 px-10 text-xs font-black uppercase tracking-[0.2em] shadow-none ml-4"
                 disabled={saving}
               >
-                {saving ? 'Saving...' : saved ? '✓ Settings Saved' : 'Save all changes'}
+                {saving ? 'Syncing...' : saved ? '✓ Finalized' : 'Execute Update'}
               </button>
             </div>
           </div>
