@@ -1,8 +1,8 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { getLead, getLeadMessages, updateLead, deleteLead, getStoredUser, initiateVoiceCall, type LeadDetail, type Message } from '@/lib/api'
+import { getLead, getLeadMessages, updateLead, deleteLead, getStoredUser, initiateVoiceCall, sendManualSms, type LeadDetail, type Message } from '@/lib/api'
 import { 
   ArrowLeft, 
   Phone, 
@@ -22,7 +22,8 @@ import {
   FileText,
   Zap,
   MoreVertical,
-  Activity as ActivityIcon
+  Activity as ActivityIcon,
+  Send
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -79,7 +80,10 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [calling, setCalling] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [smsContent, setSmsContent] = useState('')
   const [showEditModal, setShowEditModal] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   async function load() {
     setUser(getStoredUser())
@@ -96,6 +100,12 @@ export default function LeadDetailPage() {
   }
 
   useEffect(() => { load() }, [id]) // eslint-disable-line
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   const canWrite = user?.role === 'admin' || user?.role === 'write' || user?.is_superuser
 
@@ -118,11 +128,28 @@ export default function LeadDetailPage() {
     try {
       await initiateVoiceCall(id)
       alert('AI Voice Call initiated. You will see the transcript here once finished.')
-      load() // Refresh to show initiation message
+      load() 
     } catch (err: any) {
       alert(`Call failed: ${err.message}`)
     } finally {
       setCalling(false)
+    }
+  }
+
+  async function handleSendSms(e: React.FormEvent) {
+    e.preventDefault()
+    if (!canWrite || sending || !smsContent.trim()) return
+    setSending(true)
+    try {
+      await sendManualSms(id, smsContent)
+      setSmsContent('')
+      // Refresh messages
+      const m = await getLeadMessages(id)
+      setMessages([...m.messages].reverse())
+    } catch (err: any) {
+      alert(`Failed to send SMS: ${err.message}`)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -277,7 +304,7 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 bg-slate-50/30 custom-scrollbar">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 bg-slate-50/30 custom-scrollbar">
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-12 opacity-40">
                 <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-6">
@@ -358,6 +385,40 @@ export default function LeadDetailPage() {
               ))
             )}
           </div>
+
+          {/* Interaction Input */}
+          {canWrite && (
+            <div className="p-6 bg-white border-t border-slate-50">
+              <form onSubmit={handleSendSms} className="relative group">
+                <textarea
+                  className="w-full bg-slate-50 border-none rounded-[24px] pl-6 pr-16 py-4 text-sm font-bold outline-none transition-all focus:bg-white focus:ring-4 focus:ring-brand-500/5 min-h-[60px] max-h-32 custom-scrollbar resize-none"
+                  placeholder="Type a manual SMS message..."
+                  value={smsContent}
+                  onChange={e => setSmsContent(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSendSms(e)
+                    }
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={sending || !smsContent.trim()}
+                  className="absolute right-3 bottom-3 w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-200 transition-all active:scale-90 disabled:opacity-30"
+                >
+                  {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={18} />}
+                </button>
+              </form>
+              <div className="flex items-center justify-between mt-3 px-2">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shift + Enter for new line</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Encrypted SMS Gateway</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

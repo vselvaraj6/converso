@@ -224,6 +224,52 @@ class WorkflowService:
         messages = result.scalars().all()
         return list(reversed(messages))
     
+    async def send_manual_sms(self, lead_id: UUID, content: str) -> Dict:
+        """Send a manual SMS to a lead and record it"""
+        try:
+            lead = await self.db.get(Lead, lead_id)
+            if not lead:
+                return {"success": False, "error": "Lead not found"}
+            
+            # Send via Twilio
+            phone = lead.phone.replace("+1", "").replace("-", "").replace(" ", "")
+            send_result = await self.twilio.send_sms(
+                to=f"+1{phone}",
+                body=content
+            )
+            
+            if send_result["success"]:
+                # Record in database
+                thread = await self._get_or_create_thread(lead.id, "sms")
+                msg = Message(
+                    company_id=lead.company_id,
+                    lead_id=lead.id,
+                    thread_id=thread.id,
+                    direction=MessageDirection.OUTBOUND,
+                    channel="sms",
+                    content=content,
+                    twilio_message_sid=send_result.get("message_sid"),
+                    status="sent",
+                    created_at=datetime.utcnow()
+                )
+                self.db.add(msg)
+                
+                # Update lead activity
+                lead.last_contacted = datetime.utcnow()
+                lead.last_contact_method = "sms"
+                if lead.status == LeadStatus.NEW:
+                    lead.status = LeadStatus.CONTACTED
+                
+                await self.db.commit()
+                return {"success": True, "message_id": str(msg.id)}
+            else:
+                return {"success": False, "error": send_result.get("error")}
+                
+        except Exception as e:
+            logger.error(f"Manual SMS error: {e}")
+            await self.db.rollback()
+            return {"success": False, "error": str(e)}
+
     async def _handle_calendar_booking(self, lead: Lead, company: Company, requested_time: Optional[str] = None) -> Dict:
         """
         Return the booking URL or slots, prioritizing the assigned agent's managed calendar.

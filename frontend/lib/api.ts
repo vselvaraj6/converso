@@ -310,6 +310,13 @@ export async function initiateVoiceCall(leadId: string) {
   })
 }
 
+export async function sendManualSms(leadId: string, content: string) {
+  return request<{ success: boolean; message_id: string }>(`/leads/${leadId}/sms`, {
+    method: 'POST',
+    body: JSON.stringify({ content })
+  })
+}
+
 // ── Messages ─────────────────────────────────────────────────────────────────
 
 export interface Message {

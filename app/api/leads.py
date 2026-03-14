@@ -18,6 +18,7 @@ import pandas as pd
 from app.api.auth import get_current_user, require_write_access
 from app.core.database import get_db
 from app.models import Lead, LeadStatus, Company, User
+from app.services.workflow_service import WorkflowService
 
 router = APIRouter()
 
@@ -65,6 +66,11 @@ class LeadResponse(BaseModel):
     phone: str
     status: str
     created_at: str
+
+
+class ManualSmsRequest(BaseModel):
+    """Request model for sending a manual SMS."""
+    content: str
 
 
 @router.get("/export")
@@ -422,3 +428,30 @@ async def create_lead(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{lead_id}/sms")
+async def send_manual_sms(
+    lead_id: UUID,
+    data: ManualSmsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_write_access)
+):
+    """Send a manual SMS via Twilio"""
+    workflow = WorkflowService(db)
+    result = await workflow.send_manual_sms(lead_id, data.content)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
+
+@router.post("/{lead_id}/call")
+async def initiate_call(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_write_access)
+):
+    """Initiate an AI voice call via VAPI"""
+    workflow = WorkflowService(db)
+    result = await workflow.initiate_voice_call(lead_id)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result.get("error"))
+    return result
