@@ -54,12 +54,12 @@ jobs:
       - name: Run Tests
         run: |
           echo "→ Starting stack for testing..."
-          sudo docker compose build
-          sudo docker compose up -d
+          docker compose build
+          docker compose up -d postgres redis
           
           echo "→ Waiting for services to be healthy..."
           for i in $(seq 1 30); do
-            if sudo docker compose exec -T postgres pg_isready -U converso; then
+            if docker compose exec -T postgres pg_isready -U converso; then
               echo "Database is ready."
               break
             fi
@@ -68,31 +68,31 @@ jobs:
           done
 
           echo "→ Resetting test database..."
-          sudo docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "DROP DATABASE IF EXISTS test_converso;"
-          sudo docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "CREATE DATABASE test_converso;"
+          docker compose run --rm -e PGPASSWORD=password postgres psql -h postgres -U converso -d postgres -c "DROP DATABASE IF EXISTS test_converso;"
+          docker compose run --rm -e PGPASSWORD=password postgres psql -h postgres -U converso -d postgres -c "CREATE DATABASE test_converso;"
           
           echo "→ Running pytest suite..."
-          sudo docker compose exec -T \
+          docker compose run --rm \
             -e APP_ENV=testing \
             -e SECRET_KEY=8USgGnF2tyl/R6blYo/JLBZj5VhQTduBpdTCRdEQigM= \
             -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
             -e REDIS_URL=redis://redis:6379/15 \
             app pytest || { 
               echo "!!! TESTS FAILED !!!"
-              sudo docker compose logs --tail=100 app
+              docker compose logs --tail=100 app
               exit 1
             }
 
       - name: Rebuild and restart containers
         run: |
           echo "→ Rebuilding containers (clean build)..."
-          sudo docker compose build --no-cache
-          sudo docker compose up -d --remove-orphans
-          sudo docker compose restart nginx
+          docker compose build --no-cache
+          docker compose up -d --remove-orphans
+          docker compose restart nginx
           echo "→ Waiting for database..."
           sleep 20
-          sudo docker compose exec -T app alembic upgrade head
-          sudo docker image prune -f
+          docker compose exec -T app alembic upgrade head
+          docker image prune -f
 
       - name: Health check
         run: |
