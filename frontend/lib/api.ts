@@ -1,41 +1,58 @@
-const BASE = '/api'
+/**
+ * Converso API Client
+ * 
+ * Centralized API client for all backend communication.
+ */
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('token')
-}
+import { getStoredToken } from './auth'
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const token = getToken()
-  const res = await fetch(`${BASE}${path}`, {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api'
+
+/**
+ * Generic request wrapper with auth and error handling
+ */
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('token')
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
+    headers,
   })
 
-  if (res.status === 401) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    window.location.href = '/login'
-    throw new Error('Unauthorized')
+  if (!response.ok) {
+    let errorMsg = `API Error: ${response.status}`
+    try {
+      const errorData = await response.json()
+      errorMsg = errorData.detail || errorMsg
+    } catch (e) {}
+    throw new Error(errorMsg)
   }
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Request failed')
-  }
+  // Handle empty responses
+  if (response.status === 204) return {} as T
 
-  if (res.status === 204) return {} as T
-  return res.json() as Promise<T>
+  return response.json()
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────────
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  role: string
+  company_id: string
+  is_superuser: boolean
+  calendar_connected: boolean
+  manual_calendar_url: string | null
+  calcom_event_id: number | null
+}
 
 export async function login(email: string, password: string) {
   const data = await request<{ access_token: string; user: User }>('/auth/login', {
@@ -47,32 +64,25 @@ export async function login(email: string, password: string) {
   return data
 }
 
-export async function register(
-  email: string,
-  password: string,
-  name: string,
-  company_name: string,
-  industry: string = 'Mortgage',
-) {
-  const data = await request<{ access_token: string; user: User }>('/auth/register', {
+export async function register(data: any) {
+  const res = await request<{ access_token: string; user: User }>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, name, company_name, industry }),
+    body: JSON.stringify(data),
   })
-  localStorage.setItem('token', data.access_token)
-  localStorage.setItem('user', JSON.stringify(data.user))
-  return data
+  localStorage.setItem('token', res.access_token)
+  localStorage.setItem('user', JSON.stringify(res.user))
+  return res
 }
 
 export function logout() {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
-  window.location.href = '/login'
 }
 
 export function getStoredUser(): User | null {
   if (typeof window === 'undefined') return null
-  const raw = localStorage.getItem('user')
-  return raw ? JSON.parse(raw) : null
+  const u = localStorage.getItem('user')
+  return u ? JSON.parse(u) : null
 }
 
 export async function updateMe(data: any) {
@@ -103,129 +113,38 @@ export async function connectCalendar(provider: string) {
 
 // ── Company ──────────────────────────────────────────────────────────────────
 
+export interface Company {
+  id: string
+  name: string
+  industry: string | null
+  ai_config: {
+    temperature: number
+    tone: string
+    prompt_template: string
+    industry_lingo?: string
+    company_memory?: string
+  }
+  twilio_phone_number: string | null
+  calcom_base_url: string | null
+  cal_booking_url: string | null
+  cal_event_type_id: number | null
+  vapi_assistant_id: string | null
+  created_at: string
+}
+
 export async function getCompany() {
   return request<Company>('/auth/company')
 }
 
-export async function getIndustryTemplates() {
-  return request<Record<string, { industry_lingo: string; company_memory: string }>>('/auth/company/industry-templates')
-}
-
-export async function updateCompany(data: Partial<Company>) {
+export async function updateCompany(data: any) {
   return request<Company>('/auth/company', {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
 }
 
-// ── Leads ─────────────────────────────────────────────────────────────────────
-
-export async function getLeads(params?: {
-  skip?: number
-  limit?: number
-  status?: string
-}) {
-  const q = new URLSearchParams()
-  if (params?.skip !== undefined) q.set('skip', String(params.skip))
-  if (params?.limit !== undefined) q.set('limit', String(params.limit))
-  if (params?.status) q.set('status', params.status)
-  return request<LeadListResponse>(`/leads/?${q}`)
-}
-
-export async function getLead(id: string) {
-  return request<LeadDetail>(`/leads/${id}`)
-}
-
-export async function updateLead(id: string, data: any) {
-  return request<Lead>(`/leads/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  })
-}
-
-export async function deleteLead(id: string) {
-  return request<{ status: string; message: string }>(`/leads/${id}`, {
-    method: 'DELETE',
-  })
-}
-
-export async function createLead(data: CreateLeadPayload) {
-  return request<{ id: string; name: string; email: string; phone: string; status: string; created_at: string }>(
-    '/leads/',
-    { method: 'POST', body: JSON.stringify(data) },
-  )
-}
-
-export async function importLeads(file: File) {
-  const token = getToken()
-  const formData = new FormData()
-  formData.append('file', file)
-
-  const res = await fetch(`${BASE}/leads/import`, {
-    method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: formData,
-  })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || 'Import failed')
-  }
-
-  return res.json() as Promise<{ success_count: number; error_count: number; errors: string[] }>
-}
-
-export async function exportLeads() {
-  const token = getToken()
-  const res = await fetch(`${BASE}/leads/export`, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  })
-
-  if (!res.ok) {
-    throw new Error('Export failed')
-  }
-
-  const blob = await res.blob()
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'leads_export.csv'
-  document.body.appendChild(a)
-  a.click()
-  window.URL.revokeObjectURL(url)
-  document.body.removeChild(a)
-}
-
-// ── Meetings ──────────────────────────────────────────────────────────────────
-
-export async function getMeetings(upcomingOnly = true) {
-  return request<{ meetings: Meeting[]; total: number }>(
-    `/meetings/?upcoming_only=${upcomingOnly}`,
-  )
-}
-
-// ── Messages ──────────────────────────────────────────────────────────────────
-
-export async function getLeadMessages(leadId: string, skip = 0, limit = 50) {
-  return request<MessageListResponse>(`/messages/lead/${leadId}?skip=${skip}&limit=${limit}`)
-}
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface User {
-  id: string
-  email: string
-  name: string
-  role: string
-  company_id: string
-  is_superuser: boolean
-  calendar_connected: boolean
-  manual_calendar_url: string | null
-  calcom_event_id: number | null
+export async function getIndustryTemplates() {
+  return request<Record<string, { industry_lingo: string; company_memory: string }>>('/auth/company/industry-templates')
 }
 
 // ── Platform Admin ──────────────────────────────────────────────────────────
@@ -277,16 +196,18 @@ export async function deleteUserAsAdmin(userId: string) {
   })
 }
 
+// ── Leads ────────────────────────────────────────────────────────────────────
+
 export interface Lead {
   id: string
   name: string
   email: string
   phone: string
   company: string | null
-  lead_company: string | null
   status: string
   last_contacted: string | null
   sentiment: string | null
+  nudge_interval_days: number
   created_at: string
 }
 
@@ -298,31 +219,11 @@ export interface LeadDetail extends Lead {
   lead_owner: string | null
   last_contact_method: string | null
   call_attempts: number
-  sentiment_score: Record<string, any> | null
+  sentiment_score: Record<string, any>
   lead_score: number
   days_since_contact: number | null
-  nudge_interval_days: number
   is_qualified: boolean
   updated_at: string
-}
-
-export interface Company {
-  id: string
-  name: string
-  industry: string | null
-  ai_config: {
-    temperature: number
-    tone: string
-    prompt_template: string
-    industry_lingo?: string
-    company_memory?: string
-  }
-  twilio_phone_number: string | null
-  calcom_base_url: string | null
-  cal_booking_url: string | null
-  cal_event_type_id: number | null
-  vapi_assistant_id: string | null
-  created_at: string
 }
 
 export interface LeadListResponse {
@@ -333,6 +234,84 @@ export interface LeadListResponse {
   total_pages: number
 }
 
+export async function getLeads(params: { skip?: number; limit?: number; status?: string }) {
+  const query = new URLSearchParams(params as any).toString()
+  return request<LeadListResponse>(`/leads/?${query}`)
+}
+
+export async function getLead(id: string) {
+  return request<LeadDetail>(`/leads/${id}`)
+}
+
+export async function createLead(data: any) {
+  return request<Lead>(`/leads/`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateLead(id: string, data: any) {
+  return request<Lead>(`/leads/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteLead(id: string) {
+  return request<{ status: string }>(`/leads/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function importLeads(file: File) {
+  const token = localStorage.getItem('token')
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${API_BASE_URL}/leads/import`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.detail || 'Import failed')
+  }
+
+  return response.json()
+}
+
+export async function exportLeads() {
+  const token = localStorage.getItem('token')
+  const response = await fetch(`${API_BASE_URL}/leads/export`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+
+  if (!response.ok) throw new Error('Export failed')
+
+  const blob = await response.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'leads_export.csv'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+export async function initiateVoiceCall(leadId: string) {
+  return request<{ success: boolean; lead_id: string }>(`/leads/${leadId}/call`, {
+    method: 'POST'
+  })
+}
+
+// ── Messages ─────────────────────────────────────────────────────────────────
+
 export interface Message {
   id: string
   lead_id: string
@@ -342,6 +321,9 @@ export interface Message {
   sentiment: Record<string, any> | null
   created_at: string
   status: string | null
+  recording_url?: string | null
+  duration_seconds?: string | null
+  transcript?: string | null
 }
 
 export interface MessageListResponse {
@@ -350,35 +332,6 @@ export interface MessageListResponse {
   has_more: boolean
 }
 
-export interface Meeting {
-  id: string
-  title: string
-  description: string | null
-  start_time: string
-  end_time: string
-  timezone: string
-  location: string | null
-  meeting_link: string | null
-  status: string
-  google_event_id: string | null
-  lead: {
-    id: string
-    name: string
-    email: string
-    phone: string
-    company: string | null
-  }
-}
-
-export interface CreateLeadPayload {
-  name: string
-  email: string
-  phone: string
-  title?: string
-  company?: string
-  lead_company?: string
-  industry?: string
-  source?: string
-  interest?: string
-  nudge_interval_days?: number
+export async function getLeadMessages(leadId: string) {
+  return request<MessageListResponse>(`/messages/lead/${leadId}`)
 }
