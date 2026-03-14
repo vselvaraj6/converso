@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional
+from uuid import UUID
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, text
