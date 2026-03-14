@@ -91,10 +91,13 @@ class OpenAIService:
             prompt = f"""Analyze the following message and provide sales insights.
 Current Date: {current_date}
 
-Extract:
+            Extract:
 1. Sentiment (positive/neutral/negative)
 2. Intent (schedule_meeting/ask_question/not_interested/request_info/other). 
-   Set to 'schedule_meeting' if the lead wants to talk, meet, call, or speaks about availability.
+   Set to 'schedule_meeting' IF:
+   - The lead expresses interest in talking, meeting, or calling.
+   - The lead mentions their availability (e.g., 'I am free tomorrow').
+   - The lead provides a specific date or time.
 3. Urgency level (high/medium/low)
 4. Any datetime mentioned. If relative like 'tomorrow' or 'next Monday', convert to ISO date string (YYYY-MM-DD) based on current date {current_date}. 
    If a specific time is mentioned, include it in ISO format (YYYY-MM-DDTHH:MM:SSZ).
@@ -251,7 +254,8 @@ Conversational Guidelines:
 - **Be Natural:** Respond like a real human. Acknowledge what the lead just said and answer their specific questions.
 - **Avoid Repetition:** Do NOT mention "{lead.industry or 'mortgage'}" or your company name in every message if the conversation is already flowing. 
 - **Stay Brief:** Keep SMS under 160 characters. Use emojis sparingly (max 1 per message).
-- **Drive to Booking:** If the lead shows interest or asks about next steps, guide them to book a call using the provided link.
+- **Drive to Booking:** If the lead shows interest or asks about next steps, ask them for their availability (e.g., "What time works best for you tomorrow or later this week?"). 
+- **Confirm Details:** Once they give you a time, confirm it with them. Do NOT send them a booking link; you will handle the booking for them.
 - **Address by Name:** Use the lead's first name ({lead.name.split()[0]}) naturally.
 - **Context Awareness:** Read the conversation history carefully. Don't re-introduce yourself if you've already done so.
 """

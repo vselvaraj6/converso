@@ -109,8 +109,11 @@ class WorkflowService:
                 booking_result = await self._handle_calendar_booking(
                     lead, company, requested_time=analysis.get("extracted_datetime")
                 )
-                if booking_result.get("booking_url"):
-                    # Append the link naturally instead of overwriting the whole reply
+                if booking_result.get("booked"):
+                    # Use the success message directly
+                    reply_text = booking_result['confirmation_message']
+                elif "confirmation_message" in booking_result:
+                    # Append slots/ask for time
                     reply_text = f"{reply_text}\n\n{booking_result['confirmation_message']}"
             
             # 10. Send reply
@@ -272,68 +275,74 @@ class WorkflowService:
 
     async def _handle_calendar_booking(self, lead: Lead, company: Company, requested_time: Optional[str] = None) -> Dict:
         """
-        Return the booking URL or slots, prioritizing the assigned agent's managed calendar.
+        Automated booking flow: If time is provided, book it. Else, suggest times.
         """
         # 1. Determine which calendar settings to use (Master Orchestrator Pattern)
         agent = None
         if lead.assigned_agent_id:
             agent = await self.db.get(User, lead.assigned_agent_id)
         
-        # Determine booking URL with inheritance logic
+        # Determine booking settings
         if agent and agent.manual_calendar_url:
-            # Priority 1: Agent's specific override
             booking_url = agent.manual_calendar_url
             event_type_id = None
-            logger.info(f"Using Agent manual override for lead {lead.id}: {booking_url}")
         elif company.cal_booking_url:
-            # Priority 2: Company-wide Team Round Robin link
             booking_url = company.cal_booking_url
             event_type_id = company.cal_event_type_id
-            logger.info(f"Using Company master team link for lead {lead.id}: {booking_url}")
         else:
-            # Fallback: Managed shadow integration (if it exists)
-            has_agent_cal = agent and agent.calendar_connected and agent.calcom_username and agent.calcom_event_id
-            if has_agent_cal:
-                base_url = (company.calcom_base_url or "https://cal.com").rstrip("/")
-                booking_url = f"{base_url}/{agent.calcom_username}/{agent.calcom_event_id}"
-                event_type_id = agent.calcom_event_id
-                logger.info(f"Using Agent managed shadow cal for lead {lead.id}: {booking_url}")
-            else:
-                booking_url = None
-                event_type_id = None
-        
-        logger.info(f"Handling booking for lead {lead.id}. Agent Cal: {has_agent_cal}, URL: {booking_url}")
-        
-        if not booking_url:
-            logger.warning(f"No calendar connected for agent {lead.assigned_agent_id} or company {company.id}")
+            booking_url = None
+            event_type_id = None
+
+        if not event_type_id:
+            # Fallback if no internal event ID is configured for auto-booking
             return {
-                "booking_url": None, 
-                "confirmation_message": "I'd love to get that scheduled. I'll have someone from our team reach out to you shortly to find a time that works!"
+                "booking_url": booking_url,
+                "confirmation_message": f"I'd love to get that scheduled. What time works best for you tomorrow or later this week?"
             }
 
         first_name = lead.name.split()[0] if lead.name else "there"
-        slots_text = ""
-        
-        # 2. Try to fetch available slots
-        if event_type_id:
+
+        # 2. If a specific time was extracted, try to book it directly
+        if requested_time:
             try:
-                logger.info(f"Fetching slots for event type {event_type_id}")
-                start_search = datetime.utcnow().isoformat() + "Z"
-                end_search = (datetime.utcnow() + timedelta(days=3)).isoformat() + "Z"
-                slots = await self.calendar.get_available_slots(event_type_id, start_search, end_search)
+                # Try to create the booking
+                booking = await self.calendar.create_booking(
+                    event_type_id=event_type_id,
+                    start_time=requested_time,
+                    attendee_name=lead.name,
+                    attendee_email=lead.email,
+                    attendee_phone=lead.phone
+                )
                 
-                if slots:
-                    formatted_slots = []
-                    for slot in slots[:3]:
-                        dt = datetime.fromisoformat(slot["time"].replace("Z", "+00:00")).replace(tzinfo=None)
-                        formatted_slots.append(dt.strftime("%A, %b %d at %I:%M %p"))
-                    slots_text = "\n\nAvailable times:\n- " + "\n- ".join(formatted_slots)
+                if booking.get("success"):
+                    dt = datetime.fromisoformat(requested_time.replace("Z", "+00:00")).replace(tzinfo=None)
+                    time_str = dt.strftime("%A, %b %d at %I:%M %p")
+                    return {
+                        "booked": True,
+                        "confirmation_message": f"Perfect, {first_name}! I've gone ahead and booked that for you for {time_str}. You'll receive a confirmation email with the calendar invite shortly."
+                    }
             except Exception as e:
-                logger.error(f"Error fetching slots: {e}")
+                logger.error(f"Auto-booking failed for lead {lead.id}: {e}")
+
+        # 3. Fallback: Propose available slots
+        slots_text = ""
+        try:
+            start_search = datetime.utcnow().isoformat() + "Z"
+            end_search = (datetime.utcnow() + timedelta(days=3)).isoformat() + "Z"
+            slots = await self.calendar.get_available_slots(event_type_id, start_search, end_search)
+            
+            if slots:
+                formatted_slots = []
+                for slot in slots[:3]:
+                    dt = datetime.fromisoformat(slot["time"].replace("Z", "+00:00")).replace(tzinfo=None)
+                    formatted_slots.append(dt.strftime("%A, %b %d at %I:%M %p"))
+                slots_text = "\n\nAvailable times:\n- " + "\n- ".join(formatted_slots)
+        except Exception as e:
+            logger.error(f"Error fetching slots: {e}")
 
         return {
-            "booking_url": booking_url,
-            "confirmation_message": f"Here are some available times:{slots_text}\n\nYou can also book a different time here: {booking_url}"
+            "booked": False,
+            "confirmation_message": f"I'd love to help with that. {slots_text}\n\nDo any of those times work for you? Or feel free to suggest another time!"
         }
     
     async def _get_leads_for_outbound(self) -> List[Lead]:
