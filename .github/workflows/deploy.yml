@@ -55,16 +55,17 @@ jobs:
         run: |
           echo "→ Starting stack for testing..."
           docker compose build
-          docker compose up -d postgres redis app
+          docker compose up -d
           
-          echo "→ Waiting for services to be healthy..."
+          echo "→ Waiting for app to be ready (internal wait-for-db is running)..."
           for i in $(seq 1 30); do
-            if docker compose exec -T postgres pg_isready -U converso; then
-              echo "Database is ready."
+            # Check if app container is running and start.sh has reached migrations
+            if docker compose logs app | grep -q "Database is up!"; then
+              echo "App stack is ready."
               break
             fi
-            echo "  waiting for postgres... $i/30"
-            sleep 2
+            echo "  waiting for app stack... $i/30"
+            sleep 3
           done
 
           echo "→ Resetting test database..."
