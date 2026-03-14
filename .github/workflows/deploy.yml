@@ -55,7 +55,7 @@ jobs:
         run: |
           echo "→ Starting stack for testing..."
           docker compose build
-          docker compose up -d postgres redis
+          docker compose up -d postgres redis app
           
           echo "→ Waiting for services to be healthy..."
           for i in $(seq 1 30); do
@@ -68,11 +68,11 @@ jobs:
           done
 
           echo "→ Resetting test database..."
-          docker compose run --rm -e PGPASSWORD=password postgres psql -h postgres -U converso -d postgres -c "DROP DATABASE IF EXISTS test_converso;"
-          docker compose run --rm -e PGPASSWORD=password postgres psql -h postgres -U converso -d postgres -c "CREATE DATABASE test_converso;"
+          docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "DROP DATABASE IF EXISTS test_converso;"
+          docker compose exec -T -e PGPASSWORD=password postgres psql -U converso -d postgres -c "CREATE DATABASE test_converso;"
           
           echo "→ Running pytest suite..."
-          docker compose run --rm \
+          docker compose exec -T \
             -e APP_ENV=testing \
             -e SECRET_KEY=8USgGnF2tyl/R6blYo/JLBZj5VhQTduBpdTCRdEQigM= \
             -e DATABASE_URL=postgresql+asyncpg://converso:password@postgres:5432/test_converso \
