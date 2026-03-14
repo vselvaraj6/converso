@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  /* Default: Light Mode */
   --brand-50: #f5f3ff;
   --brand-100: #ede9fe;
   --brand-200: #ddd6fe;
@@ -13,94 +14,95 @@
   --brand-700: #6d28d9;
   --brand-800: #5b21b6;
   --brand-900: #4c1d95;
-  --background: #020617; /* Obsidian background */
+  
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card-bg: rgba(255, 255, 255, 0.8);
+  --card-border: rgba(241, 245, 249, 1);
+  --input-bg: #ffffff;
+  --input-border: #e2e8f0;
+  --sidebar-bg: #0f172a; /* Keep sidebar dark always for premium feel */
+  --text-muted: #64748b;
+  --glass-effect: blur(16px);
+}
+
+[data-theme='dark'] {
+  --background: #020617;
   --foreground: #f8fafc;
+  --card-bg: rgba(15, 23, 42, 0.6);
+  --card-border: rgba(30, 41, 59, 0.5);
+  --input-bg: rgba(2, 6, 23, 0.5);
+  --input-border: rgba(30, 41, 59, 1);
+  --text-muted: #94a3b8;
 }
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-200 antialiased selection:bg-brand-500/30 selection:text-white;
-    background-image: 
-      radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-      radial-gradient(at 50% 0%, hsla(225,39%,10%,1) 0, transparent 50%), 
-      radial-gradient(at 100% 0%, hsla(339,49%,10%,1) 0, transparent 50%);
+    @apply antialiased transition-colors duration-300;
+    background-color: var(--background);
+    color: var(--foreground);
     min-height: 100vh;
   }
 }
 
 @layer components {
-  .glass-card {
-    @apply bg-slate-900/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)];
-  }
-
-  .premium-shadow {
-    @apply shadow-[0_20px_50px_rgba(0,0,0,0.3)];
-  }
-
   .card {
-    @apply bg-slate-900/50 rounded-[24px] border border-slate-800/50 premium-shadow transition-all duration-300 backdrop-blur-xl;
+    @apply rounded-[24px] border transition-all duration-300 backdrop-blur-xl;
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
   }
 
-  .card-hover {
-    @apply hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] hover:-translate-y-1 hover:border-slate-700/50 active:scale-[0.99];
+  [data-theme='dark'] .card {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   }
 
   .btn-primary {
     @apply bg-brand-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 
-           transition-all duration-300 hover:bg-brand-500 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] 
-           active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+           transition-all duration-300 hover:bg-brand-500 hover:shadow-lg active:scale-95 
+           disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-secondary {
-    @apply bg-slate-800/50 text-slate-300 border border-slate-700/50 px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 
-           transition-all duration-300 hover:bg-slate-800 hover:border-slate-600 hover:text-white
-           active:scale-95 disabled:opacity-50;
+    @apply px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 
+           transition-all duration-300 active:scale-95 disabled:opacity-50 border;
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--foreground);
+  }
+
+  .btn-secondary:hover {
+    @apply bg-slate-50 border-brand-300 text-brand-700;
+  }
+
+  [data-theme='dark'] .btn-secondary:hover {
+    @apply bg-slate-800 border-slate-600 text-white;
   }
 
   .input {
-    @apply w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-white
-           transition-all duration-200 focus:bg-slate-900 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none placeholder:text-slate-600;
+    @apply w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-200 
+           focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 outline-none border;
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--foreground);
   }
 
   .badge {
     @apply px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border;
   }
 
-  .nav-item-active {
-    @apply bg-white/10 text-white shadow-xl shadow-black/20;
-  }
-
-  .table-header {
-    @apply text-left text-slate-500 text-[10px] uppercase tracking-wider bg-slate-900/30 border-b border-slate-800 font-bold;
-  }
-
   .label-text {
-    @apply block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1;
+    @apply block text-[10px] font-black uppercase tracking-widest mb-2 ml-1;
+    color: var(--text-muted);
   }
 }
 
-/* Custom Scrollbar for Obsidian Theme */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  @apply bg-slate-950;
-}
+/* Scrollbar overrides */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
+  @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
 }
-
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* Glow effects */
-.glow-brand {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.15);
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  @apply bg-slate-800 hover:bg-slate-700;
 }

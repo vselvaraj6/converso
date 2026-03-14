@@ -12,15 +12,18 @@ import {
   ChevronRight,
   ShieldCheck,
   Command,
-  Sparkles
+  Sun,
+  Moon
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
+import { useTheme } from './ThemeProvider'
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
+  const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
     setUser(getStoredUser())
@@ -44,16 +47,18 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-72 bg-slate-950 text-white flex flex-col h-screen sticky top-0 z-50 shadow-[20px_0_80px_rgba(0,0,0,0.1)]">
+    <aside className="w-72 bg-[#0f172a] text-white flex flex-col h-screen sticky top-0 z-50 shadow-[20px_0_80px_rgba(0,0,0,0.1)] border-r border-white/5">
       {/* Brand Header */}
       <div className="p-8 pb-10">
-        <Link href="/dashboard" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110">
-            <Command size={22} className="text-white" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-black text-xl tracking-tight leading-none group-hover:text-brand-400 transition-colors">Converso</span>
-            <span className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-500 mt-1">Enterprise AI</span>
+        <Link href="/dashboard" className="flex items-center justify-between group">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110">
+              <Command size={22} className="text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black text-xl tracking-tight leading-none group-hover:text-brand-400 transition-colors text-white">Converso</span>
+              <span className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-500 mt-1">Enterprise AI</span>
+            </div>
           </div>
         </Link>
       </div>
@@ -95,9 +100,28 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer Profile */}
-      <div className="p-6 mt-auto">
-        <div className="bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/5 p-4 mb-4 group hover:bg-slate-900 transition-colors duration-300">
+      {/* Footer Profile & Theme Toggle */}
+      <div className="p-6 mt-auto space-y-4">
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center justify-between px-5 py-3 rounded-2xl bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-300 group"
+        >
+          <div className="flex items-center gap-3">
+            {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+            <span className="text-[11px] font-black uppercase tracking-widest">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+          </div>
+          <div className={clsx(
+            "w-8 h-4 rounded-full relative transition-colors duration-500",
+            theme === 'dark' ? "bg-brand-600" : "bg-slate-700"
+          )}>
+            <div className={clsx(
+              "absolute top-1 w-2 h-2 rounded-full bg-white transition-all duration-300",
+              theme === 'dark' ? "left-5" : "left-1"
+            )} />
+          </div>
+        </button>
+
+        <div className="bg-slate-900/50 backdrop-blur-md rounded-3xl border border-white/5 p-4 group hover:bg-slate-900 transition-colors duration-300">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-slate-300 font-bold border border-white/10 group-hover:scale-105 transition-transform">
               {user?.name?.charAt(0) || 'U'}
@@ -114,7 +138,7 @@ export default function Sidebar() {
         
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-[13px] font-bold text-slate-400 hover:text-red-400 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all duration-300"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-slate-400 hover:text-red-400 hover:bg-red-500/5 border border-transparent hover:border-red-500/20 transition-all duration-300"
         >
           <LogOut size={16} />
           Sign Out
