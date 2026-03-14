@@ -46,13 +46,19 @@ def event_loop():
 
 @pytest.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create a fresh database session for each test"""
+    """Create a fresh database session for each test.
+
+    Creates tables if needed, truncates all rows to guarantee a clean slate
+    (handles leftover data from prior test runs), then yields a session.
+    """
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+        # Delete all data in reverse FK order to avoid constraint violations
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
+
     async with TestSessionLocal() as session:
         yield session
-        await session.rollback()
         await session.close()
 
 
