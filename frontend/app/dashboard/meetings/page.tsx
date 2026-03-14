@@ -2,144 +2,28 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getMeetings, type Meeting } from '@/lib/api'
-import { Calendar, Clock, MapPin, Video, Phone, User, ChevronRight } from 'lucide-react'
+import { Calendar, Clock, MapPin, Video, Phone, User, ChevronRight, Activity, ArrowRight, VideoOff, ExternalLink } from 'lucide-react'
 import clsx from 'clsx'
 
-const STATUS_COLORS: Record<string, string> = {
-  confirmed:   'bg-green-100 text-green-700',
-  cancelled:   'bg-red-100 text-red-700',
-  rescheduled: 'bg-yellow-100 text-yellow-700',
+const formatTime = (dateStr: string) => {
+  return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-}
-
-function formatDuration(start: string, end: string) {
-  const mins = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 60000)
-  return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}`
-}
-
-function isToday(iso: string) {
-  const d = new Date(iso)
+const isToday = (dateStr: string) => {
+  const d = new Date(dateStr)
   const now = new Date()
-  return d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
+  return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
 }
 
-function isThisWeek(iso: string) {
-  const d = new Date(iso)
+const isThisWeek = (dateStr: string) => {
+  const d = new Date(dateStr)
   const now = new Date()
-  const weekMs = 7 * 24 * 60 * 60 * 1000
-  return d.getTime() - now.getTime() < weekMs
-}
-
-function LocationIcon({ location }: { location: string | null }) {
-  if (!location) return <MapPin size={14} className="text-gray-400" />
-  const l = location.toLowerCase()
-  if (l.includes('meet') || l.includes('zoom') || l.includes('teams') || l.includes('call'))
-    return <Video size={14} className="text-brand-500" />
-  if (l.includes('phone')) return <Phone size={14} className="text-blue-500" />
-  return <MapPin size={14} className="text-gray-400" />
-}
-
-function MeetingCard({ meeting }: { meeting: Meeting }) {
-  const today = isToday(meeting.start_time)
-  return (
-    <div className={clsx(
-      'card p-4 md:p-5 flex flex-col sm:flex-row gap-4 md:gap-5 transition-shadow hover:shadow-md',
-      today && 'border-brand-300 ring-1 ring-brand-200',
-    )}>
-      {/* Date column */}
-      <div className={clsx(
-        'w-full sm:w-14 shrink-0 rounded-xl flex sm:flex-col items-center justify-between sm:justify-center px-4 sm:px-0 py-2 sm:py-2 text-center',
-        today ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-700',
-      )}>
-        <span className="text-xs font-medium uppercase sm:mb-1">
-          {new Date(meeting.start_time).toLocaleDateString('en-US', { month: 'short' })}
-        </span>
-        <span className="text-2xl font-bold leading-none">
-          {new Date(meeting.start_time).getDate()}
-        </span>
-        <span className="sm:hidden text-xs font-medium uppercase">
-          {new Date(meeting.start_time).toLocaleDateString('en-US', { weekday: 'short' })}
-        </span>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-gray-900 truncate">{meeting.title}</h3>
-              <div className="flex gap-1">
-                {today && (
-                  <span className="badge bg-brand-100 text-brand-700 text-[10px] px-1.5">Today</span>
-                )}
-                <span className={clsx('badge text-[10px] px-1.5', STATUS_COLORS[meeting.status] ?? 'bg-gray-100 text-gray-600')}>
-                  {meeting.status}
-                </span>
-              </div>
-            </div>
-            {meeting.description && (
-              <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{meeting.description}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-sm text-gray-500">
-          <span className="flex items-center gap-1.5">
-            <Clock size={14} className="shrink-0" />
-            {formatTime(meeting.start_time)} – {formatTime(meeting.end_time)}
-            <span className="text-gray-400 hidden xs:inline">({formatDuration(meeting.start_time, meeting.end_time)})</span>
-          </span>
-
-          {meeting.location && (
-            <span className="flex items-center gap-1.5">
-              <LocationIcon location={meeting.location} />
-              <span className="truncate">{meeting.location}</span>
-            </span>
-          )}
-
-          <span className="flex items-center gap-1.5">
-            <User size={14} className="shrink-0" />
-            <Link
-              href={`/dashboard/leads/${meeting.lead.id}`}
-              className="text-brand-600 hover:underline truncate"
-            >
-              {meeting.lead.name}
-            </Link>
-          </span>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-between shrink-0 gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100">
-        <Link
-          href={`/dashboard/leads/${meeting.lead.id}`}
-          className="text-xs text-gray-400 hover:text-brand-600 flex items-center gap-0.5 order-2 sm:order-1"
-        >
-          View Lead <ChevronRight size={12} />
-        </Link>
-        {meeting.meeting_link && (
-          <a
-            href={meeting.meeting_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary text-xs px-4 py-2 sm:px-3 sm:py-1.5 order-1 sm:order-2"
-          >
-            <Video size={13} /> Join
-          </a>
-        )}
-      </div>
-    </div>
-  )
+  const diff = d.getTime() - now.getTime()
+  return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
 }
 
 export default function MeetingsPage() {
@@ -155,50 +39,160 @@ export default function MeetingsPage() {
   const thisWeek = meetings.filter(m => !isToday(m.start_time) && isThisWeek(m.start_time))
   const later = meetings.filter(m => !isThisWeek(m.start_time))
 
-  function Group({ title, items }: { title: string; items: Meeting[] }) {
-    if (items.length === 0) return null
-    return (
-      <div className="space-y-3">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">{title}</h2>
-        {items.map(m => <MeetingCard key={m.id} meeting={m} />)}
-      </div>
-    )
-  }
+  if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Decrypting Calendar Streams…</div>
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Meetings</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {meetings.length} {showAll ? 'total' : 'upcoming'}
-          </p>
+    <div className="max-w-5xl mx-auto space-y-10 font-sans pb-20">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border border-emerald-500/20">
+            <Activity size={12} />
+            Live Schedule
+          </div>
+          <h1 className="text-4xl font-black text-white tracking-tight leading-none">
+            Your Agenda
+          </h1>
+          <p className="text-slate-500 text-sm font-medium">Manage your confirmed appointments and virtual discovery sessions.</p>
         </div>
-        <button
-          className="btn-secondary text-sm w-full sm:w-auto"
-          onClick={() => { setShowAll(v => !v); setLoading(true) }}
-        >
-          {showAll ? 'Show upcoming only' : 'Show all'}
-        </button>
+
+        <div className="flex items-center gap-3 p-1.5 bg-slate-900/50 backdrop-blur-xl rounded-[20px] border border-white/5">
+          <button 
+            onClick={() => setShowAll(false)}
+            className={clsx(
+              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300", 
+              !showAll ? "bg-white text-slate-950 shadow-lg" : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            Upcoming
+          </button>
+          <button 
+            onClick={() => setShowAll(true)}
+            className={clsx(
+              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300", 
+              showAll ? "bg-white text-slate-950 shadow-lg" : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            All History
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="text-gray-400 text-sm">Loading…</div>
-      ) : meetings.length === 0 ? (
-        <div className="card p-12 text-center">
-          <Calendar size={36} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 font-medium">No meetings scheduled</p>
-          <p className="text-gray-400 text-sm mt-1">
-            Meetings are booked automatically when a lead replies with booking intent.
-          </p>
+      {meetings.length === 0 ? (
+        <div className="card p-20 text-center space-y-4 border-dashed border-2 border-slate-800 bg-transparent shadow-none">
+          <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-700">
+            <Calendar size={32} />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-white uppercase tracking-widest">Clear Horizons</h3>
+            <p className="text-slate-500 text-sm font-medium">No meetings found. AI is working to fill your calendar.</p>
+          </div>
         </div>
       ) : (
-        <div className="space-y-8">
-          <Group title="Today" items={todayMeetings} />
-          <Group title="This week" items={thisWeek} />
-          <Group title="Later" items={later} />
+        <div className="space-y-12">
+          {todayMeetings.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-[10px] font-black text-brand-400 uppercase tracking-[0.3em] flex items-center gap-3">
+                <span className="w-8 h-px bg-brand-500/20" /> Today
+              </h2>
+              <div className="grid grid-cols-1 gap-4">
+                {todayMeetings.map(m => <MeetingCard key={m.id} meeting={m} highlight />)}
+              </div>
+            </div>
+          )}
+
+          {thisWeek.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-3">
+                <span className="w-8 h-px bg-slate-800" /> This Week
+              </h2>
+              <div className="grid grid-cols-1 gap-4">
+                {thisWeek.map(m => <MeetingCard key={m.id} meeting={m} />)}
+              </div>
+            </div>
+          )}
+
+          {later.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-3">
+                <span className="w-8 h-px bg-slate-800" /> Later
+              </h2>
+              <div className="grid grid-cols-1 gap-4">
+                {later.map(m => <MeetingCard key={m.id} meeting={m} />)}
+              </div>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  )
+}
+
+function MeetingCard({ meeting, highlight }: { meeting: Meeting; highlight?: boolean }) {
+  return (
+    <div className={clsx(
+      "card group p-6 border-none shadow-2xl relative overflow-hidden transition-all duration-500 hover:-translate-y-1",
+      highlight ? "bg-slate-900 shadow-brand-500/5 border-l-4 border-l-brand-500" : "bg-slate-900/40"
+    )}>
+      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500 blur-[100px] opacity-5 group-hover:opacity-10 transition-opacity" />
+      
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+        <div className="flex items-center gap-6">
+          {/* Time Display */}
+          <div className="flex flex-col items-center justify-center w-20 h-20 rounded-[20px] bg-slate-950 border border-white/5 shadow-inner">
+            <span className="text-[10px] font-black text-slate-500 uppercase">{formatDate(meeting.start_time).split(',')[0]}</span>
+            <span className="text-xl font-black text-white leading-tight">{new Date(meeting.start_time).getDate()}</span>
+            <span className="text-[10px] font-black text-brand-400 uppercase">{formatDate(meeting.start_time).split(' ')[1]}</span>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-black text-white tracking-tight">{meeting.title}</h3>
+              <span className={clsx("px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest", 
+                meeting.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500')}>
+                {meeting.status}
+              </span>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                <Clock size={14} className="text-brand-500" /> {formatTime(meeting.start_time)}
+              </div>
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                <User size={14} className="text-brand-500" /> {meeting.lead.name}
+              </div>
+              {meeting.location && (
+                <div className="flex items-center gap-2 text-slate-400 text-xs font-bold">
+                  <MapPin size={14} className="text-brand-500" /> {meeting.location}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {meeting.meeting_link ? (
+            <a 
+              href={meeting.meeting_link} 
+              target="_blank" 
+              rel="noreferrer"
+              className="bg-white text-slate-950 h-11 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-brand-400 hover:text-white transition-all shadow-xl active:scale-95"
+            >
+              <Video size={16} fill="currentColor" /> Join Session
+            </a>
+          ) : (
+            <div className="h-11 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5">
+              <VideoOff size={16} /> Link Pending
+            </div>
+          )}
+          <Link 
+            href={`/dashboard/leads/${meeting.lead.id}`}
+            className="w-11 h-11 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-all"
+          >
+            <ArrowRight size={18} />
+          </Link>
+        </div>
+      </div>
     </div>
   )
 }

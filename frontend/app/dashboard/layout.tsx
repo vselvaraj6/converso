@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { getStoredUser } from '@/lib/api'
 import Sidebar from '@/components/Sidebar'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Command } from 'lucide-react'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -20,16 +20,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [pathname])
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 text-gray-900">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-950 text-slate-200">
       {/* Mobile Header */}
-      <header className="flex md:hidden items-center justify-between px-4 h-16 bg-white border-b border-gray-200 sticky top-0 z-30">
+      <header className="flex md:hidden items-center justify-between px-6 h-16 bg-slate-900/50 backdrop-blur-xl border-b border-white/5 sticky top-0 z-30">
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="Converso Logo" className="w-7 h-7 rounded-lg" />
-          <span className="font-black text-lg tracking-tight">Converso</span>
+          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
+            <Command size={18} className="text-white" />
+          </div>
+          <span className="font-black text-lg tracking-tight text-white">Converso</span>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 -mr-2 text-gray-600 hover:text-gray-900"
+          className="p-2 -mr-2 text-slate-400 hover:text-white transition-colors"
         >
           {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -38,26 +40,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar Overlay */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out bg-white md:relative md:translate-x-0 md:z-auto
+        fixed inset-y-0 left-0 z-50 w-72 transform transition-transform duration-500 ease-in-out bg-slate-950 md:relative md:translate-x-0 md:z-auto
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <Sidebar />
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 overflow-auto">
-        <div className="p-4 md:p-8">
+      <main className="flex-1 min-w-0 overflow-auto custom-scrollbar">
+        <div className="p-6 md:p-10 lg:p-12 max-w-[1600px] mx-auto">
           {children}
         </div>
       </main>
     </div>
   )
 }
-

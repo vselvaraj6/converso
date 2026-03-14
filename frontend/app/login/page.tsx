@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { login } from '@/lib/api'
-import { MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { MessageSquare, AlertCircle, CheckCircle2, Command, ShieldCheck, Zap } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -28,109 +28,108 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-white font-sans">
-      {/* Left Column: Branding & Image */}
-      <div className="hidden lg:flex flex-col justify-between w-[45%] bg-[#0c4a6e] p-12 xl:p-20 relative overflow-hidden">
-        {/* Background Image with Overlay */}
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 font-sans selection:bg-brand-500/30">
+      {/* Left Column: Visionary Branding */}
+      <div className="hidden lg:flex flex-col justify-between w-[45%] p-16 xl:p-24 relative overflow-hidden bg-slate-900">
+        {/* Background Mesh Gradient */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[70%] h-[70%] bg-brand-600/20 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-blue-600/10 blur-[100px] rounded-full" />
+        </div>
+        
         <img 
           src="https://images.unsplash.com/photo-1557426272-fc759fbb7a8d?auto=format&fit=crop&q=80&w=1600" 
-          alt="Professional Sales Team" 
-          className="absolute inset-0 w-full h-full object-cover opacity-40 mix-blend-luminosity"
+          alt="Professional Hub" 
+          className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay grayscale"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/80 to-indigo-900/80 z-0" />
 
         <div className="relative z-10">
-          <Link href="/" className="flex items-center gap-2 mb-20 group">
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
-              <img src="/logo.svg" alt="C" className="w-6 h-6" />
+          <Link href="/" className="flex items-center gap-3 mb-24 group">
+            <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_30px_rgba(124,58,237,0.4)] transition-all group-hover:scale-110 group-hover:rotate-3">
+              <Command size={24} className="text-white" />
             </div>
-            <span className="text-2xl font-black text-white tracking-tight">Converso</span>
+            <span className="text-3xl font-black text-white tracking-tighter">Converso</span>
           </Link>
 
-          <div className="space-y-8 max-w-lg">
-            <h1 className="text-4xl xl:text-5xl font-black text-white leading-[1.1] tracking-tight">
-              Reclaim your time. <br/>
-              <span className="text-brand-300">Automate your sales.</span>
+          <div className="space-y-10 max-w-lg">
+            <h1 className="text-5xl xl:text-6xl font-black text-white leading-[1.05] tracking-tight">
+              Master your pipeline with <br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-blue-400">Autonomous AI.</span>
             </h1>
             
-            <div className="space-y-6">
-              <FeatureItem title="High-Conversion SMS" desc="Our AI engages leads instantly, turning interest into appointments." />
-              <FeatureItem title="Smart Calendar Sync" desc="Automated booking flows that keep your schedule full without the lifting." />
+            <div className="space-y-8">
+              <FeatureItem icon={Zap} title="Direct SMS Dispatch" desc="Engage prospects instantly with context-aware natural language." />
+              <FeatureItem icon={ShieldCheck} title="Enterprise Oversight" desc="Multi-tenant architecture built for high-scale sales teams." />
             </div>
           </div>
         </div>
 
         <div className="relative z-10">
-          <div className="card bg-white/10 backdrop-blur-md border-white/20 p-6 rounded-2xl">
-            <p className="text-lg text-white font-medium italic leading-relaxed">
-              "Converso acts like my most efficient sales assistant. It's consistently booking 3-4 more meetings a week for me."
+          <div className="card bg-white/5 backdrop-blur-2xl border-white/10 p-8 rounded-[32px] shadow-2xl">
+            <p className="text-xl text-slate-200 font-medium italic leading-relaxed">
+              "The most intuitive command center I've used. Our conversion rate increased by 40% in the first month."
             </p>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-brand-400" />
+            <div className="mt-6 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 shadow-lg" />
               <div>
-                <p className="text-sm font-bold text-white">James Sterling</p>
-                <p className="text-xs text-brand-200">Director of Sales, Texa</p>
+                <p className="text-sm font-black text-white uppercase tracking-widest">James Sterling</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Director of Revenue, Texa</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right Column: Login Form */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-6 sm:px-12 lg:px-20 xl:px-32 bg-white">
-        <div className="max-w-md w-full mx-auto">
-          <div className="flex justify-end mb-16">
-            <p className="text-sm text-gray-500 font-medium">
-              New here?{' '}
-              <Link href="/register" className="text-brand-600 font-bold hover:underline ml-1">
-                Create an account
-              </Link>
-            </p>
+      {/* Right Column: Secure Authentication */}
+      <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40 bg-slate-950 relative">
+        {/* Mobile Logo */}
+        <div className="lg:hidden flex items-center gap-3 mb-12">
+          <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
+            <Command size={20} className="text-white" />
+          </div>
+          <span className="text-2xl font-black text-white tracking-tight">Converso</span>
+        </div>
+
+        <div className="max-w-md w-full mx-auto space-y-12">
+          <div className="space-y-2">
+            <h2 className="text-4xl font-black text-white tracking-tight">Welcome back</h2>
+            <p className="text-slate-500 font-medium text-sm">Secure biometric or credential login required.</p>
           </div>
 
-          <div className="mb-10">
-            <div className="lg:hidden flex items-center gap-2 mb-8">
-              <img src="/logo.svg" alt="C" className="w-8 h-8 rounded-lg" />
-              <span className="text-xl font-black tracking-tight">Converso</span>
-            </div>
-            <h2 className="text-3xl font-black text-gray-900 mb-2">Welcome back</h2>
-            <p className="text-gray-500 font-medium">Please sign in to your dashboard.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-8">
             {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2">
-                <AlertCircle size={16} /> {error}
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl px-5 py-4 text-xs font-black flex items-center gap-3 animate-in shake duration-500">
+                <AlertCircle size={18} /> {error}
               </div>
             )}
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="label-text">Identity / Email</label>
                 <input
                   type="email"
-                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-bold"
-                  placeholder="name@company.com"
+                  className="input py-4 bg-slate-900/50 border-white/5 focus:bg-slate-900 focus:border-brand-500"
+                  placeholder="agent@company.com"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
                 />
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1.5 px-1">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <label className="label-text">Access Key</label>
                   <button 
                     type="button"
                     onClick={() => setShowForgotMsg(true)}
-                    className="text-[10px] font-bold text-brand-600 hover:text-brand-700 uppercase tracking-tight"
+                    className="text-[10px] font-black text-brand-400 hover:text-brand-300 uppercase tracking-widest transition-colors"
                   >
-                    Forgot Password?
+                    Reset?
                   </button>
                 </div>
                 <input
                   type="password"
-                  className="input py-3.5 px-4 bg-gray-50 border-gray-200 focus:bg-white font-bold"
+                  className="input py-4 bg-slate-900/50 border-white/5 focus:bg-slate-900 focus:border-brand-500"
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -140,24 +139,32 @@ export default function LoginPage() {
             </div>
 
             {showForgotMsg && (
-              <div className="bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-4 py-3 text-xs font-bold leading-relaxed animate-in fade-in slide-in-from-top-2">
-                Please contact your administrator to reset your password.
+              <div className="bg-brand-500/10 border border-brand-500/20 text-brand-400 rounded-2xl px-5 py-4 text-[11px] font-bold leading-relaxed animate-in slide-in-from-top-2 duration-300">
+                Administrative security protocol: Please contact your system lead to reset your credentials.
               </div>
             )}
 
             <button 
               type="submit" 
-              className="btn-primary w-full py-4 text-base shadow-xl shadow-brand-100 font-bold tracking-tight transition-all active:scale-[0.99] mt-2" 
+              className="btn-primary w-full py-4 text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand-500/20 active:scale-[0.98] transition-all" 
               disabled={loading}
             >
-              {loading ? 'Authenticating…' : 'Sign In'}
+              {loading ? 'Authenticating…' : 'Access Dashboard'}
             </button>
           </form>
 
-          <div className="mt-12 pt-10 border-t border-gray-100 text-center">
-            <p className="text-xs text-gray-400 font-medium">
-              Secured by Converso Enterprise Auth
+          <div className="flex flex-col items-center gap-6">
+            <p className="text-xs text-slate-500 font-medium">
+              New to the platform?{' '}
+              <Link href="/register" className="text-brand-400 font-black hover:text-brand-300 transition-colors ml-1 uppercase tracking-widest">
+                Request Access
+              </Link>
             </p>
+            <div className="flex items-center gap-3 opacity-30">
+              <div className="h-px w-8 bg-slate-700" />
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Enterprise Guard v2.4</p>
+              <div className="h-px w-8 bg-slate-700" />
+            </div>
           </div>
         </div>
       </div>
@@ -165,15 +172,17 @@ export default function LoginPage() {
   )
 }
 
-function FeatureItem({ title, desc }: { title: string; desc: string }) {
+function FeatureItem({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-5 group">
       <div className="mt-1">
-        <CheckCircle2 size={20} className="text-brand-300" />
+        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-brand-400 group-hover:scale-110 group-hover:bg-brand-600 group-hover:text-white transition-all duration-500">
+          <Icon size={20} />
+        </div>
       </div>
       <div>
-        <h3 className="font-bold text-white text-sm mb-1">{title}</h3>
-        <p className="text-sm text-brand-100/70 font-medium leading-relaxed">{desc}</p>
+        <h3 className="font-black text-white text-sm uppercase tracking-widest mb-1">{title}</h3>
+        <p className="text-[13px] text-slate-400 font-medium leading-relaxed">{desc}</p>
       </div>
     </div>
   )
