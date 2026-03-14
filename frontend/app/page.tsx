@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { CheckCircle2, MessageSquare, Calendar, Zap, ShieldCheck, Brain, Phone, ArrowRight, Command, Sparkles, TrendingUp, ShieldAlert } from 'lucide-react'
+import { CheckCircle2, MessageSquare, Calendar, Zap, ShieldCheck, Brain, Phone, ArrowRight, Command, Sparkles, TrendingUp, ShieldAlert, Users } from 'lucide-react'
 
 export default function LandingPage() {
   return (
