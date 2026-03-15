@@ -103,6 +103,13 @@ class WorkflowService:
             is_requesting_call = analysis.get("intent") == "request_call"
             is_scheduling = analysis.get("intent") == "schedule_meeting"
             
+            # Keyword-based override for immediate calls
+            body_lower = message_body.lower()
+            if any(phrase in body_lower for phrase in ["call me", "talk now", "can we talk", "on the phone", "call me now"]):
+                if not any(future in body_lower for future in ["later", "tomorrow", "next week", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
+                    is_requesting_call = True
+                    is_scheduling = False
+            
             if is_requesting_call:
                 # Generate summary for Vapi
                 summary = await self.openai.summarize_conversation(messages + [inbound_msg])
