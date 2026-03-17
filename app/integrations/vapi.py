@@ -60,9 +60,11 @@ class VAPIService:
                         "call": response.json()
                     }
                 else:
+                    error_detail = response.text
+                    logger.error(f"VAPI call creation error (Status {response.status_code}): {error_detail}")
                     return {
                         "success": False,
-                        "error": response.text,
+                        "error": error_detail,
                         "status_code": response.status_code
                     }
         except Exception as e:
@@ -166,9 +168,11 @@ class VAPIService:
                         "assistant": response.json()
                     }
                 else:
+                    error_detail = response.text
+                    logger.error(f"VAPI create assistant error (Status {response.status_code}): {error_detail}")
                     return {
                         "success": False,
-                        "error": response.text
+                        "error": error_detail
                     }
         except Exception as e:
             logger.error(f"VAPI create assistant error: {e}")

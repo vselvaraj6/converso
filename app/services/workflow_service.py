@@ -153,7 +153,7 @@ class WorkflowService:
             
             # 10. Send reply
             send_result = await self.twilio.send_sms(
-                to=f"+1{phone}",
+                to=lead.phone,
                 body=reply_text,
                 from_=company.twilio_phone_number or settings.twilio_phone_number
             )
@@ -270,9 +270,8 @@ class WorkflowService:
                 return {"success": False, "error": "Lead not found"}
             
             # Send via Twilio
-            phone = lead.phone.replace("+1", "").replace("-", "").replace(" ", "")
             send_result = await self.twilio.send_sms(
-                to=f"+1{phone}",
+                to=lead.phone,
                 body=content
             )
             
@@ -424,7 +423,7 @@ class WorkflowService:
                 assistant_id = assistant_result["assistant"]["id"]
             
             call_result = await self.vapi.create_phone_call(
-                phone_number=f"+1{lead.phone}",
+                phone_number=lead.phone,
                 assistant_id=assistant_id,
                 phone_number_id=overrides.get("phoneNumberId") if overrides else settings.vapi_phone_number_id,
                 variables=overrides.get("variableValues") if overrides else None,
@@ -463,7 +462,7 @@ class WorkflowService:
             else:
                 message_body = await self.openai.generate_cold_outreach(lead, {"name": company.name, "ai_config": company.ai_config}, agent_name=agent_name, company_name=company.name)
             
-            send_result = await self.twilio.send_sms(to=f"+1{lead.phone}", body=message_body, from_=company.twilio_phone_number or settings.twilio_phone_number)
+            send_result = await self.twilio.send_sms(to=lead.phone, body=message_body, from_=company.twilio_phone_number or settings.twilio_phone_number)
             if send_result["success"]:
                 thread = await self._get_or_create_thread(lead.id, "sms")
                 self.db.add(Message(

@@ -30,6 +30,6 @@ celery_app.conf.beat_schedule = {
     },
     "process-new-leads": {
         "task": "app.tasks.lead_tasks.process_new_leads", 
-        "schedule": crontab(minute="*/5"),  # Every 5 minutes
+        "schedule": crontab(minute="*"),  # Every minute
     },
-}
+    }

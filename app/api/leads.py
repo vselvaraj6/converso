@@ -261,7 +261,12 @@ async def import_leads(
         try:
             name = str(row['name']).strip()
             email = str(row['email']).strip()
-            phone = str(row['phone']).strip().replace("+1", "").replace("-", "").replace(" ", "")
+            phone = str(row['phone']).strip().replace("-", "").replace(" ", "")
+            if not phone.startswith("+"):
+                if len(phone) == 10:
+                    phone = f"+1{phone}"
+                elif len(phone) == 11 and phone.startswith("1"):
+                    phone = f"+{phone}"
             
             if not name or name == 'nan' or not email or email == 'nan' or not phone or phone == 'nan':
                 errors.append(f"Row {i+2}: Name, email, and phone are required")
@@ -296,6 +301,9 @@ async def import_leads(
 
     if success_count > 0:
         await db.commit()
+        # Trigger scan for new leads immediately
+        from app.tasks.lead_tasks import process_new_leads
+        process_new_leads.delay()
     
     return {"success_count": success_count, "error_count": len(errors), "errors": errors[:10]}
 
@@ -323,7 +331,13 @@ async def update_lead(
     if data.email is not None:
         lead.email = data.email
     if data.phone is not None:
-        lead.phone = data.phone.replace("+1", "").replace("-", "").replace(" ", "")
+        phone = data.phone.replace("-", "").replace(" ", "")
+        if not phone.startswith("+"):
+            if len(phone) == 10:
+                phone = f"+1{phone}"
+            elif len(phone) == 11 and phone.startswith("1"):
+                phone = f"+{phone}"
+        lead.phone = phone
     if data.title is not None:
         lead.title = data.title
     if data.company is not None:
@@ -391,8 +405,13 @@ async def create_lead(
                 detail=f"Lead with email {lead_data.email} already exists"
             )
         
-        # Normalize phone number (remove +1 if present)
-        phone = lead_data.phone.replace("+1", "").replace("-", "").replace(" ", "")
+        # Normalize phone number to E.164 format
+        phone = lead_data.phone.replace("-", "").replace(" ", "")
+        if not phone.startswith("+"):
+            if len(phone) == 10:
+                phone = f"+1{phone}"
+            elif len(phone) == 11 and phone.startswith("1"):
+                phone = f"+{phone}"
         
         # Create lead
         lead = Lead(
@@ -413,6 +432,10 @@ async def create_lead(
         db.add(lead)
         await db.commit()
         await db.refresh(lead)
+        
+        # Trigger outreach task immediately
+        from app.tasks.lead_tasks import process_new_lead
+        process_new_lead.delay(str(lead.id))
         
         return LeadResponse(
             id=str(lead.id),
