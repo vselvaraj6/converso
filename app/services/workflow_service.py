@@ -103,21 +103,31 @@ class WorkflowService:
             is_requesting_call = analysis.get("intent") == "request_call"
             is_scheduling = analysis.get("intent") == "schedule_meeting"
             
-            # Keyword-based override for immediate calls
+            # Aggressive keyword-based override for immediate calls
             body_lower = message_body.lower()
-            if any(phrase in body_lower for phrase in ["call me", "talk now", "can we talk", "on the phone", "call me now"]):
-                if not any(future in body_lower for future in ["later", "tomorrow", "next week", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]):
+            call_keywords = ["call me", "talk now", "can we talk", "on the phone", "phone call", "call now"]
+            if any(kw in body_lower for kw in call_keywords):
+                future_keywords = ["later", "tomorrow", "next week", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "at ", "pm", "am"]
+                if not any(fw in body_lower for fw in future_keywords):
+                    logger.info(f"Keyword override triggered for lead {lead.id}: {message_body}")
                     is_requesting_call = True
                     is_scheduling = False
             
+            logger.info(f"Lead {lead.id} interaction: intent={analysis.get('intent')}, is_requesting_call={is_requesting_call}, is_scheduling={is_scheduling}")
+
             if is_requesting_call:
                 # Generate summary for Vapi
                 summary = await self.openai.summarize_conversation(messages + [inbound_msg])
                 
                 # Initiate voice call
+                # Fallback to provided ID if setting is empty
+                vapi_phone_id = settings.vapi_phone_number_id or "979910e0-0199-49f3-b5c2-41abd1328378"
                 call_result = await self._initiate_voice_call(
                     lead, 
-                    overrides={"variableValues": {"sms_context": summary}}
+                    overrides={
+                        "variableValues": {"sms_context": summary},
+                        "phoneNumberId": vapi_phone_id
+                    }
                 )
                 
                 if call_result["success"]:
@@ -416,7 +426,7 @@ class WorkflowService:
             call_result = await self.vapi.create_phone_call(
                 phone_number=f"+1{lead.phone}",
                 assistant_id=assistant_id,
-                phone_number_id=settings.vapi_phone_number_id or None,
+                phone_number_id=overrides.get("phoneNumberId") if overrides else settings.vapi_phone_number_id,
                 variables=overrides.get("variableValues") if overrides else None,
                 webhook_url=f"{settings.app_url}/api/webhooks/vapi/inbound"
             )

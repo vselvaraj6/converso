@@ -94,15 +94,11 @@ Current Date: {current_date}
             Extract:
 1. Sentiment (positive/neutral/negative)
 2. Intent (schedule_meeting/ask_question/not_interested/request_info/request_call/other). 
-   Set to 'request_call' IF:
-   - The lead expresses interest in talking on the phone NOW or ASAP.
-   - The lead asks "can you call me?" or "call me" without specifying a future time.
-   - The lead wants to switch from SMS to voice immediately.
-   Set to 'schedule_meeting' IF:
-   - The lead expresses interest in talking, meeting, or calling at a SPECIFIC FUTURE time.
-   - The lead mentions their availability for later (e.g., 'I am free tomorrow').
-   - The lead provides a specific future date or time.
-   *Priority: If the lead just says "call me" or "can we talk?", prefer 'request_call'.*
+   - 'request_call': Lead wants to talk on the phone NOW, ASAP, or "call me".
+     Example: "Call me", "Can you call me?", "I want to talk on the phone", "Let's chat now".
+   - 'schedule_meeting': Lead wants to talk at a SPECIFIC FUTURE time.
+     Example: "Call me tomorrow", "Can we talk on Monday?", "I'm free at 2pm".
+   *CRITICAL: If the lead does not specify a future time, assume they want a call NOW and set to 'request_call'.*
 3. Urgency level (high/medium/low)
 4. Any datetime mentioned. If relative like 'tomorrow' or 'next Monday', convert to ISO date string (YYYY-MM-DD) based on current date {current_date}. 
    If a specific time is mentioned, include it in ISO format (YYYY-MM-DDTHH:MM:SSZ).
