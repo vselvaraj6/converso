@@ -217,18 +217,17 @@ export default function LeadDetailPage() {
         <div className="lg:col-span-1 space-y-6 order-1">
           <div className="card p-8 border-none shadow-2xl" style={{ backgroundColor: 'var(--surface)' }}>
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 border-b pb-4 flex items-center gap-2" style={{ borderColor: 'var(--divider)' }}>
-              <Zap size={14} className="text-brand-500" /> Profiling Data
+              <Zap size={14} className="text-brand-500" /> Lead Information
             </h3>
-            
+
             <div className="space-y-6">
               <InfoRow icon={Mail}      label="Email"    value={lead.email} />
               <InfoRow icon={Phone}     label="Mobile"   value={lead.phone} />
               <InfoRow icon={Building2} label="Company"  value={lead.company} />
-              <InfoRow icon={Tag}       label="Sector"   value={lead.industry} />
+              <InfoRow icon={Tag}       label="Industry" value={lead.industry} />
               <InfoRow icon={MessageSquare} label="Interest" value={lead.interest} />
-              <InfoRow icon={Clock}     label="Cycle"    value={lead.nudge_interval_days ? `${lead.nudge_interval_days} days` : 'Not set'} />
+              <InfoRow icon={Clock}     label="Follow-up" value={lead.nudge_interval_days ? `${lead.nudge_interval_days} days` : 'Not set'} />
             </div>
-
             <div className="mt-8 pt-6 border-t" style={{ borderColor: 'var(--divider)' }}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 block">Update Pipeline</label>
               <select 
@@ -251,7 +250,7 @@ export default function LeadDetailPage() {
           {lead.sentiment_score && (
             <div className="card p-8 bg-slate-900 border-none shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-brand-600 blur-[80px] opacity-30" />
-              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 relative z-10">AI Insights Core</h3>
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6 relative z-10">AI Lead Analysis</h3>
               
               <div className="space-y-5 relative z-10">
                 <div className="flex justify-between items-center">
@@ -410,7 +409,7 @@ export default function LeadDetailPage() {
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shift + Enter for new line</p>
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Encrypted SMS Gateway</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Secure SMS History</p>
                 </div>
               </div>
             </div>

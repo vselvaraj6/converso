@@ -94,24 +94,24 @@ export default function SettingsPage() {
     })
   }
 
-  if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Accessing Terminal Logic…</div>
+  if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Loading settings…</div>
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 pb-20 font-sans">
       <div className="space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2 border" style={{ backgroundColor: 'var(--surface-subtle)', borderColor: 'var(--divider)' }}>
           <Settings2 size={12} className="text-brand-400" />
-          Configuration Center
+          General Settings
         </div>
         <h1 className="text-4xl font-black text-[var(--text-primary)] tracking-tight leading-none">
-          System Parameters
+          Account & Team
         </h1>
-        <p className="text-slate-500 text-sm font-medium">Fine-tune your personal profile and global AI orchestration logic.</p>
+        <p className="text-slate-500 text-sm font-medium">Fine-tune your personal profile and company AI settings.</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-8">
         {/* Account */}
-        <Section title="Profile" icon={UserIcon} description="Personal Identity Matrix">
+        <Section title="Profile" icon={UserIcon} description="Your contact information">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-1">
               <span className="label-text">Identity</span>
@@ -137,15 +137,16 @@ export default function SettingsPage() {
 
         {/* Master Team Link (Admin Only) */}
         {(user?.role === 'admin' || user?.is_superuser) && (
-          <Section title="Team Hub" icon={Users} description="Master Scheduling Protocol">
-            <div className="space-y-6">
-              <div className="bg-brand-500/5 border border-brand-500/10 rounded-[24px] p-6">
-                <p className="text-xs text-brand-400 font-bold leading-relaxed italic">
-                  Define the master Cal.com Round Robin endpoint. This directive will be used globally across all autonomous agents unless overridden by individual personnel.
+          <Section title="Team Hub" icon={Users} description="Team Scheduling Settings">
+            <div className="space-y-4">
+              <div className="p-6 rounded-3xl border border-brand-500/20 bg-brand-500/5">
+                <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  Set your Cal.com Team Link here. This link will be used for all agents unless they set their own in their profile.
                 </p>
+
               </div>
               <div className="space-y-2">
-                <label className="label-text text-brand-400">Master Routing URL</label>
+                <label className="label-text text-brand-400">Team Booking Link</label>
                 <div className="relative">
                   <Globe size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                   <input 
@@ -178,8 +179,9 @@ export default function SettingsPage() {
                 <div className={clsx("w-1.5 h-1.5 rounded-full shadow-[0_0_8px]", manualCalUrl ? "bg-emerald-500 shadow-emerald-500/50" : "bg-slate-700")} />
                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                   {manualCalUrl 
-                    ? "Protocol: Manual Link Active" 
-                    : "Protocol: Defaulting to Company Master"}
+                    ? "Status: Using personal link"
+                    : "Status: Using company default"}
+
                 </p>
               </div>
             </div>
@@ -204,38 +206,39 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="label-text flex items-center gap-2">
-                    <Zap size={12} className="text-brand-400" /> Core Memory
+                    <Zap size={12} className="text-brand-400" /> Company Knowledge
                   </label>
                   <textarea
                     className="input min-h-[120px] bg-[var(--input-bg)] resize-none text-xs leading-relaxed"
                     value={company?.ai_config.company_memory || ''}
                     onChange={e => updateAI('company_memory', e.target.value)}
-                    placeholder="Load corporate identity here..."
+                    placeholder="Tell the AI about your company, products, and any specific knowledge it should have..."
                   />
                 </div>
               </div>
             </Section>
 
             <div className="space-y-8">
-              <Section title="Directives" icon={Bot} description="Tone & Personality">
+              <Section title="AI Behavior" icon={Bot} description="Tone & Personality">
                 <div className="space-y-2">
-                  <label className="label-text">Output Frequency</label>
-                  <select 
+                  <label className="label-text">Conversation Tone</label>
+                  <select
                     className="input font-black text-[11px] uppercase tracking-widest bg-[var(--input-bg)] appearance-none"
                     value={company?.ai_config.tone || 'friendly and professional'}
                     onChange={e => updateAI('tone', e.target.value)}
                   >
-                    <option value="friendly and professional">Professional Hub</option>
-                    <option value="formal">Enterprise Rigid</option>
-                    <option value="casual">Casual Logic</option>
-                    <option value="concise">Binary / Direct</option>
+                    <option value="friendly and professional">Friendly & Professional</option>
+                    <option value="formal">Formal & Business</option>
+                    <option value="casual">Casual & Friendly</option>
+                    <option value="concise">Brief & Direct</option>
                   </select>
-                </div>
-              </Section>
+                  </div>
+                  </Section>
 
-              <Section title="Gateway" icon={Phone} description="Communication Bridge">
-                <div className="space-y-2">
-                  <label className="label-text">Master Phone Node</label>
+                  <Section title="Phone Settings" icon={Phone} description="Connect your business number">
+                  <div className="space-y-2">
+                  <label className="label-text">Business Phone Number</label>
+
                   <input 
                     className="input font-mono text-xs font-black bg-[var(--input-bg)] text-brand-400 tracking-widest" 
                     value={company?.twilio_phone_number || ''} 
