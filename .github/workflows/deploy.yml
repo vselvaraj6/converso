@@ -5,15 +5,15 @@ on:
     branches:
       - main
 
+env:
+  COMPOSE_PROJECT_NAME: converso
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     name: Deploy
     runs-on: self-hosted
     timeout-minutes: 15
-
-    env:
-      COMPOSE_PROJECT_NAME: converso
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout latest code
