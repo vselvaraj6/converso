@@ -35,6 +35,8 @@ def process_new_lead(self, lead_id: str):
 
             service = WorkflowService(db)
             send_result = await service._send_outbound_sms(lead)
+            if not send_result.get("success"):
+                raise Exception(f"SMS failed: {send_result.get('error', 'unknown')}")
             await db.commit()
             return send_result
 

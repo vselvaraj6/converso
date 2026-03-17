@@ -450,6 +450,9 @@ class WorkflowService:
     async def _send_outbound_sms(self, lead: Lead) -> Dict:
         try:
             company = await self.db.get(Company, lead.company_id)
+            if not company:
+                logger.error(f"Company {lead.company_id} not found for lead {lead.id}")
+                return {"success": False, "error": "Company not found"}
             agent_name = "your representative"
             if lead.assigned_agent_id:
                 agent = await self.db.get(User, lead.assigned_agent_id)

@@ -7,6 +7,7 @@ Provides RESTful endpoints for retrieving and managing lead information.
 from typing import Dict, Any, Optional, List
 from uuid import UUID
 import io
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
@@ -406,13 +407,16 @@ async def create_lead(
             )
         
         # Normalize phone number to E.164 format
-        phone = lead_data.phone.replace("-", "").replace(" ", "")
+        has_plus = lead_data.phone.startswith("+")
+        phone = re.sub(r'\D', '', lead_data.phone)
+        if has_plus:
+            phone = '+' + phone
         if not phone.startswith("+"):
             if len(phone) == 10:
                 phone = f"+1{phone}"
             elif len(phone) == 11 and phone.startswith("1"):
                 phone = f"+{phone}"
-        
+
         # Create lead
         lead = Lead(
             company_id=current_user.company_id,
@@ -432,12 +436,8 @@ async def create_lead(
         db.add(lead)
         await db.commit()
         await db.refresh(lead)
-        
-        # Trigger outreach task immediately
-        from app.tasks.lead_tasks import process_new_lead
-        process_new_lead.delay(str(lead.id))
-        
-        return LeadResponse(
+
+        lead_response = LeadResponse(
             id=str(lead.id),
             name=lead.name,
             email=lead.email,
@@ -445,12 +445,21 @@ async def create_lead(
             status=lead.status,
             created_at=lead.created_at.isoformat()
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+    # Fire task AFTER successful lead creation — outside the rollback scope
+    try:
+        from app.tasks.lead_tasks import process_new_lead
+        process_new_lead.delay(str(lead.id))
+    except Exception as e:
+        logger.warning(f"Could not queue outreach task for lead {lead.id}: {e}")
+
+    return lead_response
 
 @router.post("/{lead_id}/sms")
 async def send_manual_sms(
