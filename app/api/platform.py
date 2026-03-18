@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
@@ -29,6 +29,19 @@ class CompanyUpdateAdmin(BaseModel):
     twilio_phone_number: str | None = None
     cal_booking_url: str | None = None
     calcom_base_url: str | None = None
+
+class AiConfigUpdate(BaseModel):
+    prompt_template: Optional[str] = None
+    temperature: Optional[float] = None
+    tone: Optional[str] = None
+    industry_lingo: Optional[str] = None
+    company_memory: Optional[str] = None
+
+
+class CallConfigUpdate(BaseModel):
+    max_attempts: Optional[int] = None
+    hours_between_attempts: Optional[int] = None
+
 
 class UserCreateAdmin(BaseModel):
     email: EmailStr
@@ -225,6 +238,89 @@ async def get_platform_usage(
         "top_ten_companies": top_companies,
         "volume_history": volume_history
     }
+
+@router.get("/campaign-templates")
+async def get_campaign_templates(
+    admin: User = Depends(get_current_superuser)
+):
+    """Return the full mortgage + refi campaign message sequences for admin preview."""
+    from app.config.mortgage_campaign import (
+        MORTGAGE_INITIAL, REFI_INITIAL,
+        NURTURE_CAMPAIGN, MORTGAGE_NURTURE_DAY6, REFI_NURTURE_DAY6,
+    )
+
+    INITIAL_TIMINGS = [
+        "Day 1 — 1st contact",
+        "Day 1 — +15 min",
+        "Day 1 — +45 min",
+        "Day 1 — +1 hr",
+        "Day 2",
+        "Day 3",
+        "Day 5",
+        "Day 6",
+        "Day 7",
+    ]
+    NURTURE_TIMINGS = [
+        "Day 2", "Day 4", "Day 6", "Day 10", "Day 13", "Day 17",
+        "Day 21", "Day 24", "Day 28", "Day 34", "Day 43", "Day 55",
+        "Day 69", "Day 80", "Day 97", "Day 110", "Day 125", "Day 140",
+        "Day 153", "Day 168", "Day 180",
+    ]
+
+    messages = []
+    for i, timing in enumerate(INITIAL_TIMINGS):
+        messages.append({
+            "attempt": i + 1,
+            "phase": "Initial",
+            "timing": timing,
+            "mortgage": MORTGAGE_INITIAL[i],
+            "refi": REFI_INITIAL[i],
+        })
+    for i, timing in enumerate(NURTURE_TIMINGS):
+        mort_msg = NURTURE_CAMPAIGN[i] if NURTURE_CAMPAIGN[i] is not None else MORTGAGE_NURTURE_DAY6
+        refi_msg = NURTURE_CAMPAIGN[i] if NURTURE_CAMPAIGN[i] is not None else REFI_NURTURE_DAY6
+        messages.append({
+            "attempt": len(INITIAL_TIMINGS) + i + 1,
+            "phase": "Nurture",
+            "timing": timing,
+            "mortgage": mort_msg,
+            "refi": refi_msg,
+        })
+
+    return {"messages": messages, "total": len(messages)}
+
+
+@router.patch("/companies/{company_id}/ai-config")
+async def update_company_ai_config(
+    company_id: UUID,
+    body: AiConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superuser),
+):
+    """Update a company's AI configuration (Platform Admin only)"""
+    company = await db.get(Company, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    company.ai_config = {**(company.ai_config or {}), **body.dict(exclude_none=True)}
+    await db.commit()
+    return {"status": "updated", "ai_config": company.ai_config}
+
+
+@router.patch("/companies/{company_id}/call-config")
+async def update_company_call_config(
+    company_id: UUID,
+    body: CallConfigUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_superuser),
+):
+    """Update a company's call retry configuration (Platform Admin only)"""
+    company = await db.get(Company, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    company.call_config = {**(company.call_config or {}), **body.dict(exclude_none=True)}
+    await db.commit()
+    return {"status": "updated", "call_config": company.call_config}
+
 
 @router.delete("/companies/{company_id}")
 async def delete_company(

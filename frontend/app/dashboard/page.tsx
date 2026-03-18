@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { getStoredUser, listCompanies, getLeads, getMeetings, type Lead, type Meeting } from '@/lib/api'
+import { getStoredUser, getLeads, getMeetings, getAnalyticsOverview, type Lead, type Meeting, type AnalyticsOverview } from '@/lib/api'
 import {
   Users,
   Zap,
@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   Activity,
   Command,
-  ArrowRight
+  ArrowRight,
+  AlertTriangle,
 } from 'lucide-react'
 import Link from 'next/link'
 import clsx from 'clsx'
@@ -22,28 +23,29 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [meetings, setMeetings] = useState<Meeting[]>([])
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setUser(getStoredUser())
     Promise.all([
       getLeads({ limit: 5 }),
-      getMeetings({ limit: 5, upcoming_only: true })
-    ]).then(([l, m]) => {
+      getMeetings({ limit: 5, upcoming_only: true }),
+      getAnalyticsOverview(),
+    ]).then(([l, m, a]) => {
       setLeads(l.leads)
       setMeetings(m.meetings)
+      setAnalytics(a)
     }).finally(() => setLoading(false))
   }, [])
 
-  const leadTrendData = [
-    { day: 'Mon', leads: 4 },
-    { day: 'Tue', leads: 7 },
-    { day: 'Wed', leads: 5 },
-    { day: 'Thu', leads: 9 },
-    { day: 'Fri', leads: 12 },
-    { day: 'Sat', leads: 8 },
-    { day: 'Sun', leads: 11 },
-  ]
+  // Last 7 daily entries from analytics, mapped to { day, leads }
+  const leadTrendData = analytics
+    ? analytics.daily_leads.slice(-7).map(d => ({
+        day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        leads: d.leads,
+      }))
+    : []
 
   if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Syncing Hub Data…</div>
 
@@ -62,11 +64,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Active Leads" value={leads.length} icon={Users} color="from-brand-500 to-indigo-600" trend="+12%" />
-        <StatCard title="Meetings" value={meetings.length} icon={CalendarIcon} color="from-emerald-500 to-teal-600" trend="+4" />
-        <StatCard title="Conversion" value="24%" icon={Zap} color="from-amber-500 to-orange-600" trend="+2.1%" />
-        <StatCard title="Response Time" value="1.2m" icon={Clock} color="from-rose-500 to-pink-600" trend="-15%" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatCard title="Total Leads" value={analytics?.kpis.total_leads ?? leads.length} icon={Users} color="from-brand-500 to-indigo-600" trend="" />
+        <StatCard title="Meetings" value={meetings.length} icon={CalendarIcon} color="from-emerald-500 to-teal-600" trend="" />
+        <StatCard title="Conversion" value={`${analytics?.kpis.conversion_rate_pct ?? 0}%`} icon={Zap} color="from-amber-500 to-orange-600" trend="" />
+        <StatCard title="SMS Sent" value={analytics?.kpis.sms_sent ?? 0} icon={Clock} color="from-rose-500 to-pink-600" trend="" />
+        <Link href="/dashboard/leads?needs_human_review=true" className="block">
+          <StatCard
+            title="Needs Attention"
+            value={analytics?.kpis.flagged_for_review ?? 0}
+            icon={AlertTriangle}
+            color={(analytics?.kpis.flagged_for_review ?? 0) > 0 ? "from-red-500 to-rose-600" : "from-slate-500 to-slate-600"}
+            trend=""
+          />
+        </Link>
       </div>
 
       {/* Lead Trend Chart */}

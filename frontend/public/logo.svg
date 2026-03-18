@@ -1,5 +1,4 @@
 <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="200" height="200" rx="40" fill="white"/>
-  <path d="M50 60C50 48.9543 58.9543 40 70 40H130C141.046 40 150 48.9543 150 60V120C150 131.046 141.046 140 130 140H85L55 165V140C52.2386 140 50 137.761 50 135V60Z" fill="#0284C7"/>
-  <path d="M115 75C115 72.2386 112.761 70 110 70H90C81.7157 70 75 76.7157 75 85V115C75 123.284 81.7157 130 90 130H110C112.761 130 115 127.761 115 125V115H105V120H90C87.2386 120 85 117.761 85 115V85C85 82.2386 87.2386 80 90 80H110V85H115V75Z" fill="white"/>
+  <rect width="200" height="200" rx="40" fill="#7c3aed"/>
+  <text x="100" y="138" font-family="system-ui, -apple-system, sans-serif" font-size="112" font-weight="900" fill="white" text-anchor="middle" letter-spacing="-4">C</text>
 </svg>

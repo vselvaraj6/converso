@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     celery_broker_url: str = Field(default="redis://localhost:6379/1", env="CELERY_BROKER_URL")
     celery_result_backend: str = Field(default="redis://localhost:6379/2", env="CELERY_RESULT_BACKEND")
     
+    # Email (Resend)
+    resend_api_key: str = Field(default="", env="RESEND_API_KEY")
+    email_from_domain: str = Field(default="converso.ai", env="EMAIL_FROM_DOMAIN")
+
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     log_format: str = Field(default="json", env="LOG_FORMAT")

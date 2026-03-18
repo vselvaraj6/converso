@@ -123,21 +123,26 @@ async def list_leads(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=100, description="Maximum records to return"),
     status: Optional[LeadStatus] = Query(None, description="Filter by lead status"),
+    needs_human_review: Optional[bool] = Query(None, description="Filter flagged leads needing human attention"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user), # ANY ROLE
 ) -> LeadListResponse:
     """
     List leads with pagination and optional filtering.
     """
-    # Build query with optional status filter
+    # Build query with optional filters
     query = select(Lead).where(Lead.company_id == current_user.company_id)
     if status:
         query = query.where(Lead.status == status)
-    
+    if needs_human_review is not None:
+        query = query.where(Lead.needs_human_review == needs_human_review)
+
     # Get total count for pagination
     count_query = select(func.count()).select_from(Lead).where(Lead.company_id == current_user.company_id)
     if status:
         count_query = count_query.where(Lead.status == status)
+    if needs_human_review is not None:
+        count_query = count_query.where(Lead.needs_human_review == needs_human_review)
     
     total_result = await db.execute(count_query)
     total = total_result.scalar()
@@ -159,9 +164,11 @@ async def list_leads(
             "phone": lead.phone,
             "company": lead.lead_company,
             "status": lead.status,
+            "source": lead.source,
             "last_contacted": lead.last_contacted.isoformat() if lead.last_contacted else None,
             "sentiment": lead.sentiment_score.get("latest") if lead.sentiment_score else None,
             "nudge_interval_days": lead.nudge_interval_days,
+            "needs_human_review": lead.needs_human_review,
             "created_at": lead.created_at.isoformat()
         } for lead in leads],
         total=total,
@@ -212,6 +219,8 @@ async def get_lead(
         "lead_score": lead.lead_score,
         "days_since_contact": lead.days_since_contact,
         "is_qualified": lead.is_qualified,
+        "needs_human_review": lead.needs_human_review,
+        "sms_fallback_sent": lead.sms_fallback_sent,
         "created_at": lead.created_at.isoformat(),
         "updated_at": lead.updated_at.isoformat()
     }
@@ -361,6 +370,42 @@ async def update_lead(
         status=lead.status,
         created_at=lead.created_at.isoformat()
     )
+
+
+@router.post("/{lead_id}/escalate")
+async def escalate_lead(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_write_access),
+):
+    """Flag a lead as needing human review (manual escalation)."""
+    result = await db.execute(
+        select(Lead).where(Lead.id == lead_id, Lead.company_id == current_user.company_id)
+    )
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    lead.needs_human_review = True
+    await db.commit()
+    return {"status": "escalated", "lead_id": str(lead_id)}
+
+
+@router.post("/{lead_id}/resolve-review")
+async def resolve_lead_review(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_write_access),
+):
+    """Clear the human review flag after an agent has handled the lead."""
+    result = await db.execute(
+        select(Lead).where(Lead.id == lead_id, Lead.company_id == current_user.company_id)
+    )
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    lead.needs_human_review = False
+    await db.commit()
+    return {"status": "resolved", "lead_id": str(lead_id)}
 
 
 @router.delete("/{lead_id}")

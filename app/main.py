@@ -4,7 +4,7 @@ import logging
 
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api import auth, health, webhooks, leads, messages, meetings, platform
+from app.api import auth, health, webhooks, leads, messages, meetings, platform, analytics, campaigns, users
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,9 @@ app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(messages.router, prefix="/api/messages", tags=["messages"])
 app.include_router(meetings.router, prefix="/api/meetings", tags=["meetings"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(campaigns.router, prefix="/api/campaigns", tags=["campaigns"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
 
 @app.get("/")
 async def root():

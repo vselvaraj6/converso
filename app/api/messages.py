@@ -9,12 +9,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from pydantic import BaseModel
 
 from app.api.auth import get_current_user, require_read_access
 from app.core.database import get_db
-from app.models import Message, MessageDirection, ConversationThread, User
+from app.models import Message, MessageDirection, ConversationThread, User, Lead
 
 router = APIRouter()
 
@@ -176,3 +176,39 @@ async def get_thread_messages(
         total=len(messages),
         has_more=False  # All thread messages returned
     )
+
+
+@router.get("/recent-ai")
+async def get_recent_ai_messages(
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Return the most recent inbound messages that have AI classification metadata."""
+    cid = current_user.company_id
+
+    result = await db.execute(
+        select(Message, Lead.name.label("lead_name"))
+        .join(Lead, Lead.id == Message.lead_id)
+        .where(
+            Message.company_id == cid,
+            Message.direction == MessageDirection.INBOUND,
+            text("messages.ai_metadata->>'intent' IS NOT NULL"),
+        )
+        .order_by(Message.created_at.desc())
+        .limit(limit)
+    )
+
+    messages = []
+    for msg, lead_name in result.all():
+        messages.append({
+            "id": str(msg.id),
+            "lead_id": str(msg.lead_id),
+            "lead_name": lead_name,
+            "channel": msg.channel,
+            "content": msg.content,
+            "ai_metadata": msg.ai_metadata,
+            "created_at": msg.created_at.isoformat(),
+        })
+
+    return {"messages": messages}

@@ -1,25 +1,16 @@
 'use client';
-import { useState } from 'react';
-import { Search, Plus, Zap, Mail, MessageSquare, BarChart3, Calendar, Filter, Users, Megaphone, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Plus, Zap, Mail, MessageSquare, BarChart3, Users, Megaphone, X, Filter, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-
-interface Campaign {
-  id: number;
-  name: string;
-  type: string;
-  status: string;
-  leads: number;
-  openRate: string;
-  conversionRate: string;
-  lastRun: string;
-}
+import { getCampaigns, createCampaign, deleteCampaign, type Campaign, type CampaignListResponse } from '@/lib/api';
 
 const statusBadge = (status: string) => {
   if (status === 'active') return 'px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-400';
   if (status === 'draft') return 'px-2.5 py-1 rounded-full text-xs font-black bg-slate-500/10 text-slate-400';
-  if (status === 'scheduled') return 'px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/10 text-amber-400';
+  if (status === 'paused') return 'px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/10 text-amber-400';
+  if (status === 'completed') return 'px-2.5 py-1 rounded-full text-xs font-black bg-brand-500/10 text-brand-400';
   return 'px-2.5 py-1 rounded-full text-xs font-black bg-slate-500/10 text-slate-400';
 };
 
@@ -27,42 +18,58 @@ const CampaignsPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({ name: '', type: 'Email', status: 'draft' });
+  const [newCampaign, setNewCampaign] = useState({ name: '', type: 'sms', status: 'draft', description: '' });
+  const [data, setData] = useState<CampaignListResponse>({ campaigns: [], total: 0, active_count: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    { id: 1, name: 'Welcome Sequence', type: 'Email', status: 'active', leads: 287, openRate: '36%', conversionRate: '12%', lastRun: '2 days ago' },
-    { id: 2, name: 'Follow-up SMS', type: 'SMS', status: 'active', leads: 153, openRate: '94%', conversionRate: '8%', lastRun: '1 day ago' },
-    { id: 3, name: 'Re-engagement', type: 'Email', status: 'draft', leads: 0, openRate: '0%', conversionRate: '0%', lastRun: 'Never' },
-    { id: 4, name: 'Abandoned Cart', type: 'SMS', status: 'active', leads: 95, openRate: '88%', conversionRate: '15%', lastRun: '3 hours ago' },
-    { id: 5, name: 'Testimonial Request', type: 'Email', status: 'scheduled', leads: 0, openRate: '0%', conversionRate: '0%', lastRun: 'Scheduled for tomorrow' },
-  ]);
+  useEffect(() => {
+    getCampaigns()
+      .then(setData)
+      .catch(() => toast.error('Failed to load campaigns'))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = campaigns.filter(c => {
+  const filtered = data.campaigns.filter(c => {
     const matchesSearch = search === '' || c.name.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newCampaign.name) { toast.error('Campaign name required'); return; }
-    setCampaigns(prev => [...prev, {
-      id: Date.now(), name: newCampaign.name, type: newCampaign.type, status: newCampaign.status,
-      leads: 0, openRate: '0%', conversionRate: '0%', lastRun: 'Never'
-    }]);
-    setNewCampaign({ name: '', type: 'Email', status: 'draft' });
-    setAddOpen(false);
-    toast.success('Campaign created', { description: newCampaign.name });
+    try {
+      const created = await createCampaign(newCampaign);
+      setData(prev => ({
+        ...prev,
+        campaigns: [created, ...prev.campaigns],
+        total: prev.total + 1,
+        active_count: created.status === 'active' ? prev.active_count + 1 : prev.active_count,
+      }));
+      setNewCampaign({ name: '', type: 'sms', status: 'draft', description: '' });
+      setAddOpen(false);
+      toast.success('Campaign created', { description: newCampaign.name });
+    } catch {
+      toast.error('Failed to create campaign');
+    }
   };
 
-  const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
-  const totalLeads = campaigns.reduce((s, c) => s + c.leads, 0);
-  const activeCampaignsWithLeads = campaigns.filter(c => c.leads > 0);
-  const avgOpenRate = activeCampaignsWithLeads.length
-    ? Math.round(activeCampaignsWithLeads.reduce((s, c) => s + parseInt(c.openRate), 0) / activeCampaignsWithLeads.length)
-    : 0;
-  const avgConversionRate = activeCampaignsWithLeads.length
-    ? Math.round(activeCampaignsWithLeads.reduce((s, c) => s + parseInt(c.conversionRate), 0) / activeCampaignsWithLeads.length)
-    : 0;
+  const handleDelete = async (id: string, name: string) => {
+    try {
+      await deleteCampaign(id);
+      setData(prev => ({
+        ...prev,
+        campaigns: prev.campaigns.filter(c => c.id !== id),
+        total: prev.total - 1,
+      }));
+      toast.success('Campaign deleted', { description: name });
+    } catch {
+      toast.error('Failed to delete campaign');
+    }
+  };
+
+  if (loading) {
+    return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Loading Campaigns…</div>;
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 font-sans pb-20">
@@ -87,12 +94,12 @@ const CampaignsPage = () => {
       </div>
 
       {/* Performance stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 gap-6">
         <div className="card p-6 border-none shadow-2xl">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="label-text mb-1">Active Campaigns</p>
-              <p className="text-3xl font-black text-[var(--text-primary)]">{activeCampaigns}</p>
+              <p className="text-3xl font-black text-[var(--text-primary)]">{data.active_count}</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
               <Megaphone className="w-6 h-6 text-white" />
@@ -102,33 +109,11 @@ const CampaignsPage = () => {
         <div className="card p-6 border-none shadow-2xl">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="label-text mb-1">Total Leads Reached</p>
-              <p className="text-3xl font-black text-[var(--text-primary)]">{totalLeads}</p>
+              <p className="label-text mb-1">Total Campaigns</p>
+              <p className="text-3xl font-black text-[var(--text-primary)]">{data.total}</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
               <Users className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-        <div className="card p-6 border-none shadow-2xl">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="label-text mb-1">Avg Open Rate</p>
-              <p className="text-3xl font-black text-[var(--text-primary)]">{avgOpenRate}%</p>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-              <Mail className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-        <div className="card p-6 border-none shadow-2xl">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="label-text mb-1">Avg Conversion Rate</p>
-              <p className="text-3xl font-black text-[var(--text-primary)]">{avgConversionRate}%</p>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-              <BarChart3 className="w-6 h-6 text-white" />
             </div>
           </div>
         </div>
@@ -159,7 +144,8 @@ const CampaignsPage = () => {
                 <option value="all">All</option>
                 <option value="active">Active</option>
                 <option value="draft">Drafts</option>
-                <option value="scheduled">Scheduled</option>
+                <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
               </select>
               <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
             </div>
@@ -168,55 +154,50 @@ const CampaignsPage = () => {
 
         {/* Header row */}
         <div className="grid grid-cols-12 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 rounded-xl mb-2" style={{ backgroundColor: 'var(--surface-subtle)' }}>
-          <div className="col-span-3">Name</div>
-          <div className="col-span-1">Type</div>
+          <div className="col-span-4">Name</div>
+          <div className="col-span-2">Type</div>
           <div className="col-span-2">Status</div>
-          <div className="col-span-1 text-right">Leads</div>
-          <div className="col-span-2 text-right">Open Rate</div>
-          <div className="col-span-2 text-right">Conv. Rate</div>
-          <div className="col-span-1 text-right">Last Run</div>
+          <div className="col-span-2 text-right">Leads</div>
+          <div className="col-span-2 text-right">Actions</div>
         </div>
 
         <div className="space-y-2">
           {filtered.map(campaign => (
             <div
               key={campaign.id}
-              className="card p-5 border-none shadow-2xl group relative overflow-hidden hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
-              onClick={() => toast(campaign.name, { description: `${campaign.type} campaign — ${campaign.status}` })}
+              className="card p-5 border-none shadow-2xl group relative overflow-hidden hover:-translate-y-0.5 transition-all duration-300"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-brand-500 to-indigo-600 opacity-0 group-hover:opacity-5 transition-opacity" />
               <div className="grid grid-cols-12 items-center relative">
-                <div className="col-span-3 flex items-center gap-2.5 font-black text-sm text-[var(--text-primary)]">
-                  {campaign.type === 'Email'
+                <div className="col-span-4 flex items-center gap-2.5 font-black text-sm text-[var(--text-primary)]">
+                  {campaign.type === 'email'
                     ? <Mail className="w-4 h-4 text-brand-400 flex-shrink-0" />
+                    : campaign.type === 'voice'
+                    ? <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
                     : <MessageSquare className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                   }
                   {campaign.name}
                 </div>
-                <div className="col-span-1 text-xs font-bold text-slate-500">{campaign.type}</div>
+                <div className="col-span-2 text-xs font-bold text-slate-500 capitalize">{campaign.type}</div>
                 <div className="col-span-2">
                   <span className={statusBadge(campaign.status)}>
-                    {campaign.status === 'active' ? 'Active' : campaign.status === 'draft' ? 'Draft' : 'Scheduled'}
+                    {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                   </span>
                 </div>
-                <div className="col-span-1 text-right">
+                <div className="col-span-2 text-right">
                   <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-[var(--text-primary)]">
                     <Users className="w-3.5 h-3.5 text-slate-400" />
                     {campaign.leads}
                   </div>
                 </div>
-                <div className="col-span-2 text-right text-xs font-bold text-[var(--text-primary)]">{campaign.openRate}</div>
-                <div className="col-span-2 text-right">
-                  <div className="flex items-center justify-end gap-1.5 text-xs font-bold text-[var(--text-primary)]">
-                    <BarChart3 className="w-3.5 h-3.5 text-slate-400" />
-                    {campaign.conversionRate}
-                  </div>
-                </div>
-                <div className="col-span-1 text-right">
-                  <div className="flex items-center justify-end gap-1 text-[10px] font-medium text-slate-400">
-                    <Calendar className="w-3 h-3" />
-                    <span className="truncate">{campaign.lastRun}</span>
-                  </div>
+                <div className="col-span-2 flex justify-end">
+                  <button
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors"
+                    style={{ backgroundColor: 'var(--surface-subtle)' }}
+                    onClick={() => handleDelete(campaign.id, campaign.name)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -227,8 +208,8 @@ const CampaignsPage = () => {
               <div className="w-16 h-16 rounded-full bg-[var(--surface-subtle)] flex items-center justify-center mx-auto mb-4">
                 <Megaphone className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-black text-[var(--text-primary)] mb-2">No campaigns found</h3>
-              <p className="text-sm font-medium text-slate-400">Try adjusting your search or filter.</p>
+              <h3 className="text-lg font-black text-[var(--text-primary)] mb-2">No campaigns yet</h3>
+              <p className="text-sm font-medium text-slate-400">Create your first campaign to get started.</p>
             </div>
           )}
         </div>
@@ -240,23 +221,17 @@ const CampaignsPage = () => {
           <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
           <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Quick Actions</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
-            { icon: Zap, title: 'Create SMS Campaign', desc: 'Send text messages to leads', type: 'SMS' as string | undefined },
-            { icon: Mail, title: 'Create Email Campaign', desc: 'Send emails to your leads', type: 'Email' as string | undefined },
-            { icon: Users, title: 'Create Segment', desc: 'Group leads by criteria', type: undefined },
-            { icon: BarChart3, title: 'View Reports', desc: 'Analyze campaign performance', type: undefined },
+            { icon: Zap, title: 'Create SMS Campaign', desc: 'Send text messages to leads', type: 'sms' as string },
+            { icon: Mail, title: 'Create Email Campaign', desc: 'Send emails to your leads', type: 'email' as string },
           ].map(action => (
             <button
               key={action.title}
               className="card p-5 border-none shadow-2xl group relative overflow-hidden hover:-translate-y-1 transition-all duration-300 text-left"
               onClick={() => {
-                if (action.type) {
-                  setNewCampaign(p => ({ ...p, type: action.type! }));
-                  setAddOpen(true);
-                } else {
-                  toast(action.title);
-                }
+                setNewCampaign(p => ({ ...p, type: action.type }));
+                setAddOpen(true);
               }}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-brand-500 to-indigo-600 opacity-0 group-hover:opacity-5 transition-opacity" />
@@ -299,10 +274,20 @@ const CampaignsPage = () => {
               <Select value={newCampaign.type} onValueChange={v => setNewCampaign(p => ({ ...p, type: v }))}>
                 <SelectTrigger className="input mt-1 h-auto"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Email">Email</SelectItem>
-                  <SelectItem value="SMS">SMS</SelectItem>
+                  <SelectItem value="sms">SMS</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="voice">Voice</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <label className="label-text">Description (optional)</label>
+              <input
+                className="input mt-1"
+                placeholder="Brief description..."
+                value={newCampaign.description}
+                onChange={e => setNewCampaign(p => ({ ...p, description: e.target.value }))}
+              />
             </div>
           </div>
           <div className="flex gap-3 mt-6">

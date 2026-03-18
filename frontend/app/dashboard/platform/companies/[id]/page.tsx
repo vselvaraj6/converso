@@ -1,16 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getCompanyDetails, updateCompanyAsAdmin, deleteCompany, createUserAsAdmin, deleteUserAsAdmin, type Company, type User } from '@/lib/api'
-import { 
-  Building2, 
-  Users, 
-  Settings, 
-  ArrowLeft, 
-  Save, 
-  Trash2, 
-  Calendar, 
-  Phone, 
+import { getCompanyDetails, updateCompanyAsAdmin, deleteCompany, createUserAsAdmin, deleteUserAsAdmin, updateCompanyAiConfig, updateCompanyCallConfig, type Company, type User } from '@/lib/api'
+import {
+  Building2,
+  Users,
+  Settings,
+  ArrowLeft,
+  Save,
+  Trash2,
+  Calendar,
+  Phone,
   ShieldAlert,
   CheckCircle2,
   AlertCircle,
@@ -18,9 +18,13 @@ import {
   MoreVertical,
   User as UserIcon,
   Plus,
-  X
+  X,
+  MessageSquare,
+  Bot,
+  PhoneCall,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { getCampaignTemplates, type CampaignMessage } from '@/lib/api'
 
 export default function CompanyDetailAdminPage() {
   const { id } = useParams()
@@ -30,6 +34,12 @@ export default function CompanyDetailAdminPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showAddUserModal, setShowAddUserModal] = useState(false)
+  const [aiConfigSaving, setAiConfigSaving] = useState(false)
+  const [aiConfigSaved, setAiConfigSaved] = useState(false)
+  const [callConfigSaving, setCallConfigSaving] = useState(false)
+  const [callConfigSaved, setCallConfigSaved] = useState(false)
+  const [campaignMessages, setCampaignMessages] = useState<CampaignMessage[]>([])
+  const [campaignTrack, setCampaignTrack] = useState<'mortgage' | 'refi'>('mortgage')
 
   const load = () => {
     if (id) {
@@ -42,6 +52,7 @@ export default function CompanyDetailAdminPage() {
 
   useEffect(() => {
     load()
+    getCampaignTemplates().then(r => setCampaignMessages(r.messages)).catch(() => {})
   }, [id])
 
   async function handleSave() {
@@ -75,6 +86,35 @@ export default function CompanyDetailAdminPage() {
       load() // Reload list
     } catch (err: any) {
       alert(`Failed to remove user: ${err.message}`)
+    }
+  }
+
+  async function handleSaveAiConfig() {
+    if (!data) return
+    setAiConfigSaving(true)
+    try {
+      await updateCompanyAiConfig(id as string, data.company.ai_config)
+      setAiConfigSaved(true)
+      setTimeout(() => setAiConfigSaved(false), 3000)
+    } catch (err) {
+      alert('Failed to save AI config')
+    } finally {
+      setAiConfigSaving(false)
+    }
+  }
+
+  async function handleSaveCallConfig() {
+    if (!data) return
+    setCallConfigSaving(true)
+    try {
+      const cc = data.company.call_config || { max_attempts: 3, hours_between_attempts: 8 }
+      await updateCompanyCallConfig(id as string, cc)
+      setCallConfigSaved(true)
+      setTimeout(() => setCallConfigSaved(false), 3000)
+    } catch (err) {
+      alert('Failed to save call config')
+    } finally {
+      setCallConfigSaving(false)
     }
   }
 
@@ -157,8 +197,113 @@ export default function CompanyDetailAdminPage() {
             </div>
           </AdminSection>
 
-          <AdminSection 
-            title="Tenant Users" 
+          <AdminSection
+            title="AI Config"
+            icon={Bot}
+            headerAction={
+              <button
+                onClick={handleSaveAiConfig}
+                disabled={aiConfigSaving}
+                className="text-brand-600 hover:text-brand-700 font-bold text-xs flex items-center gap-1 bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {aiConfigSaving ? 'Saving…' : aiConfigSaved ? <><CheckCircle2 size={12} /> Saved</> : <><Save size={12} /> Save AI Config</>}
+              </button>
+            }
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="label-text">Tone</label>
+                <input
+                  className="input text-sm bg-white"
+                  value={data.company.ai_config?.tone || ''}
+                  onChange={e => setData({ ...data, company: { ...data.company, ai_config: { ...data.company.ai_config, tone: e.target.value } } })}
+                  placeholder="e.g. friendly and professional"
+                />
+              </div>
+              <div>
+                <label className="label-text">Temperature <span className="text-gray-400 font-normal">(0.0–1.0)</span></label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range" min="0" max="1" step="0.05"
+                    className="flex-1 accent-brand-600"
+                    value={data.company.ai_config?.temperature ?? 0.7}
+                    onChange={e => setData({ ...data, company: { ...data.company, ai_config: { ...data.company.ai_config, temperature: parseFloat(e.target.value) } } })}
+                  />
+                  <span className="text-xs font-mono font-bold text-gray-600 w-8 text-right">
+                    {(data.company.ai_config?.temperature ?? 0.7).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="label-text">Industry Lingo</label>
+                <textarea
+                  className="input text-sm bg-white resize-none"
+                  rows={3}
+                  value={data.company.ai_config?.industry_lingo || ''}
+                  onChange={e => setData({ ...data, company: { ...data.company, ai_config: { ...data.company.ai_config, industry_lingo: e.target.value } } })}
+                  placeholder="Terms and jargon specific to this industry…"
+                />
+              </div>
+              <div>
+                <label className="label-text">Company Memory</label>
+                <textarea
+                  className="input text-sm bg-white resize-none"
+                  rows={3}
+                  value={data.company.ai_config?.company_memory || ''}
+                  onChange={e => setData({ ...data, company: { ...data.company, ai_config: { ...data.company.ai_config, company_memory: e.target.value } } })}
+                  placeholder="Key facts the AI should always know about this company…"
+                />
+              </div>
+              <div>
+                <label className="label-text">Custom Prompt Template <span className="text-gray-400 font-normal">(optional — overrides defaults)</span></label>
+                <textarea
+                  className="input text-sm bg-white font-mono resize-none"
+                  rows={4}
+                  value={data.company.ai_config?.prompt_template || ''}
+                  onChange={e => setData({ ...data, company: { ...data.company, ai_config: { ...data.company.ai_config, prompt_template: e.target.value } } })}
+                  placeholder="Leave blank to use the default prompt…"
+                />
+              </div>
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="Call Config"
+            icon={PhoneCall}
+            headerAction={
+              <button
+                onClick={handleSaveCallConfig}
+                disabled={callConfigSaving}
+                className="text-brand-600 hover:text-brand-700 font-bold text-xs flex items-center gap-1 bg-brand-50 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {callConfigSaving ? 'Saving…' : callConfigSaved ? <><CheckCircle2 size={12} /> Saved</> : <><Save size={12} /> Save Call Config</>}
+              </button>
+            }
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label-text">Max Call Attempts <span className="text-gray-400 font-normal">(1–5)</span></label>
+                <input
+                  type="number" min="1" max="5"
+                  className="input text-sm bg-white"
+                  value={data.company.call_config?.max_attempts ?? 3}
+                  onChange={e => setData({ ...data, company: { ...data.company, call_config: { ...(data.company.call_config || { max_attempts: 3, hours_between_attempts: 8 }), max_attempts: parseInt(e.target.value) || 3 } } })}
+                />
+              </div>
+              <div>
+                <label className="label-text">Hours Between Attempts <span className="text-gray-400 font-normal">(1–24)</span></label>
+                <input
+                  type="number" min="1" max="24"
+                  className="input text-sm bg-white"
+                  value={data.company.call_config?.hours_between_attempts ?? 8}
+                  onChange={e => setData({ ...data, company: { ...data.company, call_config: { ...(data.company.call_config || { max_attempts: 3, hours_between_attempts: 8 }), hours_between_attempts: parseInt(e.target.value) || 8 } } })}
+                />
+              </div>
+            </div>
+          </AdminSection>
+
+          <AdminSection
+            title="Tenant Users"
             icon={Users}
             headerAction={
               <button 
@@ -202,6 +347,76 @@ export default function CompanyDetailAdminPage() {
               ))}
             </div>
           </AdminSection>
+          {campaignMessages.length > 0 && (
+            <AdminSection title="Campaign Sequence" icon={MessageSquare}>
+              <div className="mb-4 flex gap-2">
+                <button
+                  onClick={() => setCampaignTrack('mortgage')}
+                  className={clsx(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors",
+                    campaignTrack === 'mortgage'
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-brand-300"
+                  )}
+                >
+                  Mortgage Purchase
+                </button>
+                <button
+                  onClick={() => setCampaignTrack('refi')}
+                  className={clsx(
+                    "px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors",
+                    campaignTrack === 'refi'
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-brand-300"
+                  )}
+                >
+                  Refinance
+                </button>
+                <span className="ml-auto text-[11px] text-gray-400 font-bold self-center">
+                  {campaignMessages.length} messages total
+                </span>
+              </div>
+              <div className="max-h-[520px] overflow-y-auto -mx-1 pr-1 space-y-2">
+                {campaignMessages.map(msg => (
+                  <div
+                    key={msg.attempt}
+                    className={clsx(
+                      "flex gap-3 p-3 rounded-xl border text-sm",
+                      msg.phase === 'Initial'
+                        ? "bg-brand-50 border-brand-100"
+                        : "bg-gray-50 border-gray-100"
+                    )}
+                  >
+                    <div className="shrink-0 text-center">
+                      <span className={clsx(
+                        "block w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black",
+                        msg.phase === 'Initial'
+                          ? "bg-brand-600 text-white"
+                          : "bg-gray-300 text-gray-700"
+                      )}>
+                        {msg.attempt}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                          {msg.timing}
+                        </span>
+                        {msg.phase === 'Initial' && (
+                          <span className="px-1.5 py-0.5 bg-brand-100 text-brand-700 text-[9px] font-black rounded uppercase tracking-widest">
+                            Initial
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-gray-700 text-xs leading-relaxed break-words">
+                        {msg[campaignTrack]}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </AdminSection>
+          )}
         </div>
 
         {/* Info Column */}

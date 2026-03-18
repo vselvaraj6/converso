@@ -4,6 +4,7 @@ from .message import Message, MessageDirection
 from .conversation import ConversationThread
 from .calendar_event import CalendarEvent
 from .user import User, UserRole
+from .campaign import Campaign
 
 __all__ = [
     "Company",
@@ -14,5 +15,6 @@ __all__ = [
     "ConversationThread",
     "CalendarEvent",
     "User",
-    "UserRole"
+    "UserRole",
+    "Campaign",
 ]

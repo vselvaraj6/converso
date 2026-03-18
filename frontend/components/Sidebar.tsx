@@ -11,7 +11,6 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  Command,
   Sun,
   Moon,
   BarChart3,
@@ -20,6 +19,7 @@ import {
   Megaphone,
   BrainCircuit
 } from 'lucide-react'
+import Image from 'next/image'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 import { useTheme } from './ThemeProvider'
@@ -62,8 +62,8 @@ export default function Sidebar() {
       <div className="p-8 pb-10">
         <Link href="/dashboard" className="flex items-center justify-between group">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110">
-              <Command size={22} className="text-white" />
+            <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(124,58,237,0.4)] transition-all duration-500 group-hover:rotate-[10deg] group-hover:scale-110 flex-shrink-0">
+              <Image src="/logo.svg" alt="Converso" width={40} height={40} />
             </div>
             <div className="flex flex-col">
               <span className="font-black text-xl tracking-tight leading-none group-hover:text-brand-400 transition-colors text-white">Converso</span>

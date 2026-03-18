@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Optional
 import uuid
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLEnum, JSON, Integer
+from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLEnum, JSON, Integer, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -98,7 +98,11 @@ class Lead(Base):
     # Voice call retry tracking
     call_attempts = Column(Integer, default=0, nullable=False)
     last_call_attempt = Column(DateTime, nullable=True)
-    
+    sms_fallback_sent = Column(Boolean, default=False, nullable=False)
+
+    # Human handoff escalation
+    needs_human_review = Column(Boolean, default=False, nullable=False)
+
     # Automated nurturing configuration
     nudge_interval_days = Column(Integer, default=2, nullable=False)  # Default to nudge every 2 days if no response
     

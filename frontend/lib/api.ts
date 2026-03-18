@@ -122,6 +122,10 @@ export interface Company {
     industry_lingo?: string
     company_memory?: string
   }
+  call_config: {
+    max_attempts: number
+    hours_between_attempts: number
+  } | null
   twilio_phone_number: string | null
   calcom_base_url: string | null
   cal_booking_url: string | null
@@ -194,6 +198,32 @@ export async function deleteUserAsAdmin(userId: string) {
   })
 }
 
+export async function updateCompanyAiConfig(id: string, data: Partial<Company['ai_config']>) {
+  return request<{ status: string; ai_config: Company['ai_config'] }>(`/platform/companies/${id}/ai-config`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateCompanyCallConfig(id: string, data: { max_attempts?: number; hours_between_attempts?: number }) {
+  return request<{ status: string; call_config: any }>(`/platform/companies/${id}/call-config`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export interface CampaignMessage {
+  attempt: number
+  phase: 'Initial' | 'Nurture'
+  timing: string
+  mortgage: string
+  refi: string
+}
+
+export async function getCampaignTemplates(): Promise<{ messages: CampaignMessage[]; total: number }> {
+  return request('/platform/campaign-templates')
+}
+
 // ── Leads ────────────────────────────────────────────────────────────────────
 
 export interface Lead {
@@ -203,9 +233,11 @@ export interface Lead {
   phone: string
   company: string | null
   status: string
+  source: string | null
   last_contacted: string | null
   sentiment: string | null
   nudge_interval_days: number
+  needs_human_review: boolean
   created_at: string
 }
 
@@ -217,6 +249,7 @@ export interface LeadDetail extends Lead {
   lead_owner: string | null
   last_contact_method: string | null
   call_attempts: number
+  sms_fallback_sent: boolean
   sentiment_score: Record<string, any>
   lead_score: number
   days_since_contact: number | null
@@ -259,6 +292,14 @@ export async function deleteLead(id: string) {
   return request<{ status: string }>(`/leads/${id}`, {
     method: 'DELETE',
   })
+}
+
+export async function escalateLead(id: string) {
+  return request<{ status: string; lead_id: string }>(`/leads/${id}/escalate`, { method: 'POST' })
+}
+
+export async function resolveLeadReview(id: string) {
+  return request<{ status: string; lead_id: string }>(`/leads/${id}/resolve-review`, { method: 'POST' })
 }
 
 export async function importLeads(file: File) {
@@ -364,4 +405,106 @@ export interface MessageListResponse {
 
 export async function getLeadMessages(leadId: string) {
   return request<MessageListResponse>(`/messages/lead/${leadId}`)
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+export interface AnalyticsKpis {
+  total_leads: number
+  total_conversions: number
+  sms_sent: number
+  voice_calls: number
+  inbound_messages: number
+  conversion_rate_pct: number
+  flagged_for_review: number
+}
+
+export interface AnalyticsOverview {
+  monthly_overview: { name: string; leads: number; appointments: number; conversions: number }[]
+  kpis: AnalyticsKpis
+  funnel: { new: number; contacted: number; qualified: number; converted: number; lost: number }
+  channel_mix: { sms: number; voice: number; email: number }
+  daily_leads: { date: string; leads: number }[]
+  intent_distribution: { intent: string; count: number }[]
+  sentiment_breakdown: { positive: number; neutral: number; negative: number }
+}
+
+export async function getAnalyticsOverview() {
+  return request<AnalyticsOverview>('/analytics/overview')
+}
+
+// ── Campaigns ─────────────────────────────────────────────────────────────────
+
+export interface Campaign {
+  id: string
+  name: string
+  type: string
+  status: string
+  description: string | null
+  leads: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CampaignListResponse {
+  campaigns: Campaign[]
+  total: number
+  active_count: number
+}
+
+export async function getCampaigns() {
+  return request<CampaignListResponse>('/campaigns/')
+}
+
+export async function createCampaign(data: { name: string; type: string; status?: string; description?: string }) {
+  return request<Campaign>('/campaigns/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateCampaign(id: string, data: Partial<{ name: string; type: string; status: string; description: string }>) {
+  return request<Campaign>(`/campaigns/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteCampaign(id: string) {
+  return request<{ status: string }>(`/campaigns/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+// ── Team ──────────────────────────────────────────────────────────────────────
+
+export interface TeamMember {
+  id: string
+  name: string
+  email: string
+  role: string
+  is_active: boolean
+  leads_assigned: number
+  meetings_booked: number
+  created_at: string
+}
+
+export async function getTeamMembers() {
+  return request<{ users: TeamMember[]; total: number }>('/users/')
+}
+
+// ── AI Insights ───────────────────────────────────────────────────────────────
+
+export interface RecentAiMessage {
+  id: string
+  lead_id: string
+  lead_name: string
+  channel: string
+  content: string
+  ai_metadata: Record<string, any>
+  created_at: string
+}
+
+export async function getRecentAiMessages(limit = 20) {
+  return request<{ messages: RecentAiMessage[] }>(`/messages/recent-ai?limit=${limit}`)
 }

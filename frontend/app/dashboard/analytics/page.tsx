@@ -1,121 +1,92 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Download, Filter, Clock, DollarSign, MessageSquare, Phone, Mail, Users,
+  Download, Filter, Clock, MessageSquare, Phone, Mail, Users,
   TrendingUp, Target, BarChart3
 } from 'lucide-react';
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { exportToCSV } from '@/lib/exportUtils';
 import { toast } from 'sonner';
+import { getAnalyticsOverview, type AnalyticsOverview } from '@/lib/api';
+
+const COLORS = ['#8b5cf6', '#6366f1', '#a855f7', '#d946ef', '#ec4899'];
+
+// Industry benchmark data — no per-company source, labelled accordingly
+const responseTimeData = [
+  { timeFrame: '0', percentage: 6.4 },
+  { timeFrame: '1', percentage: 8.6 },
+  { timeFrame: '3', percentage: 9.3 },
+  { timeFrame: '12', percentage: 17.1 },
+  { timeFrame: '24', percentage: 25.0 },
+];
+
+const customerResponseData = [
+  { timeFrame: '0', percentage: 18 },
+  { timeFrame: '1', percentage: 24 },
+  { timeFrame: '3', percentage: 27 },
+  { timeFrame: '12', percentage: 37 },
+  { timeFrame: '24', percentage: 54 },
+  { timeFrame: '48', percentage: 68 },
+  { timeFrame: '72', percentage: 74 },
+];
+
+const optOutData = [
+  { texts: '1', percentage: 49 },
+  { texts: '2', percentage: 21 },
+  { texts: '3', percentage: 9 },
+  { texts: '4', percentage: 5 },
+  { texts: '5', percentage: 3 },
+  { texts: '6', percentage: 2 },
+  { texts: '7+', percentage: 11 },
+];
+
+const followUpData = [
+  { range: '1-5', percentage: 18.9 },
+  { range: '6-10', percentage: 29.8 },
+  { range: '11-14', percentage: 11.6 },
+  { range: '15+', percentage: 39.8 },
+];
 
 const AnalyticsPage = () => {
   const [period, setPeriod] = useState('30days');
   const [activeTab, setActiveTab] = useState('overview');
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const overviewData = [
-    { name: 'Jan', leads: 65, appointments: 28, conversions: 15 },
-    { name: 'Feb', leads: 59, appointments: 32, conversions: 18 },
-    { name: 'Mar', leads: 80, appointments: 41, conversions: 24 },
-    { name: 'Apr', leads: 81, appointments: 37, conversions: 22 },
-    { name: 'May', leads: 90, appointments: 45, conversions: 28 },
-    { name: 'Jun', leads: 125, appointments: 52, conversions: 32 },
-    { name: 'Jul', leads: 110, appointments: 49, conversions: 30 },
-  ];
-
-  const sourceData = [
-    { name: 'Website', value: 45 },
-    { name: 'Social', value: 25 },
-    { name: 'Referral', value: 15 },
-    { name: 'Email', value: 10 },
-    { name: 'Other', value: 5 },
-  ];
-
-  const COLORS = ['#8b5cf6', '#6366f1', '#a855f7', '#d946ef', '#ec4899'];
-
-  const responseTimeData = [
-    { timeFrame: '0', percentage: 6.4 },
-    { timeFrame: '1', percentage: 8.6 },
-    { timeFrame: '3', percentage: 9.3 },
-    { timeFrame: '12', percentage: 17.1 },
-    { timeFrame: '24', percentage: 25.0 },
-  ];
-
-  const customerResponseData = [
-    { timeFrame: '0', percentage: 18 },
-    { timeFrame: '1', percentage: 24 },
-    { timeFrame: '3', percentage: 27 },
-    { timeFrame: '12', percentage: 37 },
-    { timeFrame: '24', percentage: 54 },
-    { timeFrame: '48', percentage: 68 },
-    { timeFrame: '72', percentage: 74 },
-  ];
-
-  const optOutData = [
-    { texts: '1', percentage: 49 },
-    { texts: '2', percentage: 21 },
-    { texts: '3', percentage: 9 },
-    { texts: '4', percentage: 5 },
-    { texts: '5', percentage: 3 },
-    { texts: '6', percentage: 2 },
-    { texts: '7+', percentage: 11 },
-  ];
-
-  const followUpData = [
-    { range: '1-5', percentage: 18.9 },
-    { range: '6-10', percentage: 29.8 },
-    { range: '11-14', percentage: 11.6 },
-    { range: '15+', percentage: 39.8 },
-  ];
-
-  const businessHoursData = [
-    { category: 'Business Hours', conversations: 934, responded: 53, qualified: 6.2, percentage: 52 },
-    { category: 'Non-Business Hours', conversations: 857, responded: 56, qualified: 6.8, percentage: 48 },
-  ];
-
-  const conversationBreakdownData = [
-    { name: 'Not Interested', value: 396, percentage: 22.1, color: '#f59e0b' },
-    { name: 'Unresponsive', value: 367, percentage: 20.5, color: '#60a5fa' },
-    { name: 'In Progress', value: 347, percentage: 19.4, color: '#f472b6' },
-    { name: 'Stop Contact', value: 336, percentage: 18.8, color: '#ef4444' },
-    { name: 'Inaccurate Contact Info', value: 176, percentage: 9.8, color: '#fbbf24' },
-    { name: 'Qualified', value: 116, percentage: 6.5, color: '#34d399' },
-    { name: 'Message Delivery Error', value: 35, percentage: 2.0, color: '#94a3b8' },
-    { name: 'Time frame 6-12 months', value: 12, percentage: 0.7, color: '#64748b' },
-    { name: 'Other', value: 6, percentage: 0.3, color: '#475569' },
-  ];
-
-  const teamMemberData = [
-    { name: 'Abhinav Kumar', conversationsStarted: 1791, responseRate: 54, qualificationRate: 6.48 }
-  ];
-
-  const totalConversations = conversationBreakdownData.reduce((sum, item) => sum + item.value, 0);
+  useEffect(() => {
+    getAnalyticsOverview()
+      .then(setAnalytics)
+      .catch(() => toast.error('Failed to load analytics'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const tabs = ['overview', 'leads', 'conversations', 'appointments', 'traffic sources'];
 
-  const kpiCards = [
-    { label: 'Conversations', value: '493', icon: MessageSquare },
-    { label: 'Responsive Conversations', value: '242', icon: TrendingUp },
-    { label: 'Qualified', value: '45', icon: Target },
-    { label: 'In Progress Conversations', value: '0', icon: Clock },
-    { label: 'Traffic Sources Used', value: '1', icon: TrendingUp },
-    { label: 'Unqualified', value: '880', icon: Users },
-  ];
+  const sourceData = analytics
+    ? Object.entries(analytics.channel_mix).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+    : [];
 
-  const commCards = [
-    { label: 'Incoming SMS', value: '821', icon: MessageSquare },
-    { label: 'SMS Sent', value: '8,265', icon: MessageSquare },
-    { label: 'Incoming Calls', value: '37', icon: Phone },
-    { label: 'Phone Calls Made', value: '22', icon: Phone },
-    { label: 'Incoming Emails', value: '2', icon: Mail },
-    { label: 'Emails Sent', value: '666', icon: Mail },
-    { label: 'Notes Taken', value: '1,840', icon: TrendingUp },
-    { label: 'Wrong Numbers Identified', value: '99', icon: Phone },
-    { label: 'Time Saved', value: '211 hrs', icon: Clock },
-    { label: 'Money Saved', value: '$12,450', icon: DollarSign },
-  ];
+  const kpiCards = analytics ? [
+    { label: 'Total Leads', value: String(analytics.kpis.total_leads), icon: MessageSquare },
+    { label: 'Conversions', value: String(analytics.kpis.total_conversions), icon: TrendingUp },
+    { label: 'Conversion Rate', value: `${analytics.kpis.conversion_rate_pct}%`, icon: Target },
+    { label: 'SMS Sent', value: String(analytics.kpis.sms_sent), icon: MessageSquare },
+    { label: 'Voice Calls', value: String(analytics.kpis.voice_calls), icon: Phone },
+    { label: 'Inbound Messages', value: String(analytics.kpis.inbound_messages), icon: Users },
+  ] : [];
+
+  const commCards = analytics ? [
+    { label: 'SMS Sent', value: String(analytics.kpis.sms_sent), icon: MessageSquare },
+    { label: 'Voice Calls', value: String(analytics.kpis.voice_calls), icon: Phone },
+    { label: 'Inbound Messages', value: String(analytics.kpis.inbound_messages), icon: Mail },
+  ] : [];
+
+  if (loading) {
+    return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Loading Analytics…</div>;
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-10 font-sans pb-20">
@@ -155,11 +126,13 @@ const AnalyticsPage = () => {
             <button
               className="btn-secondary flex items-center gap-2"
               onClick={() => {
-                exportToCSV(
-                  overviewData.map(d => ({ Month: d.name, Leads: d.leads, Appointments: d.appointments, Conversions: d.conversions })),
-                  `analytics-${activeTab}-${period}`
-                );
-                toast.success('Export complete', { description: `Exported ${activeTab} data` });
+                if (analytics) {
+                  exportToCSV(
+                    analytics.monthly_overview.map(d => ({ Month: d.name, Leads: d.leads, Appointments: d.appointments, Conversions: d.conversions })),
+                    `analytics-${activeTab}-${period}`
+                  );
+                  toast.success('Export complete', { description: `Exported ${activeTab} data` });
+                }
               }}
             >
               <Download className="w-4 h-4" />
@@ -189,6 +162,12 @@ const AnalyticsPage = () => {
       {/* Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {!analytics && (
+            <div className="card p-6 border-dashed border-2 bg-transparent shadow-none text-center text-slate-400 text-sm font-medium">
+              No analytics data available yet.
+            </div>
+          )}
+
           {/* Primary KPI cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {kpiCards.map(({ label, value, icon: Icon }) => (
@@ -207,7 +186,7 @@ const AnalyticsPage = () => {
           </div>
 
           {/* Communication metrics */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-3">
             {commCards.map(({ label, value, icon: Icon }) => (
               <div key={label} className="card p-6 border-none shadow-2xl">
                 <div className="flex items-start justify-between mb-2">
@@ -224,48 +203,50 @@ const AnalyticsPage = () => {
           </div>
 
           {/* Performance Overview Chart */}
-          <div className="card p-6 border-none shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-              <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Performance Overview</h2>
-            </div>
-            <p className="text-xs text-slate-500 font-medium mb-4">Leads, appointments and conversions over time</p>
-            <ResponsiveContainer width="100%" height={350}>
-              <AreaChart data={overviewData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorAppointments" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorConversions" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }} />
-                <Legend />
-                <Area type="monotone" dataKey="leads" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorLeads)" />
-                <Area type="monotone" dataKey="appointments" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorAppointments)" />
-                <Area type="monotone" dataKey="conversions" stroke="#ec4899" strokeWidth={2} fillOpacity={1} fill="url(#colorConversions)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Lead Sources */}
+          {analytics && (
             <div className="card p-6 border-none shadow-2xl">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Lead Sources</h2>
+                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Performance Overview</h2>
               </div>
-              <p className="text-xs text-slate-500 font-medium mb-4">Distribution of lead acquisition channels</p>
+              <p className="text-xs text-slate-500 font-medium mb-4">Leads, appointments and conversions over time</p>
+              <ResponsiveContainer width="100%" height={350}>
+                <AreaChart data={analytics.monthly_overview} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorAppointments" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorConversions" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }} />
+                  <Legend />
+                  <Area type="monotone" dataKey="leads" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorLeads)" />
+                  <Area type="monotone" dataKey="appointments" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorAppointments)" />
+                  <Area type="monotone" dataKey="conversions" stroke="#ec4899" strokeWidth={2} fillOpacity={1} fill="url(#colorConversions)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Channel Mix */}
+          {analytics && sourceData.some(d => d.value > 0) && (
+            <div className="card p-6 border-none shadow-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
+                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Channel Mix</h2>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mb-4">Message distribution by channel</p>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
@@ -278,7 +259,7 @@ const AnalyticsPage = () => {
                     dataKey="value"
                     label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   >
-                    {sourceData.map((entry, index) => (
+                    {sourceData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -287,35 +268,7 @@ const AnalyticsPage = () => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-
-            {/* Conversation Performance */}
-            <div className="card p-6 border-none shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Conversation Performance</h2>
-              </div>
-              <p className="text-xs text-slate-500 font-medium mb-4">AI vs human agent effectiveness</p>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={[
-                    { name: 'Response Time', ai: 0.2, human: 2.5 },
-                    { name: 'Engagement', ai: 76, human: 82 },
-                    { name: 'Lead Qualification', ai: 65, human: 68 },
-                    { name: 'Conversion Rate', ai: 12, human: 15 },
-                  ]}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }} />
-                  <Legend />
-                  <Bar dataKey="ai" fill="#8b5cf6" name="AI Assistant" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="human" fill="#6366f1" name="Human Agent" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -340,128 +293,12 @@ const AnalyticsPage = () => {
       {/* Conversations Tab */}
       {activeTab === 'conversations' && (
         <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Conversation Breakdown */}
-            <div className="card p-6 border-none shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Conversation Breakdown</h2>
-              </div>
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={conversationBreakdownData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={1}
-                        dataKey="value"
-                      >
-                        {conversationBreakdownData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: number, name: string) => [`${value} (${((value / totalConversations) * 100).toFixed(1)}%)`, name]}
-                        contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-[var(--divider)] pb-2">
-                    <div>Status</div>
-                    <div># Convos</div>
-                    <div>%</div>
-                  </div>
-                  {conversationBreakdownData.map((item, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-2 text-xs py-1 rounded-lg px-2" style={{ backgroundColor: `${item.color}15` }}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
-                        <span className="text-[10px] font-bold text-[var(--text-primary)] truncate">{item.name}</span>
-                      </div>
-                      <div className="text-[var(--text-primary)] font-bold">{item.value}</div>
-                      <div className="text-[var(--text-primary)] font-bold">{item.percentage}%</div>
-                    </div>
-                  ))}
-                  <div className="grid grid-cols-3 gap-2 text-xs font-black border-t border-[var(--divider)] pt-2">
-                    <div className="text-[var(--text-primary)]">Total</div>
-                    <div className="text-[var(--text-primary)]">{totalConversations}</div>
-                    <div className="text-[var(--text-primary)]">100%</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Team Member Overview */}
-            <div className="card p-6 border-none shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Team Member Overview</h2>
-              </div>
-              <div className="space-y-4">
-                <div className="card p-6 border-none bg-gradient-to-br from-brand-500 to-indigo-600 text-center shadow-xl">
-                  <p className="text-xs font-black text-white/70 uppercase tracking-widest mb-2">Team Members</p>
-                  <p className="text-4xl font-black text-white">1</p>
-                </div>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-4 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-[var(--divider)] pb-2">
-                    <div>Member</div>
-                    <div>Convos</div>
-                    <div>% Responded</div>
-                    <div>% Qualified</div>
-                  </div>
-                  {teamMemberData.map((member, index) => (
-                    <div key={index} className="grid grid-cols-4 gap-2 py-3 rounded-xl px-2" style={{ backgroundColor: 'var(--surface-subtle)' }}>
-                      <div className="font-black text-xs text-[var(--text-primary)]">{member.name}</div>
-                      <div className="font-bold text-xs text-[var(--text-primary)]">{member.conversationsStarted}</div>
-                      <div className="font-bold text-xs text-[var(--text-primary)]">{member.responseRate}%</div>
-                      <div className="font-bold text-xs text-[var(--text-primary)]">{member.qualificationRate}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+          {/* Industry Benchmarks label */}
+          <div className="px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-black text-amber-400 uppercase tracking-widest inline-flex items-center gap-2">
+            Industry Benchmarks — not specific to your account
           </div>
 
-          {/* Business Hours */}
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="card p-6 border-none shadow-2xl">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Business Hours vs Non-Business</h2>
-              </div>
-              <div className="flex justify-center items-center gap-12 mb-6">
-                <div className="text-center">
-                  <div className="text-4xl font-black text-brand-400">52%</div>
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-500 mt-1">Business Hours</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-4xl font-black text-indigo-400">48%</div>
-                  <div className="text-xs font-black uppercase tracking-widest text-slate-500 mt-1">Non-Business Hours</div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="grid grid-cols-4 gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-[var(--divider)] pb-2">
-                  <div>When Started</div>
-                  <div># Convos</div>
-                  <div>% Responded</div>
-                  <div>% Qualified</div>
-                </div>
-                {businessHoursData.map((item, index) => (
-                  <div key={index} className={`grid grid-cols-4 gap-2 text-xs py-2 rounded-xl px-2 ${index === 0 ? 'bg-brand-500/10' : 'bg-indigo-500/10'}`}>
-                    <div className="font-bold text-[var(--text-primary)]">{item.category}</div>
-                    <div className="font-bold text-[var(--text-primary)]">{item.conversations}</div>
-                    <div className="font-bold text-[var(--text-primary)]">{item.responded}%</div>
-                    <div className="font-bold text-[var(--text-primary)]">{item.qualified}%</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="card p-6 border-none shadow-2xl">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
@@ -478,10 +315,7 @@ const AnalyticsPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
 
-          {/* Customer Response + Opt-out */}
-          <div className="grid gap-6 md:grid-cols-2">
             <div className="card p-6 border-none shadow-2xl">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
@@ -498,7 +332,9 @@ const AnalyticsPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
 
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="card p-6 border-none shadow-2xl">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
@@ -515,24 +351,23 @@ const AnalyticsPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
 
-          {/* Follow-up Analysis */}
-          <div className="card p-6 border-none shadow-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
-              <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Follow-up Text Analysis</h2>
+            <div className="card p-6 border-none shadow-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1 h-6 rounded-full bg-gradient-to-b from-brand-500 to-indigo-600" />
+                <h2 className="text-base font-black uppercase tracking-widest text-[var(--text-primary)]">Follow-up Text Analysis</h2>
+              </div>
+              <p className="text-xs text-slate-500 font-medium mb-4">How many follow-up texts it takes for customers to respond</p>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={followUpData} layout="horizontal" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                  <XAxis type="number" domain={[0, 45]} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="range" type="category" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(value: number) => [`${value}%`, 'Percentage']} contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }} />
+                  <Bar dataKey="percentage" fill="#d946ef" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <p className="text-xs text-slate-500 font-medium mb-4">How many follow-up texts it takes for customers to respond</p>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={followUpData} layout="horizontal" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis type="number" domain={[0, 45]} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis dataKey="range" type="category" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <Tooltip formatter={(value: number) => [`${value}%`, 'Percentage']} contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }} />
-                <Bar dataKey="percentage" fill="#d946ef" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
         </div>
       )}

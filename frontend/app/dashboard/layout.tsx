@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { getStoredUser } from '@/lib/api'
 import Sidebar from '@/components/Sidebar'
-import { Menu, X, Command } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
+import Image from 'next/image'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -23,8 +24,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile Header */}
       <header className="flex md:hidden items-center justify-between px-6 h-16 border-b border-white/5 sticky top-0 z-30" style={{ backgroundColor: 'var(--sidebar-bg)' }}>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <Command size={18} className="text-white" />
+          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-lg shadow-brand-500/20 flex-shrink-0">
+            <Image src="/logo.svg" alt="Converso" width={32} height={32} />
           </div>
           <span className="font-black text-lg tracking-tight text-white">Converso</span>
         </div>

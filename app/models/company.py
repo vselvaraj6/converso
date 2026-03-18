@@ -17,6 +17,10 @@ class Company(Base):
     # Dynamic configuration for AI prompts
     ai_config = Column(JSON, default=dict, nullable=False)
     # Example: {"prompt_template": "", "temperature": 0.7, "tone": "friendly"}
+
+    # Call retry configuration
+    call_config = Column(JSON, nullable=True)
+    # Example: {"max_attempts": 3, "hours_between_attempts": 8}
     
     # Integration settings
     twilio_phone_number = Column(String, nullable=True)

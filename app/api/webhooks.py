@@ -242,9 +242,33 @@ async def calcom_webhook(
                     status="confirmed",
                 )
                 db.add(cal_event)
-                lead.status = LeadStatus.QUALIFIED
+                lead.status = LeadStatus.CONVERTED
                 await db.commit()
-                logger.info(f"Lead {lead.id} marked QUALIFIED via Cal.com booking {data.get('uid')}")
+                logger.info(f"Lead {lead.id} marked CONVERTED via Cal.com booking {data.get('uid')}")
+
+                # Send booking confirmation email if lead has an email address
+                if lead.email:
+                    try:
+                        from app.integrations.email import EmailService
+                        from app.models import Company as CompanyModel
+                        company = await db.get(CompanyModel, lead.company_id)
+                        agent_name = "your representative"
+                        if lead.assigned_agent_id:
+                            from app.models import User as UserModel
+                            agent = await db.get(UserModel, lead.assigned_agent_id)
+                            if agent:
+                                agent_name = agent.name
+                        email_svc = EmailService()
+                        await email_svc.send_booking_confirmation(
+                            to_email=lead.email,
+                            lead_name=lead.name,
+                            meeting_time=start_dt.strftime("%A, %B %d at %I:%M %p"),
+                            agent_name=agent_name,
+                            company_name=company.name if company else "your team",
+                            meeting_link=cal_event.meeting_link or "",
+                        )
+                    except Exception as email_err:
+                        logger.error(f"Booking confirmation email failed for lead {lead.id}: {email_err}")
 
         elif event in ("BOOKING_CANCELLED", "BOOKING_RESCHEDULED"):
             booking_uid = data.get("uid", "")

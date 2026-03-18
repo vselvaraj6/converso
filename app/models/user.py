@@ -42,7 +42,7 @@ class User(Base):
     calcom_user_id = Column(Integer, nullable=True)
     calcom_username = Column(String, nullable=True)
     calcom_event_id = Column(Integer, nullable=True)
-    working_hours = Column(JSON, default={"start": 9, "end": 17})
+    working_hours = Column(JSON, default={"start": 9, "end": 17, "timezone": "America/New_York"})
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

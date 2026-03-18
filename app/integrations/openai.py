@@ -66,6 +66,8 @@ class OpenAIService:
         tone: str,
         agent_name: str,
         company_name: str,
+        lead_status: str = "NEW",
+        urgency: str = "medium",
     ) -> str:
         """
         Build the SMS system prompt.
@@ -130,6 +132,27 @@ class OpenAIService:
             from app.config.mortgage_campaign import MORTGAGE_TONE_GUIDE
             parts += ["", MORTGAGE_TONE_GUIDE.strip()]
 
+        status_guidance = {
+            "NEW": "This is your first contact. Introduce yourself warmly. Goal: establish rapport.",
+            "CONTACTED": "You've been in touch before. Skip re-introductions. Goal: move toward booking.",
+            "QUALIFIED": "Lead has shown meeting interest. Be concrete — offer specific times now.",
+            "CONVERTED": "Lead already booked. Confirm details only.",
+            "LOST": "Lead opted out. Do not contact.",
+        }
+        urgency_guidance = {
+            "high": "Lead indicated time pressure. Prioritize booking now.",
+            "medium": "Standard cadence — don't rush but stay warm.",
+            "low": "Low urgency — keep it brief and leave the door open.",
+        }
+        stage_hint = status_guidance.get(lead_status.upper(), "")
+        urgency_hint = urgency_guidance.get(urgency.lower(), "")
+        if stage_hint or urgency_hint:
+            parts += ["", "CURRENT LEAD CONTEXT:"]
+            if stage_hint:
+                parts.append(f"- Stage: {stage_hint}")
+            if urgency_hint:
+                parts.append(f"- Urgency: {urgency_hint}")
+
         return "\n".join(parts)
 
     # ── Core methods ─────────────────────────────────────────────────────────
@@ -142,6 +165,8 @@ class OpenAIService:
         latest_message: str,
         agent_name: str = "your representative",
         company_name: str = "our company",
+        lead_status: str = "NEW",
+        urgency: str = "medium",
     ) -> Dict:
         """Generate a contextual reply using proper conversation role structure."""
         try:
@@ -150,7 +175,8 @@ class OpenAIService:
             tone = prompt_config.get("tone", "friendly and professional")
 
             system_prompt = self._create_system_prompt(
-                lead, prompt_config, tone, agent_name, company_name
+                lead, prompt_config, tone, agent_name, company_name,
+                lead_status=lead_status, urgency=urgency,
             )
 
             messages = self._build_chat_messages(

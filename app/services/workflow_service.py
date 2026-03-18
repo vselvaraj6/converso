@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, text
 import logging
+import pytz
 
 from app.models import (
     Lead, Message, Company, ConversationThread, CalendarEvent,
@@ -94,12 +95,14 @@ class WorkflowService:
             
             # 8. Generate smart reply with personalization
             reply_data = await self.openai.generate_smart_reply(
-                lead, 
-                messages, 
-                {"name": company.name, "ai_config": company.ai_config}, 
+                lead,
+                messages,
+                {"name": company.name, "ai_config": company.ai_config},
                 message_body,
                 agent_name=agent_name,
-                company_name=company.name
+                company_name=company.name,
+                lead_status=lead.status.value,
+                urgency=(lead.sentiment_score or {}).get("urgency", "medium"),
             )
             
             first_name = lead.name.strip().split()[0] if lead.name and lead.name.strip() else "there"
@@ -209,8 +212,20 @@ class WorkflowService:
                 lead.status = LeadStatus.QUALIFIED
             elif analysis.get("intent") == "not_interested":
                 lead.status = LeadStatus.LOST
+                # Flag for human review: give agent a chance to intervene before lead is fully lost
+                lead.needs_human_review = True
+                logger.info(f"Lead {lead.id} flagged for human review (not_interested)")
             elif lead.status == LeadStatus.NEW:
                 lead.status = LeadStatus.CONTACTED
+
+            # Auto-escalate to human when lead is frustrated (negative + seeking help)
+            if (
+                analysis.get("sentiment") == "negative"
+                and analysis.get("intent") in ("ask_question", "other")
+                and not lead.needs_human_review
+            ):
+                lead.needs_human_review = True
+                logger.info(f"Lead {lead.id} flagged for human review (negative sentiment + question)")
             
             # 13. Update thread context
             thread.last_message_at = datetime.utcnow()
@@ -238,11 +253,18 @@ class WorkflowService:
             
             for lead in leads:
                 try:
-                    should_call = await self._should_use_voice(lead)
-                    if should_call:
-                        result = await self._initiate_voice_call(lead)
+                    company = await self.db.get(Company, lead.company_id)
+                    call_config = (company.call_config or {}) if company else {}
+                    max_attempts = call_config.get("max_attempts", 3)
+
+                    if lead.call_attempts >= max_attempts and not lead.sms_fallback_sent:
+                        result = await self._send_sms_fallback(lead)
                     else:
-                        result = await self._send_outbound_sms(lead)
+                        should_call = await self._should_use_voice(lead)
+                        if should_call:
+                            result = await self._initiate_voice_call(lead)
+                        else:
+                            result = await self._send_outbound_sms(lead)
                     
                     if result["success"]:
                         processed += 1
@@ -427,28 +449,118 @@ class WorkflowService:
         }
     
     async def _get_leads_for_outbound(self) -> List[Lead]:
-        """Get leads based on per-lead nudge intervals"""
-        # Find leads past their specific nudge_interval_days
-        query = select(Lead).where(
+        """Get leads based on per-lead nudge intervals, plus call-exhausted leads needing SMS fallback"""
+        # Active leads due for contact
+        active_query = select(Lead).where(
                 and_(
                     Lead.status.in_([LeadStatus.NEW, LeadStatus.CONTACTED]),
-                    Lead.call_attempts < 3,
-                    (Lead.last_contacted == None) | 
+                    Lead.call_attempts < 10,  # generous cap; real check is per-company in _should_use_voice
+                    Lead.sms_fallback_sent == False,
+                    (Lead.last_contacted == None) |
                     (Lead.last_contacted + text("INTERVAL '1 day' * nudge_interval_days") < func.now())
                 )
             ).limit(50)
-        result = await self.db.execute(query)
-        return result.scalars().all()
-    
+        active_result = await self.db.execute(active_query)
+        active_leads = list(active_result.scalars().all())
+
+        # Call-exhausted leads that haven't received SMS fallback yet
+        fallback_query = select(Lead).where(
+            and_(
+                Lead.status.in_([LeadStatus.NEW, LeadStatus.CONTACTED]),
+                Lead.call_attempts >= 3,
+                Lead.sms_fallback_sent == False,
+            )
+        ).limit(50)
+        fallback_result = await self.db.execute(fallback_query)
+        fallback_leads = list(fallback_result.scalars().all())
+
+        # Merge, deduplicate by id
+        seen = {l.id for l in active_leads}
+        for lead in fallback_leads:
+            if lead.id not in seen:
+                active_leads.append(lead)
+                seen.add(lead.id)
+        return active_leads
+
     async def _should_use_voice(self, lead: Lead) -> bool:
-        if not lead.last_contacted: return False # SMS first for new leads
+        if not lead.last_contacted: return False  # SMS first for new leads
         lead_age = (datetime.utcnow() - lead.created_at).days
         if lead_age > 30: return False
-        result = await self.db.execute(select(Message).where(and_(Message.lead_id == lead.id, Message.direction == MessageDirection.INBOUND)).limit(1))
-        return result.scalar_one_or_none() is None and lead.call_attempts < 3
+
+        company = await self.db.get(Company, lead.company_id)
+        call_config = (company.call_config or {}) if company else {}
+        max_attempts = call_config.get("max_attempts", 3)
+        hours_between = call_config.get("hours_between_attempts", 8)
+
+        if lead.call_attempts >= max_attempts:
+            return False
+        if lead.last_call_attempt:
+            elapsed = (datetime.utcnow() - lead.last_call_attempt).total_seconds() / 3600
+            if elapsed < hours_between:
+                return False
+
+        result = await self.db.execute(
+            select(Message).where(and_(
+                Message.lead_id == lead.id,
+                Message.direction == MessageDirection.INBOUND
+            )).limit(1)
+        )
+        return result.scalar_one_or_none() is None
     
+    async def _is_within_working_hours(self, lead: Lead) -> bool:
+        """Check assigned agent's working hours (defaults to 9-17 company-local time)."""
+        agent = None
+        if lead.assigned_agent_id:
+            agent = await self.db.get(User, lead.assigned_agent_id)
+
+        wh = (agent.working_hours if agent else None) or {"start": 9, "end": 17}
+        tz_name = wh.get("timezone", "America/New_York")
+        try:
+            tz = pytz.timezone(tz_name)
+        except Exception:
+            tz = pytz.timezone("America/New_York")
+
+        local_hour = datetime.now(tz).hour
+        return wh.get("start", 9) <= local_hour < wh.get("end", 17)
+
+    async def _send_sms_fallback(self, lead: Lead) -> Dict:
+        """SMS nurture message for leads where all call attempts were exhausted."""
+        try:
+            company = await self.db.get(Company, lead.company_id)
+            first = lead.name.strip().split()[0] if lead.name else "there"
+            body = (
+                f"Hi {first}, I tried reaching you a few times but missed you. "
+                "Happy to connect whenever you're free — just reply here!"
+            )
+            result = await self.twilio.send_sms(
+                to=lead.phone,
+                body=body,
+                from_=company.twilio_phone_number if company else None,
+            )
+            if result["success"]:
+                lead.sms_fallback_sent = True
+                lead.last_contacted = datetime.utcnow()
+                lead.last_contact_method = "sms"
+                self.db.add(Message(
+                    company_id=lead.company_id,
+                    lead_id=lead.id,
+                    direction=MessageDirection.OUTBOUND,
+                    channel="sms",
+                    content=body,
+                    twilio_message_sid=result.get("message_sid"),
+                    status="sent",
+                ))
+            return result
+        except Exception as e:
+            logger.error(f"SMS fallback error for lead {lead.id}: {e}")
+            return {"success": False, "error": str(e)}
+
     async def _initiate_voice_call(self, lead: Lead, overrides: Optional[Dict] = None) -> Dict:
         try:
+            if not await self._is_within_working_hours(lead):
+                logger.info(f"Lead {lead.id}: skipping call — outside working hours")
+                return {"success": False, "error": "outside_working_hours"}
+
             company = await self.db.get(Company, lead.company_id)
             agent_name = "your representative"
             if lead.assigned_agent_id:
