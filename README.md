@@ -1,128 +1,207 @@
 # Converso
 
-AI-powered lead nurturing platform — SMS, voice, and calendar automation for solo founders and small sales teams.
+Converso is an AI-powered sales CRM that automates lead nurturing through voice calls, SMS, and calendar scheduling. It is designed for sales teams that want to run intelligent outreach at scale without sacrificing a human touch.
 
 ---
 
-## Stack
+## Project Overview
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | Next.js 14 (App Router) + Tailwind CSS |
-| **Backend** | FastAPI (Python) |
-| **Database** | PostgreSQL 15 |
-| **Task queue** | Celery + Redis |
-| **SMS** | Twilio |
-| **AI replies** | OpenAI GPT-3.5 / GPT-4 |
-| **Voice calls** | VAPI |
-| **Calendar** | Cal.com (Self-hosted or Cloud) |
-| **Reverse proxy** | nginx |
-| **Tunnel** | Cloudflare Tunnel |
-
-Everything runs via Docker Compose — one command to start the whole stack.
+Converso manages the full lead lifecycle: capture, qualification, conversation, appointment booking, and conversion tracking. An AI assistant handles inbound and outbound SMS, answers voice calls via VAPI, books meetings directly into Cal.com, and escalates qualified leads to human agents — all from a single dashboard.
 
 ---
 
-## Quick Start
+## Architecture
+
+```
+Browser
+  └── nginx (port 8080)
+        ├── /api  → FastAPI backend (port 8001)
+        └── /     → Next.js frontend (port 3000)
+
+FastAPI backend
+  ├── PostgreSQL 15 (database)
+  ├── Redis (task broker + cache)
+  ├── Celery worker (background tasks: SMS, AI replies)
+  ├── Celery beat (scheduled nudges)
+  ├── Twilio (inbound/outbound SMS + voice)
+  ├── VAPI (AI voice calls)
+  └── Cal.com (appointment scheduling, port 3001)
+```
+
+---
+
+## Features
+
+| Page | Description |
+|------|-------------|
+| Dashboard | Live KPI summary, lead trend chart, upcoming meetings |
+| Lead Pipeline | Full CRUD lead management with pagination, search, filters, CSV import/export |
+| Lead Detail | Conversation history, sentiment analysis, meeting log, AI nudge controls |
+| Conversations | Inbound/outbound SMS thread view per lead |
+| Calendar / Meetings | Upcoming and historical meeting list synced with Cal.com |
+| Analytics | Pipeline metrics, conversation breakdown, response time charts |
+| Conversions | Closed-won deal tracking with revenue and conversion time stats |
+| Campaigns | Automated email and SMS campaign management |
+| Team Management | Multi-user team management with role-based access control |
+| AI Training | Dataset management, intent review, sandbox testing, model analytics |
+| Conversation Builder | Visual flow editor for designing AI conversation scripts |
+| Settings | Company configuration, Cal.com booking URLs, Twilio phone number |
+| Platform Admin | Superuser dashboard for managing all client tenants |
+
+---
+
+## Quick Start (Docker)
 
 ### 1. Clone and configure
 
 ```bash
-git clone <repo>
+git clone <repo-url>
 cd converso
-cp .env.example .env   # fill in your API keys (see below)
+cp .env.example .env
+# Fill in required API keys (see Environment Setup below)
 ```
 
 ### 2. Start the stack
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-This starts:
-- **nginx** on port **8080** (the primary entry point for the project)
-- **Next.js** frontend on port 3000 (internal)
-- **FastAPI** backend on port 8001 (internal and exposed)
-- **Cal.com** self-hosted on port 3001
-- **PostgreSQL** on port 5432 (internal and exposed)
-- **Redis** on port 6379 (internal)
-- **Celery worker + beat** (background task runners)
+This starts nginx, the Next.js frontend, the FastAPI backend, Cal.com, PostgreSQL, Redis, and the Celery workers.
 
-### 3. Create your account
+> **Note:** If Docker networking fails with iptables errors, run the included fix script:
+> ```bash
+> sudo bash scripts/fix-iptables.sh
+> ```
 
-Open `http://localhost:8080` → click **Create one** → fill in your name, company, email and password.
+### 3. Create your first account
+
+Open `http://localhost:8080` and click **Create one** to register. The first registered user on a fresh database can be promoted to superuser via:
+
+```bash
+docker compose exec postgres psql -U converso -d converso \
+  -c "UPDATE users SET is_superuser = true WHERE email = 'your@email.com';"
+```
 
 ---
 
-## Multi-Tenancy & Roles
+## Environment Setup
 
-Converso is built as a multi-tenant SaaS platform with three distinct access levels:
+Copy `.env.example` to `.env` and fill in the following required keys:
 
-1.  **Platform Admin (Superuser):** Manage the entire platform, oversee all clients (companies), and perform administrative overrides.
-2.  **Company Admin:** Manage company-wide settings, AI memory, and team members.
-3.  **Sales Agent:** Manage assigned leads, view conversations, and connect personal work calendars.
+| Variable | Description |
+|----------|-------------|
+| `TWILIO_ACCOUNT_SID` | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token |
+| `TWILIO_PHONE_NUMBER` | Twilio sending number (E.164 format) |
+| `OPENAI_API_KEY` | OpenAI API key for AI reply generation |
+| `VAPI_API_KEY` | VAPI API key for AI voice calls |
+| `VAPI_PHONE_NUMBER_ID` | VAPI phone number ID |
+| `CALCOM_API_KEY` | Cal.com API key for meeting management |
+| `SECRET_KEY` | JWT signing secret (generate a random 32+ char string) |
+| `DATABASE_URL` | PostgreSQL connection string (set automatically in Docker) |
+
+---
+
+## Port Reference
+
+| Service | Port | Notes |
+|---------|------|-------|
+| App (nginx) | 8080 | Primary entry point — use this in the browser |
+| FastAPI backend | 8001 | Also accessible directly for API testing |
+| Cal.com | 3001 | Self-hosted scheduling UI |
+| PostgreSQL | 5432 | Exposed for local DB tools |
+| Next.js (internal) | 3000 | Internal only; accessed via nginx |
+| Redis (internal) | 6379 | Internal only |
+
+---
+
+## Development (without Docker)
+
+### Backend
+
+```bash
+cd converso  # repo root
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Requires a running PostgreSQL and Redis instance
+alembic upgrade head
+uvicorn app.main:app --reload --port 8001
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Runs on http://localhost:3000
+```
+
+### Celery workers
+
+```bash
+celery -A app.celery_app worker --loglevel=info
+celery -A app.celery_app beat --loglevel=info
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 14 (App Router), Tailwind CSS, shadcn/ui, Recharts |
+| Backend | FastAPI (Python 3.11) |
+| Database | PostgreSQL 15 |
+| Task queue | Celery + Redis |
+| SMS | Twilio |
+| AI replies | OpenAI GPT-4 |
+| Voice calls | VAPI |
+| Calendar | Cal.com (self-hosted) |
+| Reverse proxy | nginx |
+| Containerisation | Docker Compose |
 
 ---
 
 ## API Reference
 
-Interactive docs available at `https://converso.yourdomain.com/docs`
+Interactive API docs are available at `http://localhost:8001/docs` when the backend is running.
 
-### Auth endpoints
+### Auth
+
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/register` | Create account + company |
+| POST | `/api/auth/register` | Create account and company |
 | POST | `/api/auth/login` | Get JWT token |
-| GET  | `/api/auth/me` | Current user info |
+| GET | `/api/auth/me` | Current user info |
+| PATCH | `/api/auth/me` | Update current user profile |
 
-### Platform Admin (Superuser only)
+### Leads
+
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/platform/companies` | List all tenants with stats |
-| GET | `/api/platform/companies/{id}` | Detailed tenant info + users |
-| PATCH | `/api/platform/companies/{id}` | Administrative config override |
-| DELETE | `/api/platform/companies/{id}` | Permanently offboard tenant |
+| GET | `/api/leads/` | List leads (paginated, filterable) |
+| POST | `/api/leads/` | Create a lead |
+| GET | `/api/leads/{id}` | Lead detail |
+| POST | `/api/leads/import` | Bulk import from CSV or Excel |
+| GET | `/api/leads/export` | Export all leads as CSV |
 
-### Lead endpoints (require Bearer token)
-| Method | Path | Description |
-|--------|------|-------------|
-| GET  | `/api/leads/` | List leads (paginated, filterable by status) |
-| POST | `/api/leads/` | Create lead |
-| GET  | `/api/leads/{id}` | Lead detail |
-| POST | `/api/leads/import` | Mass upload from CSV/Excel |
+### Webhooks (called by external services)
 
-### Webhook endpoints (public — called by Twilio/VAPI/Cal.com)
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/webhooks/twilio/inbound` | Inbound SMS from Twilio |
 | POST | `/api/webhooks/vapi/inbound` | Voice call events from VAPI |
 | POST | `/api/webhooks/calcom` | Booking notifications from Cal.com |
 
----
+### Platform Admin (superuser only)
 
-## How It Works
-
-### Master Orchestrator Scheduling
-Converso uses a hierarchical scheduling logic to ensure leads can always book a meeting:
-1.  **Priority 1:** Agent's Personal Booking URL (set in Settings).
-2.  **Priority 2:** Company Team Round Robin link (set by Company Admin).
-3.  **Fallback:** AI-managed polite follow-up if no links are configured.
-
----
-
-## Development & Testing
-
-### Running Tests
-```bash
-# Run the full test suite via Docker
-docker compose run --rm -e APP_ENV=testing app pytest
-```
-
-### Useful commands
-```bash
-# Run database migrations
-docker compose exec app alembic upgrade head
-
-# Promote a user to Superuser
-docker compose exec postgres psql -U converso -d converso -c "UPDATE users SET is_superuser = true WHERE email = 'your@email.com';"
-```
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/platform/companies` | List all tenant companies |
+| GET | `/api/platform/companies/{id}` | Tenant detail with users |
+| PATCH | `/api/platform/companies/{id}` | Update tenant config |
+| DELETE | `/api/platform/companies/{id}` | Offboard a tenant |

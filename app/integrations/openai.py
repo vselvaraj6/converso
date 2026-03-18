@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional
 from datetime import datetime
+from collections import defaultdict
 from openai import AsyncOpenAI
 from app.core.config import settings
 from app.models import Lead, Message, MessageDirection
@@ -13,7 +14,126 @@ class OpenAIService:
     def __init__(self):
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model
-    
+
+    # ── Helpers ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _first_name(name: str) -> str:
+        """Safely extract first name; returns 'there' if name is blank."""
+        return name.strip().split()[0] if name and name.strip() else "there"
+
+    def _build_chat_messages(
+        self,
+        system_prompt: str,
+        conversation_history: List[Message],
+        latest_message: str,
+    ) -> List[Dict]:
+        """
+        Build a properly-structured OpenAI messages list.
+
+        Conversation history is mapped to real assistant/user roles so the
+        model understands who said what, rather than receiving a flat text dump.
+        """
+        messages: List[Dict] = [{"role": "system", "content": system_prompt}]
+
+        for msg in sorted(conversation_history, key=lambda x: x.created_at):
+            role = "user" if msg.direction == MessageDirection.INBOUND else "assistant"
+            if msg.content and msg.content.strip():
+                messages.append({"role": role, "content": msg.content.strip()})
+
+        # Current inbound message
+        messages.append({"role": "user", "content": latest_message})
+        return messages
+
+    def _build_conversation_thread(self, messages: List[Message]) -> str:
+        """Plain-text thread used only for summaries."""
+        lines = []
+        for msg in sorted(messages, key=lambda x: x.created_at):
+            speaker = "Lead" if msg.direction == MessageDirection.INBOUND else "You"
+            ts = msg.created_at.strftime("%Y-%m-%d %H:%M")
+            lines.append(f"{ts} - {speaker}: {msg.content}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _is_mortgage_lead(lead: Lead) -> bool:
+        from app.config.mortgage_campaign import is_mortgage_lead
+        return is_mortgage_lead(lead)
+
+    def _create_system_prompt(
+        self,
+        lead: Lead,
+        config: Dict,
+        tone: str,
+        agent_name: str,
+        company_name: str,
+    ) -> str:
+        """
+        Build the SMS system prompt.
+
+        If the company has set a custom prompt_template, it is used with safe
+        format_map substitution (unknown placeholders become empty strings so
+        curly braces in company_memory/industry_lingo don't crash).
+        """
+        industry_lingo = config.get("industry_lingo", "").strip()
+        company_memory = config.get("company_memory", "").strip()
+        first_name = self._first_name(lead.name)
+        prompt_template = config.get("prompt_template", "").strip()
+
+        if prompt_template:
+            try:
+                return prompt_template.format_map(defaultdict(str, {
+                    "lead_name": lead.name or "",
+                    "first_name": first_name,
+                    "industry": lead.industry or "",
+                    "company": lead.lead_company or "",
+                    "tone": tone,
+                    "agent_name": agent_name,
+                    "company_name": company_name,
+                }))
+            except Exception as e:
+                logger.warning(f"Custom prompt_template format failed: {e}. Using as-is.")
+                return prompt_template
+
+        # ── Default prompt ────────────────────────────────────────────────
+        parts = [
+            f"You are {agent_name}, a sales representative at {company_name}. You are texting via SMS.",
+            "",
+            f"Lead info — Name: {lead.name or 'Unknown'} | "
+            f"Company: {lead.lead_company or 'Unknown'} | "
+            f"Industry: {lead.industry or 'Unknown'} | "
+            f"Interest: {lead.interest or 'General inquiry'}",
+            "",
+            "RULES:",
+            f"- Address them as {first_name} occasionally — not in every message.",
+            "- Read the full conversation history before replying. Never repeat yourself.",
+            "- Respond directly to what they just said. Answer questions first.",
+            "- Keep replies under 160 characters. One clear thought per message.",
+            "- Don't re-introduce yourself once you've already done it.",
+            "- Don't name-drop the company or industry in every message.",
+            "- Tone: match their energy. Warm but not pushy.",
+            "- If they show interest in meeting, ask for their availability naturally.",
+            "  Example: \"What works for you — tomorrow afternoon or later this week?\"",
+            "- Do NOT send booking links. You handle scheduling for them.",
+            "- If not interested, acknowledge respectfully. Don't push.",
+            "- Max one emoji per message, only when it feels natural.",
+        ]
+
+        if company_memory:
+            parts += ["", "COMPANY CONTEXT:", company_memory]
+
+        if industry_lingo:
+            parts += ["", "INDUSTRY TERMS TO USE:", industry_lingo]
+
+        # Mortgage/Refi: append campaign tone guide so inbound replies stay
+        # consistent with the outbound message sequence.
+        if self._is_mortgage_lead(lead):
+            from app.config.mortgage_campaign import MORTGAGE_TONE_GUIDE
+            parts += ["", MORTGAGE_TONE_GUIDE.strip()]
+
+        return "\n".join(parts)
+
+    # ── Core methods ─────────────────────────────────────────────────────────
+
     async def generate_smart_reply(
         self,
         lead: Lead,
@@ -21,123 +141,175 @@ class OpenAIService:
         company_config: Dict,
         latest_message: str,
         agent_name: str = "your representative",
-        company_name: str = "our company"
+        company_name: str = "our company",
     ) -> Dict:
-        """Generate a smart reply based on conversation history and context"""
+        """Generate a contextual reply using proper conversation role structure."""
         try:
-            # Build conversation thread
-            thread = self._build_conversation_thread(conversation_history)
-            
-            # Get dynamic prompt configuration
             prompt_config = company_config.get("ai_config", {})
             temperature = prompt_config.get("temperature", 0.7)
             tone = prompt_config.get("tone", "friendly and professional")
-            
-            # Create system prompt
-            system_prompt = self._create_system_prompt(lead, prompt_config, tone, agent_name, company_name)
-            
-            # Build messages for OpenAI
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Full Conversation History (oldest first):\n{thread}"},
-                {"role": "user", "content": f"The lead just said: \"{latest_message}\". Based on this and the history above, generate your natural, helpful response."}
-            ]
-            
-            # Try primary model
+
+            system_prompt = self._create_system_prompt(
+                lead, prompt_config, tone, agent_name, company_name
+            )
+
+            messages = self._build_chat_messages(
+                system_prompt, conversation_history, latest_message
+            )
+
             try:
                 response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=150
+                    max_tokens=160,
                 )
             except Exception as primary_error:
-                logger.warning(f"Primary model {self.model} failed: {primary_error}. Falling back to gpt-3.5-turbo.")
-                # Fallback to gpt-3.5-turbo which is usually more accessible
+                logger.warning(
+                    f"Primary model {self.model} failed: {primary_error}. "
+                    "Falling back to gpt-3.5-turbo."
+                )
                 response = await self.client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=150
+                    max_tokens=160,
                 )
-            
+
             reply_content = response.choices[0].message.content.strip()
-            
+
             return {
                 "success": True,
                 "reply": reply_content,
                 "usage": {
                     "prompt_tokens": response.usage.prompt_tokens,
                     "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                }
+                    "total_tokens": response.usage.total_tokens,
+                },
             }
         except Exception as e:
             logger.error(f"OpenAI generation error: {e}")
+            first = self._first_name(lead.name)
             return {
                 "success": False,
                 "error": str(e),
-                "reply": f"Hi! This is {agent_name} from {company_name}. Thanks for reaching out. How can I help you today?"
+                "reply": (
+                    f"Hi {first}! This is {agent_name} from {company_name}. "
+                    "Thanks for reaching out — how can I help?"
+                ),
             }
-    
+
     async def analyze_sentiment_and_intent(
         self,
         message: str,
-        context: Optional[Dict] = None
+        context: Optional[Dict] = None,
     ) -> Dict:
-        """Analyze sentiment, intent, and extract key information from a message"""
+        """
+        Classify sentiment, intent, urgency and extract any datetime mention.
+
+        Intent values:
+          request_call     — wants to talk on the phone right now (no time given)
+          schedule_meeting — wants to talk at a specific future time
+          ask_question     — has a question, seeking information
+          not_interested   — declining, opting out
+          request_info     — wants more details / brochure / pricing info
+          other            — positive/neutral reply, small talk, etc.
+        """
         try:
             current_date = datetime.utcnow().strftime("%Y-%m-%d")
-            prompt = f"""Analyze the following message and provide sales insights.
-Current Date: {current_date}
+            ctx = context or {}
 
-            Extract:
-1. Sentiment (positive/neutral/negative)
-2. Intent (schedule_meeting/ask_question/not_interested/request_info/request_call/other). 
-   - 'request_call': Lead wants to talk on the phone NOW, ASAP, or "call me".
-     Example: "Call me", "Can you call me?", "I want to talk on the phone", "Let's chat now".
-   - 'schedule_meeting': Lead wants to talk at a SPECIFIC FUTURE time.
-     Example: "Call me tomorrow", "Can we talk on Monday?", "I'm free at 2pm".
-   *CRITICAL: If the lead does not specify a future time, assume they want a call NOW and set to 'request_call'.*
-3. Urgency level (high/medium/low)
-4. Any datetime mentioned. If relative like 'tomorrow' or 'next Monday', convert to ISO date string (YYYY-MM-DD) based on current date {current_date}. 
-   If a specific time is mentioned, include it in ISO format (YYYY-MM-DDTHH:MM:SSZ).
-5. Key topics or interests
+            # Include recent conversation snippet if provided
+            recent_msgs = ctx.pop("recent_conversation", [])
+            recent_snippet = ""
+            if recent_msgs:
+                lines = [
+                    f"  {'Lead' if m.get('direction') == 'inbound' else 'Agent'}: {m.get('content', '')}"
+                    for m in recent_msgs
+                ]
+                recent_snippet = "\nRecent conversation:\n" + "\n".join(lines)
 
-Message: "{message}"
-Context: {json.dumps(context or {})}
+            prompt = f"""You are a sales analyst classifying a lead's SMS message.
 
-Respond in JSON format."""
-            
-            # Try primary model
+Today: {current_date}
+Lead name: {ctx.get('lead_name', 'Unknown')}
+Lead company: {ctx.get('company', 'Unknown')}{recent_snippet}
+
+Latest message: "{message}"
+
+Classify and extract the following as JSON:
+
+1. "sentiment": "positive" | "neutral" | "negative"
+
+2. "intent": one of:
+   - "request_call"     → Lead explicitly wants a phone call with NO specific time.
+                          Examples: "Call me", "Can you call me?", "I'd rather talk"
+   - "schedule_meeting" → Lead specifies a FUTURE time/day to talk.
+                          Examples: "Call me tomorrow at 3", "Free Monday morning", "Let's talk next week"
+   - "ask_question"     → Lead is asking something.
+                          Examples: "What are your rates?", "How does it work?", "Do you cover X?"
+   - "not_interested"   → Lead is declining or opting out.
+                          Examples: "Not interested", "Please stop texting", "Remove me"
+   - "request_info"     → Lead wants materials or general info, not a call.
+                          Examples: "Send me more info", "Can you email me details?"
+   - "other"            → Anything else: acknowledgements, short replies, small talk.
+                          Examples: "Ok", "Sure", "Sounds good", "Thanks"
+
+   IMPORTANT: Only use "request_call" when the lead explicitly asks for a call NOW with no time specified.
+   A general "sounds good" or "ok" is "other", not "request_call".
+
+3. "urgency": "high" | "medium" | "low"
+
+4. "datetime": ISO string (YYYY-MM-DDTHH:MM:SSZ) if a specific time is mentioned, else null.
+   Convert relative dates using today={current_date}.
+
+5. "topics": list of key topics or interests mentioned.
+
+Few-shot examples:
+- "Call me" → intent: request_call, urgency: high
+- "Can we talk tomorrow at 2pm?" → intent: schedule_meeting, datetime: (tomorrow 2pm)
+- "What's your pricing?" → intent: ask_question, urgency: medium
+- "Not interested, thanks" → intent: not_interested, urgency: low
+- "Ok sounds good" → intent: other, urgency: low
+- "Send me more details" → intent: request_info, urgency: low
+- "I'm free Friday afternoon" → intent: schedule_meeting
+- "Sure, I'd be open to a quick chat" → intent: other (not an explicit call request)
+
+Respond with valid JSON only."""
+
             try:
                 response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=[
-                        {"role": "system", "content": "You are an AI that analyzes customer messages for sales insights."},
-                        {"role": "user", "content": prompt}
+                        {
+                            "role": "system",
+                            "content": "You are a JSON-only sales message classifier. Output valid JSON.",
+                        },
+                        {"role": "user", "content": prompt},
                     ],
-                    temperature=0.3,
-                    response_format={"type": "json_object"}
+                    temperature=0.1,
+                    response_format={"type": "json_object"},
                 )
             except Exception as primary_error:
-                logger.warning(f"Primary model {self.model} failed for analysis: {primary_error}. Falling back to gpt-3.5-turbo-0125.")
-                try:
-                    response = await self.client.chat.completions.create(
-                        model="gpt-3.5-turbo-0125", 
-                        messages=[
-                            {"role": "system", "content": "You are an AI that analyzes customer messages for sales insights."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        temperature=0.3,
-                        response_format={"type": "json_object"}
-                    )
-                except Exception as fallback_error:
-                    logger.error(f"Fallback model gpt-3.5-turbo-0125 also failed for analysis: {fallback_error}")
-                    raise fallback_error
-            
+                logger.warning(
+                    f"Primary model {self.model} failed for analysis: {primary_error}. "
+                    "Falling back to gpt-3.5-turbo-0125."
+                )
+                response = await self.client.chat.completions.create(
+                    model="gpt-3.5-turbo-0125",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a JSON-only sales message classifier. Output valid JSON.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.1,
+                    response_format={"type": "json_object"},
+                )
+
             analysis = json.loads(response.choices[0].message.content)
-            
+
             return {
                 "success": True,
                 "sentiment": analysis.get("sentiment", "neutral"),
@@ -145,7 +317,7 @@ Respond in JSON format."""
                 "urgency": analysis.get("urgency", "medium"),
                 "extracted_datetime": analysis.get("datetime"),
                 "topics": analysis.get("topics", []),
-                "raw_analysis": analysis
+                "raw_analysis": analysis,
             }
         except Exception as e:
             logger.error(f"Sentiment analysis error: {e}")
@@ -154,118 +326,82 @@ Respond in JSON format."""
                 "error": str(e),
                 "sentiment": "neutral",
                 "intent": "other",
-                "urgency": "medium"
+                "urgency": "medium",
             }
-    
+
     async def generate_cold_outreach(
         self,
         lead: Lead,
         company_config: Dict,
         agent_name: str = "your representative",
-        company_name: str = "our company"
+        company_name: str = "our company",
     ) -> str:
-        """Generate initial outreach message for new leads"""
+        """Generate the first outreach SMS for a new lead."""
         try:
             prompt_config = company_config.get("ai_config", {})
             temperature = prompt_config.get("temperature", 0.7)
-            
-            prompt = f"""Create a brief, friendly SMS message to reach out to a new lead.
-My name is {agent_name} and I am from {company_name}.
-Lead name: {lead.name}
-Company: {lead.lead_company}
-Industry: {lead.industry}
-Interest: {lead.interest or 'General inquiry'}
+            company_memory = prompt_config.get("company_memory", "").strip()
+            first_name = self._first_name(lead.name)
 
-Requirements:
-- Keep it under 160 characters
-- Be warm and professional
-- Include a simple question to start conversation
-- Use the lead's first name
-- Introduce yourself briefly as {agent_name} from {company_name}"""
-            
+            context_block = f"\nAbout our company: {company_memory}" if company_memory else ""
+
+            prompt = (
+                f"Write a short, friendly opening SMS to a new lead on behalf of {agent_name} at {company_name}.\n"
+                f"Lead: {lead.name} | Company: {lead.lead_company or 'N/A'} | "
+                f"Industry: {lead.industry or 'N/A'} | Interest: {lead.interest or 'General inquiry'}\n"
+                f"{context_block}\n\n"
+                f"Requirements:\n"
+                f"- Under 160 characters total\n"
+                f"- Address them as {first_name}\n"
+                f"- Introduce {agent_name} from {company_name} briefly\n"
+                f"- End with a single open question to start a conversation\n"
+                f"- Natural and warm, not salesy\n"
+                f"- No links, no emojis unless very natural"
+            )
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a friendly sales assistant."},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": "You write short, friendly sales SMS messages."},
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=temperature,
-                max_tokens=100
+                max_tokens=100,
             )
-            
+
             return response.choices[0].message.content.strip()
         except Exception as e:
             logger.error(f"Cold outreach generation error: {e}")
-            return f"Hi {lead.name.split()[0]}! This is {agent_name} from {company_name}. Thanks for your interest. How can we help you today?"
-    
-    async def summarize_conversation(
-        self,
-        messages: List[Message]
-    ) -> str:
-        """Generate a summary of a conversation thread"""
+            first = self._first_name(lead.name)
+            return (
+                f"Hi {first}! This is {agent_name} from {company_name}. "
+                "We'd love to learn more about what you're looking for — "
+                "what's the biggest challenge you're trying to solve right now?"
+            )
+
+    async def summarize_conversation(self, messages: List[Message]) -> str:
+        """Summarize a conversation thread for voice call hand-off context."""
         try:
             thread = self._build_conversation_thread(messages)
-            
+
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are an AI that summarizes sales conversations."},
-                    {"role": "user", "content": f"Summarize this conversation in 2-3 sentences:\n\n{thread}"}
+                    {
+                        "role": "system",
+                        "content": (
+                            "Summarize this sales SMS conversation in 2-3 sentences. "
+                            "Include: what the lead said they want, any sentiment, "
+                            "and any dates or times they mentioned."
+                        ),
+                    },
+                    {"role": "user", "content": thread},
                 ],
                 temperature=0.3,
-                max_tokens=100
+                max_tokens=120,
             )
-            
+
             return response.choices[0].message.content.strip()
         except Exception as e:
             logger.error(f"Conversation summary error: {e}")
-            return "Unable to generate summary."
-    
-    def _build_conversation_thread(self, messages: List[Message]) -> str:
-        """Build a formatted conversation thread from messages"""
-        thread_lines = []
-        for msg in sorted(messages, key=lambda x: x.created_at):
-            direction = "Lead" if msg.direction == MessageDirection.INBOUND else "You"
-            timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
-            thread_lines.append(f"{timestamp} - {direction}: {msg.content}")
-        return "\n".join(thread_lines)
-    
-    def _create_system_prompt(self, lead: Lead, config: Dict, tone: str, agent_name: str, company_name: str) -> str:
-        """Create a dynamic system prompt based on configuration"""
-        base_prompt = config.get("prompt_template", "")
-        industry_lingo = config.get("industry_lingo", "")
-        company_memory = config.get("company_memory", "")
-        
-        if not base_prompt:
-            base_prompt = f"""You are {agent_name}, a professional sales representative at {company_name}.
-Your primary goal is to book a consultation call with the lead.
-
-Context:
-- Lead: {lead.name}
-- Industry: {lead.industry or 'general'}
-- Initial Interest: {lead.interest or 'General inquiry'}
-
-Company Context:
-{company_memory}
-
-Industry Lingo:
-{industry_lingo}
-
-Conversational Guidelines:
-- **Be Natural:** Respond like a real human. Acknowledge what the lead just said and answer their specific questions.
-- **Avoid Repetition:** Do NOT mention "{lead.industry or 'mortgage'}" or your company name in every message if the conversation is already flowing. 
-- **Stay Brief:** Keep SMS under 160 characters. Use emojis sparingly (max 1 per message).
-- **Drive to Booking:** If the lead shows interest or asks about next steps, ask them for their availability (e.g., "What time works best for you tomorrow or later this week?"). 
-- **Confirm Details:** Once they give you a time, confirm it with them. Do NOT send them a booking link; you will handle the booking for them.
-- **Address by Name:** Use the lead's first name ({lead.name.split()[0]}) naturally.
-- **Context Awareness:** Read the conversation history carefully. Don't re-introduce yourself if you've already done so.
-"""
-        
-        return base_prompt.format(
-            lead_name=lead.name,
-            industry=lead.industry or "Mortgage/Real Estate",
-            company=lead.lead_company or "our firm",
-            tone=tone,
-            agent_name=agent_name,
-            company_name=company_name
-        )
+            return "No summary available."

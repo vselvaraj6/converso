@@ -53,13 +53,13 @@ export default function LoginPage() {
 
           <div className="space-y-10 max-w-lg">
             <h1 className="text-5xl xl:text-6xl font-black text-[var(--text-primary)] leading-[1.05] tracking-tight">
-              Master your pipeline with <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-blue-400">Autonomous AI.</span>
+              Close more deals<br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-blue-400">with AI on your team.</span>
             </h1>
-            
+
             <div className="space-y-8">
-              <FeatureItem icon={Zap} title="Direct SMS Dispatch" desc="Engage prospects instantly with context-aware natural language." />
-              <FeatureItem icon={ShieldCheck} title="Enterprise Oversight" desc="Multi-tenant architecture built for high-scale sales teams." />
+              <FeatureItem icon={Zap} title="Instant Outreach" desc="Reach leads automatically with smart, personalized messages." />
+              <FeatureItem icon={ShieldCheck} title="Built for Teams" desc="Manage your pipeline and track every conversation in one place." />
             </div>
           </div>
         </div>
@@ -93,7 +93,7 @@ export default function LoginPage() {
         <div className="max-w-md w-full mx-auto space-y-12">
           <div className="space-y-2">
             <h2 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">Welcome back</h2>
-            <p className="text-slate-500 font-medium text-sm">Secure biometric or credential login required.</p>
+            <p className="text-slate-500 font-medium text-sm">Sign in to your account.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -105,7 +105,7 @@ export default function LoginPage() {
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="label-text">Identity / Email</label>
+                <label className="label-text">Email</label>
                 <input
                   type="email"
                   className="input py-4 focus:border-brand-500"
@@ -118,13 +118,13 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <label className="label-text">Access Key</label>
-                  <button 
+                  <label className="label-text">Password</label>
+                  <button
                     type="button"
                     onClick={() => setShowForgotMsg(true)}
                     className="text-[10px] font-black text-brand-400 hover:text-brand-300 uppercase tracking-widest transition-colors"
                   >
-                    Reset?
+                    Forgot?
                   </button>
                 </div>
                 <input
@@ -140,7 +140,7 @@ export default function LoginPage() {
 
             {showForgotMsg && (
               <div className="bg-brand-500/10 border border-brand-500/20 text-brand-400 rounded-2xl px-5 py-4 text-[11px] font-bold leading-relaxed animate-in slide-in-from-top-2 duration-300">
-                Administrative security protocol: Please contact your system lead to reset your credentials.
+                Please contact your account admin to reset your password.
               </div>
             )}
 
@@ -149,20 +149,20 @@ export default function LoginPage() {
               className="btn-primary w-full py-4 text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand-500/20 active:scale-[0.98] transition-all" 
               disabled={loading}
             >
-              {loading ? 'Authenticating…' : 'Access Dashboard'}
+              {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
 
           <div className="flex flex-col items-center gap-6">
             <p className="text-xs text-slate-500 font-medium">
-              New to the platform?{' '}
+              Don't have an account?{' '}
               <Link href="/register" className="text-brand-400 font-black hover:text-brand-300 transition-colors ml-1 uppercase tracking-widest">
-                Request Access
+                Sign up
               </Link>
             </p>
             <div className="flex items-center gap-3 opacity-30">
               <div className="h-px w-8 bg-slate-700" />
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Enterprise Guard v2.4</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Converso</p>
               <div className="h-px w-8 bg-slate-700" />
             </div>
           </div>

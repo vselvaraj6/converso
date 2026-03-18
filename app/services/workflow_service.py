@@ -12,6 +12,7 @@ from app.models import (
 from app.integrations import TwilioService, OpenAIService, VAPIService
 from app.integrations.cal_com import CalComService
 from app.core.config import settings
+from app.config.mortgage_campaign import get_campaign_message, is_mortgage_lead, MORTGAGE_TONE_GUIDE
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +78,18 @@ class WorkflowService:
             # 6. Get conversation history
             messages = await self._get_conversation_history(lead.id, limit=10)
             
-            # 7. Analyze sentiment and intent
+            # 7. Analyze sentiment and intent (with recent conversation context)
+            recent_context = [
+                {"direction": m.direction.value, "content": m.content}
+                for m in messages[-4:]
+            ]
             analysis = await self.openai.analyze_sentiment_and_intent(
                 message_body,
-                {"lead_name": lead.name, "company": lead.lead_company}
+                {
+                    "lead_name": lead.name,
+                    "company": lead.lead_company,
+                    "recent_conversation": recent_context,
+                },
             )
             
             # 8. Generate smart reply with personalization
@@ -93,53 +102,61 @@ class WorkflowService:
                 company_name=company.name
             )
             
+            first_name = lead.name.strip().split()[0] if lead.name and lead.name.strip() else "there"
+
             if not reply_data["success"]:
                 logger.error(f"OpenAI generation failed for lead {lead.id}: {reply_data.get('error')}. Using fallback.")
-                reply_text = f"Hi {lead.name.split()[0]}, this is {agent_name} from {company.name}. Thanks for your message! Our team will get back to you soon."
+                reply_text = (
+                    f"Hi {first_name}, this is {agent_name} from {company.name}. "
+                    "Thanks for your message — we'll be in touch shortly!"
+                )
             else:
                 reply_text = reply_data["reply"]
-            
-            # 9. Check for call or booking intent
+
+            # 9. Check for call or booking intent (from LLM classification only)
             is_requesting_call = analysis.get("intent") == "request_call"
             is_scheduling = analysis.get("intent") == "schedule_meeting"
-            
-            # Aggressive keyword-based override for immediate calls
+
+            # Keyword safety net: only escalate to call if LLM missed an obvious signal
+            # AND the message contains no future-time words (which would mean schedule_meeting)
             body_lower = message_body.lower()
-            call_keywords = ["call me", "talk now", "can we talk", "on the phone", "phone call", "call now"]
-            if any(kw in body_lower for kw in call_keywords):
-                future_keywords = ["later", "tomorrow", "next week", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "at ", "pm", "am"]
-                if not any(fw in body_lower for fw in future_keywords):
-                    logger.info(f"Keyword override triggered for lead {lead.id}: {message_body}")
-                    is_requesting_call = True
-                    is_scheduling = False
-            
-            logger.info(f"Lead {lead.id} interaction: intent={analysis.get('intent')}, is_requesting_call={is_requesting_call}, is_scheduling={is_scheduling}")
+            explicit_call_phrases = ["call me now", "call me asap", "call me right now", "talk on the phone now"]
+            future_time_words = ["tomorrow", "next week", "monday", "tuesday", "wednesday",
+                                 "thursday", "friday", "saturday", "sunday", "at ", " pm", " am", "later"]
+            if (
+                not is_requesting_call
+                and any(ph in body_lower for ph in explicit_call_phrases)
+                and not any(fw in body_lower for fw in future_time_words)
+            ):
+                logger.info(f"Keyword safety-net override → request_call for lead {lead.id}: {message_body!r}")
+                is_requesting_call = True
+                is_scheduling = False
+
+            logger.info(
+                f"Lead {lead.id}: intent={analysis.get('intent')!r} "
+                f"requesting_call={is_requesting_call} scheduling={is_scheduling}"
+            )
 
             if is_requesting_call:
-                # Generate summary for Vapi
                 summary = await self.openai.summarize_conversation(messages + [inbound_msg])
-                
-                # Initiate voice call
-                # Fallback to provided ID if setting is empty
                 vapi_phone_id = settings.vapi_phone_number_id or "979910e0-0199-49f3-b5c2-41abd1328378"
                 call_result = await self._initiate_voice_call(
-                    lead, 
+                    lead,
                     overrides={
                         "variableValues": {"sms_context": summary},
-                        "phoneNumberId": vapi_phone_id
-                    }
+                        "phoneNumberId": vapi_phone_id,
+                    },
                 )
-                
                 if call_result["success"]:
-                    reply_text = f"Absolutely, {lead.name.split()[0]}! I'm calling you now to discuss this further."
+                    reply_text = f"On it, {first_name}! Calling you now."
                 else:
-                    reply_text = "I'd love to jump on a call. Let me have someone reach out to you shortly, or feel free to suggest a time that works for you!"
+                    reply_text = (
+                        "I'd love to chat — what time works best for you "
+                        "tomorrow or later this week?"
+                    )
 
-            elif not is_scheduling and reply_data["success"]:
-                reply_lower = reply_text.lower()
-                if any(kw in reply_lower for kw in ["invite", "meeting", "call", "schedule", "calendar"]):
-                    is_scheduling = True
-
+            # Only trigger calendar booking when the LLM explicitly classified
+            # this as schedule_meeting. Never infer it from the AI's reply text.
             if is_scheduling:
                 booking_result = await self._handle_calendar_booking(
                     lead, company, requested_time=analysis.get("extracted_datetime")
@@ -186,7 +203,8 @@ class WorkflowService:
                 "urgency": analysis.get("urgency", "medium"),
                 "updated_at": datetime.utcnow().isoformat()
             }
-            
+            lead.lead_score = self._compute_lead_score(lead)
+
             if analysis.get("intent") == "schedule_meeting":
                 lead.status = LeadStatus.QUALIFIED
             elif analysis.get("intent") == "not_interested":
@@ -240,6 +258,35 @@ class WorkflowService:
             logger.error(f"Outbound campaign error: {e}")
             return {"success": False, "error": str(e)}
     
+    def _compute_lead_score(self, lead: Lead) -> int:
+        score = 0
+
+        status_scores = {
+            LeadStatus.NEW: 10,
+            LeadStatus.CONTACTED: 30,
+            LeadStatus.QUALIFIED: 70,
+            LeadStatus.CONVERTED: 100,
+            LeadStatus.LOST: 0,
+        }
+        score += status_scores.get(lead.status, 10)
+
+        s = lead.sentiment_score or {}
+        sentiment_scores = {"positive": 20, "neutral": 0, "negative": -10}
+        score += sentiment_scores.get(s.get("latest", "neutral"), 0)
+
+        urgency_scores = {"high": 15, "medium": 5, "low": 0}
+        score += urgency_scores.get(s.get("urgency", "medium"), 5)
+
+        intent_scores = {
+            "schedule_meeting": 20,
+            "request_call": 15,
+            "interested": 10,
+            "not_interested": -20,
+        }
+        score += intent_scores.get(s.get("intent", "other"), 0)
+
+        return max(0, min(100, score))
+
     async def _get_or_create_thread(self, lead_id: str, channel: str) -> ConversationThread:
         result = await self.db.execute(
             select(ConversationThread).where(
@@ -408,26 +455,34 @@ class WorkflowService:
                 agent = await self.db.get(User, lead.assigned_agent_id)
                 if agent: agent_name = agent.name
 
+            # Extract SMS context from overrides (passed in from the SMS→call flow)
+            sms_context = (overrides or {}).get("variableValues", {}).get("sms_context")
+
+            # Build full contextual prompt for this specific call
+            full_prompt = self.vapi.create_lead_assistant_prompt(
+                {"name": lead.name, "company": lead.lead_company, "industry": lead.industry, "interest": lead.interest},
+                {"name": company.name, "ai_config": company.ai_config},
+                sms_context=sms_context,
+            )
+            system_prompt = f"Your name is {agent_name}. {full_prompt}"
+
+            # Ensure a base assistant exists (reused across calls; context injected per-call via overrides)
             assistant_id = company.vapi_assistant_id
             if not assistant_id:
-                prompt = self.vapi.create_lead_assistant_prompt(
-                    {"name": lead.name, "company": lead.lead_company, "industry": lead.industry, "interest": lead.interest},
-                    {"name": company.name, "ai_config": company.ai_config}
-                )
                 assistant_result = await self.vapi.create_assistant(
                     name=f"{company.name} Sales Assistant",
-                    system_prompt=f"Your name is {agent_name}. {prompt}",
+                    system_prompt=system_prompt,
                     first_message=f"Hi {lead.name.split()[0]}, this is {agent_name} from {company.name}. Do you have a moment to chat?"
                 )
                 if not assistant_result["success"]: return assistant_result
                 assistant_id = assistant_result["assistant"]["id"]
-            
+
             call_result = await self.vapi.create_phone_call(
                 phone_number=lead.phone,
                 assistant_id=assistant_id,
-                phone_number_id=overrides.get("phoneNumberId") if overrides else settings.vapi_phone_number_id,
-                variables=overrides.get("variableValues") if overrides else None,
-                webhook_url=f"{settings.app_url}/api/webhooks/vapi/inbound"
+                phone_number_id=(overrides or {}).get("phoneNumberId") or settings.vapi_phone_number_id,
+                webhook_url=f"{settings.app_url}/api/webhooks/vapi/inbound",
+                system_prompt=system_prompt,
             )
             if call_result["success"]:
                 lead.call_attempts += 1
@@ -447,39 +502,95 @@ class WorkflowService:
             logger.error(f"Voice call error: {e}")
             return {"success": False, "error": str(e)}
     
+    async def _count_outbound_sms(self, lead_id) -> int:
+        """Count how many outbound SMS messages have been sent to a lead."""
+        result = await self.db.execute(
+            select(func.count()).where(
+                and_(
+                    Message.lead_id == lead_id,
+                    Message.direction == MessageDirection.OUTBOUND,
+                    Message.channel == "sms",
+                )
+            )
+        )
+        return result.scalar() or 0
+
+    @staticmethod
+    def _is_mortgage_lead(lead: Lead) -> bool:
+        return is_mortgage_lead(lead)
+
     async def _send_outbound_sms(self, lead: Lead) -> Dict:
         try:
             company = await self.db.get(Company, lead.company_id)
             if not company:
                 logger.error(f"Company {lead.company_id} not found for lead {lead.id}")
                 return {"success": False, "error": "Company not found"}
+
             agent_name = "your representative"
             if lead.assigned_agent_id:
                 agent = await self.db.get(User, lead.assigned_agent_id)
-                if agent: agent_name = agent.name
-            
-            messages = await self._get_conversation_history(lead.id, limit=5)
-            if messages:
-                reply_data = await self.openai.generate_smart_reply(lead, messages, {"name": company.name, "ai_config": company.ai_config}, "Generate a follow-up nudge", agent_name=agent_name, company_name=company.name)
-                message_body = reply_data.get("reply", f"Hi {lead.name.split()[0]}, this is {agent_name} from {company.name}. Just following up!")
-            else:
-                message_body = await self.openai.generate_cold_outreach(lead, {"name": company.name, "ai_config": company.ai_config}, agent_name=agent_name, company_name=company.name)
-            
-            send_result = await self.twilio.send_sms(to=lead.phone, body=message_body, from_=company.twilio_phone_number or settings.twilio_phone_number)
+                if agent:
+                    agent_name = agent.name
+
+            first_name = lead.name.strip().split()[0] if lead.name and lead.name.strip() else "there"
+            message_body: Optional[str] = None
+
+            # ── Mortgage/Refi campaign: sequenced templates only for mortgage industry ──
+            if self._is_mortgage_lead(lead):
+                outbound_count = await self._count_outbound_sms(lead.id)
+                message_body = get_campaign_message(
+                    lead, outbound_count, agent_name, company.name
+                )
+                if message_body is None:
+                    logger.info(f"Lead {lead.id}: mortgage campaign exhausted — skipping.")
+                    return {"success": False, "error": "campaign_exhausted"}
+                logger.info(
+                    f"Lead {lead.id}: mortgage campaign attempt {outbound_count + 1}: {message_body!r}"
+                )
+
+            # ── Non-mortgage / AI-generated fallback ───────────────────────
+            if message_body is None:
+                messages = await self._get_conversation_history(lead.id, limit=5)
+                if messages:
+                    reply_data = await self.openai.generate_smart_reply(
+                        lead, messages,
+                        {"name": company.name, "ai_config": company.ai_config},
+                        "Generate a friendly follow-up nudge.",
+                        agent_name=agent_name,
+                        company_name=company.name,
+                    )
+                    message_body = reply_data.get(
+                        "reply",
+                        f"Hi {first_name}, this is {agent_name} from {company.name}. Just following up!",
+                    )
+                else:
+                    message_body = await self.openai.generate_cold_outreach(
+                        lead,
+                        {"name": company.name, "ai_config": company.ai_config},
+                        agent_name=agent_name,
+                        company_name=company.name,
+                    )
+
+            send_result = await self.twilio.send_sms(
+                to=lead.phone,
+                body=message_body,
+                from_=company.twilio_phone_number or settings.twilio_phone_number,
+            )
             if send_result["success"]:
                 thread = await self._get_or_create_thread(lead.id, "sms")
                 self.db.add(Message(
                     company_id=lead.company_id,
-                    lead_id=lead.id, 
-                    thread_id=thread.id, 
-                    direction=MessageDirection.OUTBOUND, 
-                    channel="sms", 
-                    content=message_body, 
-                    twilio_message_sid=send_result.get("message_sid")
+                    lead_id=lead.id,
+                    thread_id=thread.id,
+                    direction=MessageDirection.OUTBOUND,
+                    channel="sms",
+                    content=message_body,
+                    twilio_message_sid=send_result.get("message_sid"),
                 ))
                 lead.last_contacted = datetime.utcnow()
                 lead.last_contact_method = "sms"
-                if lead.status == LeadStatus.NEW: lead.status = LeadStatus.CONTACTED
+                if lead.status == LeadStatus.NEW:
+                    lead.status = LeadStatus.CONTACTED
             return send_result
         except Exception as e:
             logger.error(f"Outbound SMS error: {e}")
@@ -491,30 +602,42 @@ class WorkflowService:
             if clean_phone.startswith('1') and len(clean_phone) > 10: clean_phone = clean_phone[1:]
             search_phone = clean_phone[-10:]
             result = await self.db.execute(select(Lead).where(Lead.phone.like(f"%{search_phone}%")))
-            lead = result.scalar_one_or_none()
+            lead = result.scalars().first()
             if not lead: return {"success": False, "error": "Lead not found"}
-            
+
             self.db.add(Message(
                 company_id=lead.company_id,
-                lead_id=lead.id, 
-                direction=MessageDirection.INBOUND, 
-                channel="voice", 
-                content=f"Voice call: {transcript[:500]}...", 
-                transcript=transcript, 
-                recording_url=recording_url, 
-                duration_seconds=str(duration), 
-                vapi_call_id=call_id, 
+                lead_id=lead.id,
+                direction=MessageDirection.INBOUND,
+                channel="voice",
+                content=f"Voice call: {transcript[:500]}...",
+                transcript=transcript,
+                recording_url=recording_url,
+                duration_seconds=str(duration),
+                vapi_call_id=call_id,
                 status="completed"
             ))
+
+            schedule_meeting = False
             if transcript:
                 analysis = await self.openai.analyze_sentiment_and_intent(transcript, {"lead_name": lead.name, "call_duration": duration})
                 lead.sentiment_score = {**lead.sentiment_score, "latest": analysis.get("sentiment", "neutral"), "intent": analysis.get("intent", "other")}
-                if analysis.get("intent") == "schedule_meeting": lead.status = LeadStatus.QUALIFIED
-                elif analysis.get("intent") == "not_interested": lead.status = LeadStatus.LOST
-            
+                if analysis.get("intent") == "schedule_meeting":
+                    lead.status = LeadStatus.QUALIFIED
+                    schedule_meeting = True
+                elif analysis.get("intent") == "not_interested":
+                    lead.status = LeadStatus.LOST
+                lead.lead_score = self._compute_lead_score(lead)
+
             lead.last_contacted = datetime.utcnow()
             lead.last_contact_method = "voice"
             await self.db.commit()
+
+            if schedule_meeting:
+                company = await self.db.get(Company, lead.company_id)
+                if company:
+                    await self._handle_calendar_booking(lead, company)
+
             return {"success": True, "lead_id": str(lead.id)}
         except Exception as e:
             logger.error(f"Voice call ended error: {e}")

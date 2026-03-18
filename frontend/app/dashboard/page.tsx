@@ -1,14 +1,14 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { getStoredUser, listCompanies, getLeads, getMeetings, type Lead, type Meeting } from '@/lib/api'
-import { 
-  Users, 
-  Zap, 
-  Calendar as CalendarIcon, 
-  TrendingUp, 
-  ArrowUpRight, 
-  MessageSquare, 
-  Clock, 
+import {
+  Users,
+  Zap,
+  Calendar as CalendarIcon,
+  TrendingUp,
+  ArrowUpRight,
+  MessageSquare,
+  Clock,
   CheckCircle2,
   Activity,
   Command,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import clsx from 'clsx'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
@@ -33,6 +34,16 @@ export default function DashboardPage() {
       setMeetings(m.meetings)
     }).finally(() => setLoading(false))
   }, [])
+
+  const leadTrendData = [
+    { day: 'Mon', leads: 4 },
+    { day: 'Tue', leads: 7 },
+    { day: 'Wed', leads: 5 },
+    { day: 'Thu', leads: 9 },
+    { day: 'Fri', leads: 12 },
+    { day: 'Sat', leads: 8 },
+    { day: 'Sun', leads: 11 },
+  ]
 
   if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Syncing Hub Data…</div>
 
@@ -56,6 +67,35 @@ export default function DashboardPage() {
         <StatCard title="Meetings" value={meetings.length} icon={CalendarIcon} color="from-emerald-500 to-teal-600" trend="+4" />
         <StatCard title="Conversion" value="24%" icon={Zap} color="from-amber-500 to-orange-600" trend="+2.1%" />
         <StatCard title="Response Time" value="1.2m" icon={Clock} color="from-rose-500 to-pink-600" trend="-15%" />
+      </div>
+
+      {/* Lead Trend Chart */}
+      <div className="card overflow-hidden border-none shadow-2xl">
+        <div className="px-8 py-6 border-b border-[var(--divider-subtle)] bg-[var(--surface-muted)] flex items-center justify-between">
+          <h2 className="font-black text-[var(--text-primary)] text-base uppercase tracking-widest flex items-center gap-2">
+            <TrendingUp size={18} className="text-brand-400" /> Lead Trend
+          </h2>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Last 7 days</span>
+        </div>
+        <div className="p-6" style={{ height: 220 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={leadTrendData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="leadGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--divider)', borderRadius: 12, fontSize: 12 }}
+              />
+              <Area type="monotone" dataKey="leads" stroke="#8b5cf6" strokeWidth={2} fill="url(#leadGradient)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -1,34 +1,38 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { listCompanies, getPlatformUsage, type CompanyStats } from '@/lib/api'
-import { 
-  Building2, 
-  Users, 
-  Zap, 
-  Search, 
-  Plus, 
-  ExternalLink, 
-  ShieldCheck, 
-  TrendingUp, 
-  ArrowUpRight, 
-  BarChart3, 
-  Clock, 
-  Activity, 
-  Phone, 
+import { listCompanies, getPlatformUsage, getCompany, updateCompany, getIndustryTemplates, type CompanyStats, type Company } from '@/lib/api'
+import {
+  Building2,
+  Users,
+  Zap,
+  Search,
+  Plus,
+  ShieldCheck,
+  TrendingUp,
+  BarChart3,
+  Activity,
+  Phone,
   MessageCircle,
   LayoutGrid,
   Command,
-  ArrowRight
+  ArrowRight,
+  Brain,
+  Bot,
+  CheckCircle2,
 } from 'lucide-react'
 import clsx from 'clsx'
 
 export default function PlatformAdminPage() {
-  const [tab, setTab] = useState<'companies' | 'usage'>('companies')
+  const [tab, setTab] = useState<'companies' | 'usage' | 'ai'>('companies')
   const [companies, setCompanies] = useState<CompanyStats[]>([])
   const [usage, setUsage] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [aiCompany, setAiCompany] = useState<Company | null>(null)
+  const [templates, setTemplates] = useState<Record<string, any>>({})
+  const [aiSaving, setAiSaving] = useState(false)
+  const [aiSaved, setAiSaved] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -36,12 +40,47 @@ export default function PlatformAdminPage() {
       listCompanies()
         .then(setCompanies)
         .finally(() => setLoading(false))
-    } else {
+    } else if (tab === 'usage') {
       getPlatformUsage()
         .then(setUsage)
         .finally(() => setLoading(false))
+    } else {
+      Promise.all([getCompany(), getIndustryTemplates()])
+        .then(([c, t]) => { setAiCompany(c); setTemplates(t) })
+        .finally(() => setLoading(false))
     }
   }, [tab])
+
+  const updateAI = (field: string, value: string) => {
+    if (!aiCompany) return
+    setAiCompany({ ...aiCompany, ai_config: { ...aiCompany.ai_config, [field]: value } })
+  }
+
+  const handleIndustryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const industry = e.target.value
+    if (!aiCompany) return
+    const newConfig = { ...aiCompany.ai_config }
+    if (templates[industry]) {
+      newConfig.industry_lingo = templates[industry].industry_lingo
+      newConfig.company_memory = templates[industry].company_memory
+    }
+    setAiCompany({ ...aiCompany, industry, ai_config: newConfig })
+  }
+
+  async function handleAiSave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!aiCompany) return
+    setAiSaving(true)
+    try {
+      await updateCompany(aiCompany)
+      setAiSaved(true)
+      setTimeout(() => setAiSaved(false), 3000)
+    } catch (err) {
+      alert('Failed to save AI settings')
+    } finally {
+      setAiSaving(false)
+    }
+  }
 
   const filtered = companies.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -76,14 +115,23 @@ export default function PlatformAdminPage() {
           >
             <LayoutGrid size={14} /> Clients
           </button>
-          <button 
+          <button
             onClick={() => setTab('usage')}
             className={clsx(
-              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2", 
+              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2",
               tab === 'usage' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-[var(--text-primary)]"
             )}
           >
             <Activity size={14} /> Analytics
+          </button>
+          <button
+            onClick={() => setTab('ai')}
+            className={clsx(
+              "px-6 py-2.5 rounded-[14px] text-xs font-black transition-all duration-300 flex items-center gap-2",
+              tab === 'ai' ? "bg-slate-900 text-white shadow-lg" : "text-slate-500 hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Brain size={14} /> AI Setup
           </button>
         </div>
       </div>
@@ -208,7 +256,7 @@ export default function PlatformAdminPage() {
             </div>
           </div>
         </>
-      ) : (
+      ) : tab === 'usage' ? (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             {/* Channel Metrics */}
@@ -296,7 +344,95 @@ export default function PlatformAdminPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : tab === 'ai' ? (
+        <form onSubmit={handleAiSave} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
+          {loading ? (
+            <div className="p-20 text-center text-slate-400 font-black text-[10px] uppercase tracking-widest">Loading AI settings…</div>
+          ) : (
+            <>
+              <div className="card p-8 border-none shadow-2xl space-y-6">
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-brand-400" style={{ backgroundColor: 'var(--surface-subtle)', border: '1px solid var(--divider)' }}>
+                    <Brain size={22} />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-[var(--text-primary)] text-lg uppercase tracking-widest">AI Context</h2>
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-0.5">Industry knowledge and memory</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="label-text">Industry</label>
+                  <select
+                    className="input font-black text-[11px] uppercase tracking-widest appearance-none"
+                    value={aiCompany?.industry || ''}
+                    onChange={handleIndustryChange}
+                  >
+                    {['Mortgage', 'Real Estate', 'SaaS', 'Insurance', 'Solar'].map(ind => (
+                      <option key={ind} value={ind}>{ind}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500 font-bold px-1">Changing industry auto-fills the fields below with a starter template.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="label-text flex items-center gap-2"><MessageCircle size={12} className="text-brand-400" /> Industry Keywords</label>
+                    <textarea
+                      className="input min-h-[160px] resize-none text-xs leading-relaxed"
+                      value={aiCompany?.ai_config.industry_lingo || ''}
+                      onChange={e => updateAI('industry_lingo', e.target.value)}
+                      placeholder="Enter industry-specific terms and jargon the AI should understand..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="label-text flex items-center gap-2"><Zap size={12} className="text-brand-400" /> Company Knowledge</label>
+                    <textarea
+                      className="input min-h-[160px] resize-none text-xs leading-relaxed"
+                      value={aiCompany?.ai_config.company_memory || ''}
+                      onChange={e => updateAI('company_memory', e.target.value)}
+                      placeholder="Tell the AI about your company, products, and anything it should know when talking to leads..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card p-8 border-none shadow-2xl space-y-4">
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-brand-400" style={{ backgroundColor: 'var(--surface-subtle)', border: '1px solid var(--divider)' }}>
+                    <Bot size={22} />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-[var(--text-primary)] text-lg uppercase tracking-widest">AI Behavior</h2>
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mt-0.5">Tone and personality</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="label-text">Conversation Tone</label>
+                  <select
+                    className="input font-black text-[11px] uppercase tracking-widest appearance-none"
+                    value={aiCompany?.ai_config.tone || 'friendly and professional'}
+                    onChange={e => updateAI('tone', e.target.value)}
+                  >
+                    <option value="friendly and professional">Friendly & Professional</option>
+                    <option value="formal">Formal & Business</option>
+                    <option value="casual">Casual & Friendly</option>
+                    <option value="concise">Brief & Direct</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary px-10 py-4 text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3"
+                disabled={aiSaving}
+              >
+                {aiSaved ? <><CheckCircle2 size={16} /> Saved</> : aiSaving ? 'Saving…' : 'Save AI Settings'}
+              </button>
+            </>
+          )}
+        </form>
+      ) : null}
     </div>
   )
 }

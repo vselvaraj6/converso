@@ -482,8 +482,13 @@ async def initiate_call(
     current_user: User = Depends(require_write_access)
 ):
     """Initiate an AI voice call via VAPI"""
+    from sqlalchemy import select as sa_select
+    result_q = await db.execute(sa_select(Lead).where(Lead.id == lead_id))
+    lead = result_q.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
     workflow = WorkflowService(db)
-    result = await workflow.initiate_voice_call(lead_id)
+    result = await workflow._initiate_voice_call(lead)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error"))
     return result

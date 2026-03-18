@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { getStoredUser, getCompany, updateCompany, getIndustryTemplates, updateMe, connectCalendar, type Company, type User } from '@/lib/api'
-import { Key, Phone, Bot, User as UserIcon, Building2, Brain, MessageCircle, Sparkles, Calendar, CheckCircle2, X, AlertCircle, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users, Mail, Command, Activity, Zap } from 'lucide-react'
+import { getStoredUser, getCompany, updateCompany, updateMe, type Company, type User } from '@/lib/api'
+import { Phone, User as UserIcon, CheckCircle2, ShieldCheck, Globe, Link as LinkIcon, Settings2, Users, Activity } from 'lucide-react'
 import clsx from 'clsx'
 
 function Section({ title, icon: Icon, children, description }: {
@@ -29,7 +29,6 @@ function Section({ title, icon: Icon, children, description }: {
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
-  const [templates, setTemplates] = useState<Record<string, { industry_lingo: string; company_memory: string }>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -40,11 +39,8 @@ export default function SettingsPage() {
     setUser(stored)
     setManualCalUrl(stored?.manual_calendar_url || '')
     
-    Promise.all([getCompany(), getIndustryTemplates()])
-      .then(([c, t]) => {
-        setCompany(c)
-        setTemplates(t)
-      })
+    getCompany()
+      .then(setCompany)
       .finally(() => setLoading(false))
   }, [])
 
@@ -67,31 +63,6 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  const updateAI = (field: string, value: string) => {
-    if (!company) return
-    setCompany({
-      ...company,
-      ai_config: { ...company.ai_config, [field]: value }
-    })
-  }
-
-  const handleIndustryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const industry = e.target.value
-    if (!company) return
-    
-    let newConfig = { ...company.ai_config }
-    if (templates[industry]) {
-      newConfig.industry_lingo = templates[industry].industry_lingo
-      newConfig.company_memory = templates[industry].company_memory
-    }
-    
-    setCompany({
-      ...company,
-      industry,
-      ai_config: newConfig
-    })
   }
 
   if (loading) return <div className="text-slate-400 text-sm font-black uppercase tracking-[0.2em] py-20 text-center">Loading settings…</div>
@@ -188,67 +159,19 @@ export default function SettingsPage() {
           </Section>
         )}
 
-        {/* AI Memory & Behavior (Admin Only) */}
+        {/* Phone Settings (Admin Only) */}
         {(user?.role === 'admin' || user?.is_superuser) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Section title="Cognition" icon={Brain} description="Neural Knowledge Base">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="label-text flex items-center gap-2">
-                    <MessageCircle size={12} className="text-brand-400" /> Industry Matrix
-                  </label>
-                  <textarea
-                    className="input min-h-[120px] bg-[var(--input-bg)] resize-none text-xs leading-relaxed"
-                    value={company?.ai_config.industry_lingo || ''}
-                    onChange={e => updateAI('industry_lingo', e.target.value)}
-                    placeholder="Load industry keywords here..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="label-text flex items-center gap-2">
-                    <Zap size={12} className="text-brand-400" /> Company Knowledge
-                  </label>
-                  <textarea
-                    className="input min-h-[120px] bg-[var(--input-bg)] resize-none text-xs leading-relaxed"
-                    value={company?.ai_config.company_memory || ''}
-                    onChange={e => updateAI('company_memory', e.target.value)}
-                    placeholder="Tell the AI about your company, products, and any specific knowledge it should have..."
-                  />
-                </div>
-              </div>
-            </Section>
-
-            <div className="space-y-8">
-              <Section title="AI Behavior" icon={Bot} description="Tone & Personality">
-                <div className="space-y-2">
-                  <label className="label-text">Conversation Tone</label>
-                  <select
-                    className="input font-black text-[11px] uppercase tracking-widest bg-[var(--input-bg)] appearance-none"
-                    value={company?.ai_config.tone || 'friendly and professional'}
-                    onChange={e => updateAI('tone', e.target.value)}
-                  >
-                    <option value="friendly and professional">Friendly & Professional</option>
-                    <option value="formal">Formal & Business</option>
-                    <option value="casual">Casual & Friendly</option>
-                    <option value="concise">Brief & Direct</option>
-                  </select>
-                  </div>
-                  </Section>
-
-                  <Section title="Phone Settings" icon={Phone} description="Connect your business number">
-                  <div className="space-y-2">
-                  <label className="label-text">Business Phone Number</label>
-
-                  <input 
-                    className="input font-mono text-xs font-black bg-[var(--input-bg)] text-brand-400 tracking-widest" 
-                    value={company?.twilio_phone_number || ''} 
-                    onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
-                    placeholder="+1.000.000.0000"
-                  />
-                </div>
-              </Section>
+          <Section title="Phone Settings" icon={Phone} description="Connect your business number">
+            <div className="space-y-2">
+              <label className="label-text">Business Phone Number</label>
+              <input
+                className="input font-mono text-xs font-black bg-[var(--input-bg)] text-brand-400 tracking-widest"
+                value={company?.twilio_phone_number || ''}
+                onChange={e => setCompany(c => c ? {...c, twilio_phone_number: e.target.value} : null)}
+                placeholder="+1.000.000.0000"
+              />
             </div>
-          </div>
+          </Section>
         )}
 
         {/* Save Console */}
@@ -259,15 +182,15 @@ export default function SettingsPage() {
                 <Activity size={24} className={clsx(saving && "animate-pulse")} />
               </div>
               <div>
-                <p className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">Ready for Sync</p>
-                <p className="text-[9px] text-slate-500 font-bold uppercase">All parameters verified</p>
+                <p className="text-[10px] font-black text-[var(--text-primary)] uppercase tracking-[0.2em]">Unsaved changes</p>
+                <p className="text-[9px] text-slate-500 font-bold uppercase">Click to save</p>
               </div>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="btn-primary h-12 px-10 text-xs font-black uppercase tracking-[0.2em] shadow-none ml-4"
                 disabled={saving}
               >
-                {saving ? 'Syncing...' : saved ? '✓ Finalized' : 'Execute Update'}
+                {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save Changes'}
               </button>
             </div>
           </div>

@@ -2,18 +2,23 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { getStoredUser, logout } from '@/lib/api'
-import { 
-  LayoutDashboard, 
-  Users, 
-  MessageSquare, 
-  Calendar, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Users,
+  MessageSquare,
+  Calendar,
+  Settings,
+  LogOut,
   ChevronRight,
   ShieldCheck,
   Command,
   Sun,
-  Moon
+  Moon,
+  BarChart3,
+  TrendingUp,
+  Users2,
+  Megaphone,
+  BrainCircuit
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
@@ -34,6 +39,11 @@ export default function Sidebar() {
     { name: 'Lead Pipeline', icon: Users, path: '/dashboard/leads' },
     { name: 'Messages', icon: MessageSquare, path: '/dashboard/conversations' },
     { name: 'Calendar', icon: Calendar, path: '/dashboard/meetings' },
+    { name: 'Analytics', icon: BarChart3, path: '/dashboard/analytics' },
+    { name: 'Conversions', icon: TrendingUp, path: '/dashboard/conversions' },
+    { name: 'Campaigns', icon: Megaphone, path: '/dashboard/campaigns' },
+    { name: 'Team', icon: Users2, path: '/dashboard/team' },
+    { name: 'AI Training', icon: BrainCircuit, path: '/dashboard/ai-training' },
     { name: 'Settings', icon: Settings, path: '/dashboard/settings' },
   ]
 

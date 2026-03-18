@@ -59,19 +59,19 @@ export default function RegisterPage() {
 
           <div className="space-y-10 max-w-lg">
             <h1 className="text-5xl xl:text-6xl font-black text-[var(--text-primary)] leading-[1.05] tracking-tight">
-              Scale your team with <br/>
-              <span className="text-brand-400">Digital Clones.</span>
+              Your AI sales agent,<br/>
+              <span className="text-brand-400">ready in minutes.</span>
             </h1>
-            
+
             <div className="space-y-8">
-              <FeatureItem icon={Zap} title="Instant Deployment" desc="Activate your AI agents in under 60 seconds." />
-              <FeatureItem icon={ShieldCheck} title="Neural Security" desc="Isolated tenant kernels protect your corporate data." />
+              <FeatureItem icon={Zap} title="Up and Running Fast" desc="Add leads and start outreach in under 60 seconds." />
+              <FeatureItem icon={ShieldCheck} title="Your Data, Secure" desc="Each account is fully isolated and protected." />
             </div>
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">System v4.0.2 / Status: Ready</p>
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Converso · Trusted by sales teams</p>
         </div>
       </div>
 
@@ -79,8 +79,8 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col justify-center py-12 px-8 sm:px-16 lg:px-24 xl:px-40" style={{ backgroundColor: 'var(--background)' }}>
         <div className="max-w-md w-full mx-auto space-y-10">
           <div className="space-y-2">
-            <h2 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">Initialize Account</h2>
-            <p className="text-slate-500 font-medium text-sm italic">Define your corporate identity and credentials.</p>
+            <h2 className="text-4xl font-black text-[var(--text-primary)] tracking-tight">Create your account</h2>
+            <p className="text-slate-500 font-medium text-sm">Get started — it only takes a moment.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -114,7 +114,7 @@ export default function RegisterPage() {
                 </select>
               </div>
               <div className="sm:col-span-2 space-y-2">
-                <label className="label-text">System Password</label>
+                <label className="label-text">Password</label>
                 <input type="password" className="input" placeholder="••••••••" value={form.password} onChange={set('password')} required />
               </div>
             </div>
@@ -124,14 +124,14 @@ export default function RegisterPage() {
               className="btn-primary w-full py-4 text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand-500/20 active:scale-[0.98] mt-4" 
               disabled={loading}
             >
-              {loading ? 'Initializing Stack…' : 'Finalize Registration'}
+              {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
 
           <p className="text-center text-xs text-slate-500 font-medium">
             Already registered?{' '}
             <Link href="/login" className="text-brand-400 font-black hover:text-brand-300 transition-colors ml-1 uppercase tracking-widest">
-              Login to Terminal
+              Sign in
             </Link>
           </p>
         </div>

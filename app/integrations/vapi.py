@@ -25,7 +25,8 @@ class VAPIService:
         assistant_id: str,
         phone_number_id: Optional[str] = None,
         variables: Optional[Dict] = None,
-        webhook_url: Optional[str] = None
+        webhook_url: Optional[str] = None,
+        system_prompt: Optional[str] = None,
     ) -> Dict:
         """Initiate an outbound phone call"""
         try:
@@ -38,14 +39,19 @@ class VAPIService:
                 if phone_number_id:
                     payload["phoneNumberId"] = phone_number_id
 
+                overrides: Dict = {}
                 if variables:
-                    payload["assistantOverrides"] = {"variableValues": variables}
-
-                if webhook_url:
-                    payload["assistantOverrides"] = {
-                        **payload.get("assistantOverrides", {}),
-                        "serverUrl": webhook_url,
+                    overrides["variableValues"] = variables
+                if system_prompt:
+                    overrides["model"] = {
+                        "provider": "openai",
+                        "model": "gpt-4o-mini",
+                        "systemPrompt": system_prompt,
                     }
+                if webhook_url:
+                    overrides["serverUrl"] = webhook_url
+                if overrides:
+                    payload["assistantOverrides"] = overrides
 
                 response = await client.post(
                     f"{self.base_url}/call",
@@ -131,7 +137,7 @@ class VAPIService:
         self,
         name: str,
         system_prompt: str,
-        voice: str = "jennifer",
+        voice: str = "21m00Tcm4TlvDq8ikWAM",
         model: str = "gpt-4o-mini",
         first_message: Optional[str] = None
     ) -> Dict:
@@ -147,7 +153,7 @@ class VAPIService:
                         "systemPrompt": system_prompt,
                     },
                     "voice": {
-                        "provider": "playht",
+                        "provider": "11labs",
                         "voiceId": voice,
                     },
                 }
@@ -235,30 +241,84 @@ class VAPIService:
                 "error": str(e)
             }
     
-    def create_lead_assistant_prompt(self, lead_data: Dict, company_config: Dict) -> str:
-        """Create a dynamic system prompt for lead calls"""
-        tone = company_config.get("ai_config", {}).get("tone", "friendly and professional")
-        
-        prompt = f"""You are a {tone} sales assistant for {company_config.get('name', 'our company')}.
-        
-You are calling {lead_data.get('name', 'a potential customer')} from {lead_data.get('company', 'their company')}.
-They are in the {lead_data.get('industry', 'business')} industry and have shown interest in {lead_data.get('interest', 'our services')}.
+    def create_lead_assistant_prompt(
+        self,
+        lead_data: Dict,
+        company_config: Dict,
+        sms_context: Optional[str] = None,
+    ) -> str:
+        """Build a natural, conversational voice call system prompt."""
+        ai_config = company_config.get("ai_config", {})
+        tone = ai_config.get("tone", "friendly and professional")
+        industry_lingo = ai_config.get("industry_lingo", "").strip()
+        company_memory = ai_config.get("company_memory", "").strip()
+        company_name = company_config.get("name", "our company")
 
-TRANSITION CONTEXT FROM SMS:
-You may have existing context from a previous SMS conversation: {{sms_context}}
-If there is SMS context, use it to pick up the conversation exactly where it left off. Don't re-introduce yourself if you've already been chatting on SMS.
+        lead_name = lead_data.get("name", "")
+        first_name = lead_name.strip().split()[0] if lead_name and lead_name.strip() else "there"
+        lead_company = lead_data.get("company") or "their company"
+        lead_industry = lead_data.get("industry") or "business"
+        lead_interest = lead_data.get("interest") or "our services"
 
-Your goals:
-1. Introduce yourself briefly
-2. Understand their needs and pain points
-3. Qualify if they're a good fit
-4. Try to schedule a meeting with a sales representative
-5. Be respectful of their time
+        parts = [
+            f"You are a {tone} sales representative for {company_name}.",
+            f"You are speaking with {lead_name or 'a potential customer'} "
+            f"from {lead_company} ({lead_industry} industry).",
+            f"Their stated interest: {lead_interest}.",
+            "",
+        ]
 
-Important:
-- Keep the conversation natural and conversational
-- Don't share pricing information
-- If they're not interested, thank them politely and end the call
-- If they ask to be removed from the list, acknowledge and confirm
-"""
-        return prompt
+        if company_memory:
+            parts += [
+                "ABOUT OUR COMPANY:",
+                company_memory,
+                "",
+            ]
+
+        if industry_lingo:
+            parts += [
+                "RELEVANT INDUSTRY CONTEXT:",
+                industry_lingo,
+                "",
+            ]
+
+        if sms_context:
+            parts += [
+                "PRIOR SMS CONVERSATION SUMMARY:",
+                sms_context,
+                "",
+                f"You already know {first_name} from your SMS exchange. "
+                "Do not re-introduce the company. "
+                "Acknowledge the prior conversation naturally and pick up from there.",
+                "",
+            ]
+        else:
+            parts += [
+                "This is your first contact with this lead.",
+                "",
+            ]
+
+        parts += [
+            "CALL STYLE:",
+            "- Sound like a real person having a genuine conversation, not a script reader.",
+            "- Speak in short, natural sentences. Use pauses. Let them finish talking.",
+            f"- Use {first_name}'s name occasionally — once or twice, not constantly.",
+            "- If they ask a question, answer it directly before moving on.",
+            "- Mirror their energy: if they're brief, be brief; if they're chatty, engage more.",
+            "- Avoid filler phrases like 'Absolutely!', 'Great question!', 'Of course!'.",
+            "",
+            "YOUR OBJECTIVES (in order):",
+            "1. Confirm you have a moment to talk (30 seconds).",
+            "2. Briefly remind them of the context (what they were interested in).",
+            "3. Ask one open question to understand their current situation.",
+            "4. If they're a good fit, suggest a short follow-up meeting with a specialist.",
+            "5. If not interested, thank them sincerely and end the call.",
+            "",
+            "GUARDRAILS:",
+            "- Never quote pricing. Say a specialist will follow up with details.",
+            "- If they ask to be removed from outreach, confirm it clearly and end the call.",
+            "- Keep the call under 5 minutes unless the lead is highly engaged.",
+            "- Do not make promises you cannot keep.",
+        ]
+
+        return "\n".join(parts)

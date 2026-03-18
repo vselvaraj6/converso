@@ -77,6 +77,7 @@ export default function LeadDetailPage() {
   const [sending, setSending] = useState(false)
   const [smsContent, setSmsContent] = useState('')
   const [showEditModal, setShowEditModal] = useState(false)
+  const [transcriptModal, setTranscriptModal] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   async function load() {
@@ -342,9 +343,11 @@ export default function LeadDetailPage() {
                               <Play size={12} fill="currentColor" /> Play Audio
                             </a>
                           )}
-                          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5">
-                            <FileText size={12} /> Transcript
-                          </button>
+                          {msg.transcript && (
+                            <button onClick={() => setTranscriptModal(msg.transcript!)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all border border-white/5">
+                              <FileText size={12} /> Transcript
+                            </button>
+                          )}
                         </div>
                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{msg.duration_seconds ? `${msg.duration_seconds}s` : 'Call Ended'}</span>
                       </div>
@@ -418,14 +421,28 @@ export default function LeadDetailPage() {
       </div>
 
       {showEditModal && (
-        <EditLeadModal 
-          lead={lead} 
-          onClose={() => setShowEditModal(false)} 
+        <EditLeadModal
+          lead={lead}
+          onClose={() => setShowEditModal(false)}
           onUpdated={(updated) => {
             setLead({ ...lead, ...updated })
             setShowEditModal(false)
-          }} 
+          }}
         />
+      )}
+
+      {transcriptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setTranscriptModal(null)}>
+          <div className="bg-slate-900 rounded-[28px] border border-white/10 shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2"><FileText size={14} /> Call Transcript</h3>
+              <button onClick={() => setTranscriptModal(null)} className="text-slate-400 hover:text-white transition-colors"><X size={18} /></button>
+            </div>
+            <div className="overflow-y-auto p-6">
+              <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{transcriptModal}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
